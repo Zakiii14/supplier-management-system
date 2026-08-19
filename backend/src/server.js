@@ -1,6 +1,8 @@
 const express = require("express");
 const pool = require("./config/database");
 const supplierRoutes = require("./routes/supplierRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
+const productRoutes = require("./routes/productRoutes");
 
 const app = express();
 
@@ -35,7 +37,8 @@ app.get("/api/test-db", async (req, res) => {
 });
 
 app.use("/api/suppliers", supplierRoutes);
-
+app.use("/api/categories", categoryRoutes);
+app.use("/api/products", productRoutes);
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
