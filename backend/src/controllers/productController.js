@@ -2,7 +2,132 @@ const pool = require("../config/database");
 
 const getAllProducts = async (req, res) => {
   try {
-    const result = await pool.query(`
+    const {
+      search = "",
+      status,
+      category_id,
+      supplier_id,
+      low_stock,
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+
+    if (
+      !Number.isInteger(pageNumber) ||
+      pageNumber < 1 ||
+      !Number.isInteger(limitNumber) ||
+      limitNumber < 1 ||
+      limitNumber > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid pagination parameters",
+      });
+    }
+
+    if (status && !["ACTIVE", "INACTIVE"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be ACTIVE or INACTIVE",
+      });
+    }
+
+    if (
+      low_stock &&
+      !["true", "false"].includes(low_stock)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "low_stock must be true or false",
+      });
+    }
+
+    const offset = (pageNumber - 1) * limitNumber;
+
+    const conditions = [];
+    const values = [];
+
+    if (search) {
+      values.push(`%${search}%`);
+
+      conditions.push(`
+        (
+          p.sku ILIKE $${values.length}
+          OR p.product_name ILIKE $${values.length}
+          OR c.category_name ILIKE $${values.length}
+          OR s.supplier_name ILIKE $${values.length}
+        )
+      `);
+    }
+
+    if (status) {
+      values.push(status);
+
+      conditions.push(
+        `p.status = $${values.length}`
+      );
+    }
+
+    if (category_id) {
+      values.push(category_id);
+
+      conditions.push(
+        `p.category_id = $${values.length}`
+      );
+    }
+
+    if (supplier_id) {
+      values.push(supplier_id);
+
+      conditions.push(
+        `p.supplier_id = $${values.length}`
+      );
+    }
+
+    if (low_stock === "true") {
+      conditions.push(
+        "p.current_stock <= p.minimum_stock"
+      );
+    }
+
+    const whereClause =
+      conditions.length > 0
+        ? `WHERE ${conditions.join(" AND ")}`
+        : "";
+
+    const countQuery = `
+      SELECT COUNT(*)::INTEGER AS total
+
+      FROM app.products p
+
+      JOIN app.categories c
+        ON c.id = p.category_id
+
+      JOIN app.suppliers s
+        ON s.id = p.supplier_id
+
+      ${whereClause}
+    `;
+
+    const countResult = await pool.query(
+      countQuery,
+      values
+    );
+
+    const total = countResult.rows[0].total;
+
+    const dataValues = [...values];
+
+    dataValues.push(limitNumber);
+    const limitParam = dataValues.length;
+
+    dataValues.push(offset);
+    const offsetParam = dataValues.length;
+
+    const dataQuery = `
       SELECT
         p.id,
         p.sku,
@@ -14,6 +139,8 @@ const getAllProducts = async (req, res) => {
         p.current_stock,
         p.status,
         p.description,
+        p.created_at,
+        p.updated_at,
 
         c.id AS category_id,
         c.category_code,
@@ -21,7 +148,13 @@ const getAllProducts = async (req, res) => {
 
         s.id AS supplier_id,
         s.supplier_code,
-        s.supplier_name
+        s.supplier_name,
+
+        CASE
+          WHEN p.current_stock <= p.minimum_stock
+          THEN true
+          ELSE false
+        END AS is_low_stock
 
       FROM app.products p
 
@@ -31,13 +164,29 @@ const getAllProducts = async (req, res) => {
       JOIN app.suppliers s
         ON s.id = p.supplier_id
 
+      ${whereClause}
+
       ORDER BY p.product_name ASC
-    `);
+
+      LIMIT $${limitParam}
+      OFFSET $${offsetParam}
+    `;
+
+    const result = await pool.query(
+      dataQuery,
+      dataValues
+    );
 
     res.status(200).json({
       success: true,
       message: "Products retrieved successfully",
       data: result.rows,
+      pagination: {
+        page: pageNumber,
+        limit: limitNumber,
+        total,
+        total_pages: Math.ceil(total / limitNumber),
+      },
     });
   } catch (error) {
     console.error("Error fetching products:", error);
