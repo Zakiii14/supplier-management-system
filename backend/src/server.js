@@ -4,6 +4,7 @@ const supplierRoutes = require("./routes/supplierRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
 const productRoutes = require("./routes/productRoutes");
 const purchaseOrderRoutes = require("./routes/purchaseOrderRoutes");
+const goodsReceiptRoutes = require("./routes/goodsReceiptRoutes");
 
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/suppliers", supplierRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/purchase-orders", purchaseOrderRoutes);
+app.use("/api/goods-receipts", goodsReceiptRoutes);
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
