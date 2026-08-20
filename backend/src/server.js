@@ -5,6 +5,7 @@ const categoryRoutes = require("./routes/categoryRoutes");
 const productRoutes = require("./routes/productRoutes");
 const purchaseOrderRoutes = require("./routes/purchaseOrderRoutes");
 const goodsReceiptRoutes = require("./routes/goodsReceiptRoutes");
+const inventoryMovementRoutes = require("./routes/inventoryMovementRoutes");
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/purchase-orders", purchaseOrderRoutes);
 app.use("/api/goods-receipts", goodsReceiptRoutes);
+app.use("/api/inventory-movements", inventoryMovementRoutes);
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });

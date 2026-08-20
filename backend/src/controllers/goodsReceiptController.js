@@ -360,6 +360,146 @@ const createGoodsReceipt = async (req, res) => {
   }
 };
 
+const getAllGoodsReceipts = async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        gr.*,
+        po.po_number,
+        po.status AS purchase_order_status,
+        s.supplier_code,
+        s.supplier_name,
+
+        (
+          SELECT COUNT(*)::INTEGER
+          FROM app.goods_receipt_items gri
+          WHERE gri.goods_receipt_id = gr.id
+        ) AS total_items,
+
+        (
+          SELECT COALESCE(SUM(gri.quantity_received), 0)
+          FROM app.goods_receipt_items gri
+          WHERE gri.goods_receipt_id = gr.id
+        ) AS total_quantity_received,
+
+        (
+          SELECT COALESCE(SUM(gri.quantity_damaged), 0)
+          FROM app.goods_receipt_items gri
+          WHERE gri.goods_receipt_id = gr.id
+        ) AS total_quantity_damaged
+
+      FROM app.goods_receipts gr
+
+      JOIN app.purchase_orders po
+        ON po.id = gr.purchase_order_id
+
+      JOIN app.suppliers s
+        ON s.id = po.supplier_id
+
+      ORDER BY gr.created_at DESC
+    `);
+
+    res.status(200).json({
+      success: true,
+      message: "Goods receipts retrieved successfully",
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("Error fetching goods receipts:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve goods receipts",
+    });
+  }
+};
+
+const getGoodsReceiptById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const receiptResult = await pool.query(
+      `
+      SELECT
+        gr.*,
+        po.po_number,
+        po.status AS purchase_order_status,
+        s.id AS supplier_id,
+        s.supplier_code,
+        s.supplier_name
+
+      FROM app.goods_receipts gr
+
+      JOIN app.purchase_orders po
+        ON po.id = gr.purchase_order_id
+
+      JOIN app.suppliers s
+        ON s.id = po.supplier_id
+
+      WHERE gr.id = $1
+      `,
+      [id]
+    );
+
+    if (receiptResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Goods receipt not found",
+      });
+    }
+
+    const itemsResult = await pool.query(
+      `
+      SELECT
+        gri.id,
+        gri.purchase_order_item_id,
+        gri.product_id,
+        p.sku,
+        p.product_name,
+        p.unit,
+        gri.quantity_received,
+        gri.quantity_damaged,
+        (
+          gri.quantity_received - gri.quantity_damaged
+        ) AS quantity_added_to_stock,
+        poi.quantity AS ordered_quantity,
+        poi.received_quantity AS total_received_quantity
+
+      FROM app.goods_receipt_items gri
+
+      JOIN app.products p
+        ON p.id = gri.product_id
+
+      JOIN app.purchase_order_items poi
+        ON poi.id = gri.purchase_order_item_id
+
+      WHERE gri.goods_receipt_id = $1
+
+      ORDER BY p.product_name ASC
+      `,
+      [id]
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Goods receipt retrieved successfully",
+      data: {
+        ...receiptResult.rows[0],
+        items: itemsResult.rows,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching goods receipt:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve goods receipt",
+    });
+  }
+};
+
 module.exports = {
+  getAllGoodsReceipts,
+  getGoodsReceiptById,
   createGoodsReceipt,
 };
