@@ -18,6 +18,7 @@ const deliveryRoutes = require("./routes/deliveryRoutes");
 const invoiceRoutes = require("./routes/invoiceRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const authRoutes = require("./routes/authRoutes");
+const userRoutes = require("./routes/userRoutes");
 
 const authenticate = require("./middleware/authMiddleware");
 
@@ -76,6 +77,7 @@ app.use("/api/sales-orders", authenticate, salesOrderRoutes);
 app.use("/api/deliveries", authenticate, deliveryRoutes);
 app.use("/api/invoices", authenticate, invoiceRoutes);
 app.use("/api/payments", authenticate, paymentRoutes);
+app.use("/api/users", authenticate, userRoutes);
 app.use("/api/auth", authRoutes);
 
 app.use((req, res) => {
