@@ -9,6 +9,7 @@ const getAllPurchaseOrders = async (req, res) => {
         po.expected_date,
         po.status,
         po.notes,
+		po.created_by,
 
         s.id AS supplier_id,
         s.supplier_code,
@@ -63,6 +64,7 @@ const getPurchaseOrderById = async (req, res) => {
         po.expected_date,
         po.status,
         po.notes,
+		po.created_by,
         po.created_at,
         po.updated_at,
 
@@ -136,6 +138,7 @@ const createPurchaseOrder = async (req, res) => {
 			notes,
 			items,
 		} = req.body;
+		const createdBy = req.user.id;
 		if (!po_number || !supplier_id) {
 			return res.status(400).json({
 				success: false,
@@ -164,21 +167,23 @@ const createPurchaseOrder = async (req, res) => {
 		await client.query("BEGIN");
 		const poResult = await client.query(`
       INSERT INTO app.purchase_orders (
-        po_number,
-        supplier_id,
-        order_date,
-        expected_date,
-        status,
-        notes
-      )
-      VALUES (
-        $1,
-        $2,
-        COALESCE($3::DATE, CURRENT_DATE),
-        $4,
-        'DRAFT',
-        $5
-      )
+  po_number,
+  supplier_id,
+  order_date,
+  expected_date,
+  status,
+  notes,
+  created_by
+)
+VALUES (
+  $1,
+  $2,
+  COALESCE($3::DATE, CURRENT_DATE),
+  $4,
+  'DRAFT',
+  $5,
+  $6
+)
       RETURNING *
       `,
 			[
@@ -187,6 +192,7 @@ const createPurchaseOrder = async (req, res) => {
 				order_date || null,
 				expected_date || null,
 				notes || null,
+				createdBy,
 			]);
 		const purchaseOrder = poResult.rows[0];
 		for (const item of items) {
@@ -292,7 +298,7 @@ const updatePurchaseOrderStatus = async (req, res) => {
 		const {
 			status
 		} = req.body;
-		const allowedStatus = ["DRAFT", "SUBMITTED", "CANCELLED", ];
+		const allowedStatus = ["DRAFT", "SUBMITTED", "CANCELLED",];
 		if (!allowedStatus.includes(status)) {
 			return res.status(400).json({
 				success: false,

@@ -257,15 +257,16 @@ const createDelivery = async (req, res) => {
 
   try {
     const {
-      delivery_number,
-      sales_order_id,
-      delivery_date,
-      recipient_name,
-      address,
-      notes,
-      created_by,
-      items,
-    } = req.body;
+  delivery_number,
+  sales_order_id,
+  delivery_date,
+  recipient_name,
+  address,
+  notes,
+  items,
+} = req.body;
+
+const createdBy = req.user.id;
 
     if (!delivery_number || !sales_order_id) {
       return res.status(400).json({
@@ -362,7 +363,7 @@ const createDelivery = async (req, res) => {
         recipient_name || null,
         address || null,
         notes || null,
-        created_by || null,
+        createdBy,
       ]
     );
 

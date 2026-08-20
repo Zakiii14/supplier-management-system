@@ -5,12 +5,13 @@ const createGoodsReceipt = async (req, res) => {
 
   try {
     const {
-      receipt_number,
-      purchase_order_id,
-      received_by,
-      notes,
-      items,
-    } = req.body;
+            receipt_number,
+            purchase_order_id,
+            notes,
+            items,
+          } = req.body;
+
+          const receivedBy = req.user.id;
 
     // =========================
     // BASIC VALIDATION
@@ -95,7 +96,7 @@ const createGoodsReceipt = async (req, res) => {
       [
         receipt_number,
         purchase_order_id,
-        received_by || null,
+        receivedBy,
         notes || null,
       ]
     );
@@ -265,7 +266,7 @@ const createGoodsReceipt = async (req, res) => {
             stockQuantity,
             goodsReceipt.id,
             `Goods receipt ${receipt_number}`,
-            received_by || null,
+            receivedBy,
           ]
         );
 
