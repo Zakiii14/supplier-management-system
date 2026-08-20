@@ -1,14 +1,16 @@
 {
-  "name": "backend",
+  "name": "supplier-management-system-backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "REST API for Supplier Management System",
+  "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

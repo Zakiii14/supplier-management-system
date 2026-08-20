@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const express = require("express");
 const pool = require("./config/database");
 const supplierRoutes = require("./routes/supplierRoutes");
@@ -14,7 +16,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 
 const app = express();
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Wajib agar Express bisa membaca JSON body
 app.use(express.json());
@@ -55,6 +57,14 @@ app.use("/api/sales-orders", salesOrderRoutes);
 app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/payments", paymentRoutes);
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Endpoint not found",
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
