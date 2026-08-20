@@ -1,5 +1,9 @@
 const express = require("express");
 
+const authorizeRoles = require(
+  "../middleware/authorizeRoles"
+);
+
 const {
   getAllDeliveries,
   getDeliveryById,
@@ -9,9 +13,38 @@ const {
 
 const router = express.Router();
 
-router.get("/", getAllDeliveries);
-router.get("/:id", getDeliveryById);
-router.post("/", createDelivery);
-router.patch("/:id/status", updateDeliveryStatus);
+router.get(
+  "/",
+  authorizeRoles(
+    "ADMIN",
+    "SALES",
+    "WAREHOUSE",
+    "MANAGER"
+  ),
+  getAllDeliveries
+);
+
+router.get(
+  "/:id",
+  authorizeRoles(
+    "ADMIN",
+    "SALES",
+    "WAREHOUSE",
+    "MANAGER"
+  ),
+  getDeliveryById
+);
+
+router.post(
+  "/",
+  authorizeRoles("ADMIN", "WAREHOUSE"),
+  createDelivery
+);
+
+router.patch(
+  "/:id/status",
+  authorizeRoles("ADMIN", "WAREHOUSE"),
+  updateDeliveryStatus
+);
 
 module.exports = router;

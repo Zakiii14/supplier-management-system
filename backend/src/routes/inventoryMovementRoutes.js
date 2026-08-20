@@ -1,5 +1,9 @@
 const express = require("express");
 
+const authorizeRoles = require(
+  "../middleware/authorizeRoles"
+);
+
 const {
   getAllInventoryMovements,
   getInventoryMovementById,
@@ -9,7 +13,28 @@ const {
 
 const router = express.Router();
 
-router.get("/", getAllInventoryMovements);
-router.get("/:id", getInventoryMovementById);
+router.get(
+  "/",
+  authorizeRoles(
+    "ADMIN",
+    "PURCHASING",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER"
+  ),
+  getAllInventoryMovements
+);
+
+router.get(
+  "/:id",
+  authorizeRoles(
+    "ADMIN",
+    "PURCHASING",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER"
+  ),
+  getInventoryMovementById
+);
 
 module.exports = router;

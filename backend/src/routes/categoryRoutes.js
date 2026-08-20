@@ -1,5 +1,9 @@
 const express = require("express");
 
+const authorizeRoles = require(
+  "../middleware/authorizeRoles"
+);
+
 const {
   getAllCategories,
   getCategoryById,
@@ -10,11 +14,48 @@ const {
 
 const router = express.Router();
 
-router.get("/", getAllCategories);
-router.post("/", createCategory);
+router.get(
+  "/",
+  authorizeRoles(
+    "ADMIN",
+    "PURCHASING",
+    "WAREHOUSE",
+    "SALES",
+    "FINANCE",
+    "MANAGER"
+  ),
+  getAllCategories
+);
 
-router.get("/:id", getCategoryById);
-router.put("/:id", updateCategory);
-router.patch("/:id/status", updateCategoryStatus);
+router.get(
+  "/:id",
+  authorizeRoles(
+    "ADMIN",
+    "PURCHASING",
+    "WAREHOUSE",
+    "SALES",
+    "FINANCE",
+    "MANAGER"
+  ),
+  getCategoryById
+);
+
+router.post(
+  "/",
+  authorizeRoles("ADMIN", "PURCHASING"),
+  createCategory
+);
+
+router.put(
+  "/:id",
+  authorizeRoles("ADMIN", "PURCHASING"),
+  updateCategory
+);
+
+router.patch(
+  "/:id/status",
+  authorizeRoles("ADMIN", "PURCHASING"),
+  updateCategoryStatus
+);
 
 module.exports = router;

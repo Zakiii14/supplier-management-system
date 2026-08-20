@@ -1,5 +1,9 @@
 const express = require("express");
 
+const authorizeRoles = require(
+  "../middleware/authorizeRoles"
+);
+
 const {
   getAllInvoices,
   getInvoiceById,
@@ -9,9 +13,38 @@ const {
 
 const router = express.Router();
 
-router.get("/", getAllInvoices);
-router.get("/:id", getInvoiceById);
-router.post("/", createInvoice);
-router.patch("/:id/cancel", cancelInvoice);
+router.get(
+  "/",
+  authorizeRoles(
+    "ADMIN",
+    "FINANCE",
+    "SALES",
+    "MANAGER"
+  ),
+  getAllInvoices
+);
+
+router.get(
+  "/:id",
+  authorizeRoles(
+    "ADMIN",
+    "FINANCE",
+    "SALES",
+    "MANAGER"
+  ),
+  getInvoiceById
+);
+
+router.post(
+  "/",
+  authorizeRoles("ADMIN", "FINANCE"),
+  createInvoice
+);
+
+router.patch(
+  "/:id/cancel",
+  authorizeRoles("ADMIN", "FINANCE"),
+  cancelInvoice
+);
 
 module.exports = router;

@@ -1,5 +1,9 @@
 const express = require("express");
 
+const authorizeRoles = require(
+  "../middleware/authorizeRoles"
+);
+
 const {
   getAllPurchaseOrders,
   getPurchaseOrderById,
@@ -9,10 +13,40 @@ const {
 
 const router = express.Router();
 
-router.get("/", getAllPurchaseOrders);
-router.post("/", createPurchaseOrder);
+router.get(
+  "/",
+  authorizeRoles(
+    "ADMIN",
+    "PURCHASING",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER"
+  ),
+  getAllPurchaseOrders
+);
 
-router.get("/:id", getPurchaseOrderById);
-router.patch("/:id/status", updatePurchaseOrderStatus);
+router.get(
+  "/:id",
+  authorizeRoles(
+    "ADMIN",
+    "PURCHASING",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER"
+  ),
+  getPurchaseOrderById
+);
+
+router.post(
+  "/",
+  authorizeRoles("ADMIN", "PURCHASING"),
+  createPurchaseOrder
+);
+
+router.patch(
+  "/:id/status",
+  authorizeRoles("ADMIN", "PURCHASING"),
+  updatePurchaseOrderStatus
+);
 
 module.exports = router;

@@ -6,14 +6,17 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "set-password": "node scripts/setUserPassword.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0"
   },
   "devDependencies": {

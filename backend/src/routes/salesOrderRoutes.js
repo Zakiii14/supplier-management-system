@@ -1,5 +1,9 @@
 const express = require("express");
 
+const authorizeRoles = require(
+  "../middleware/authorizeRoles"
+);
+
 const {
   getAllSalesOrders,
   getSalesOrderById,
@@ -11,9 +15,40 @@ const {
 
 const router = express.Router();
 
-router.get("/", getAllSalesOrders);
-router.get("/:id", getSalesOrderById);
-router.post("/", createSalesOrder);
-router.patch("/:id/status", updateSalesOrderStatus);
+router.get(
+  "/",
+  authorizeRoles(
+    "ADMIN",
+    "SALES",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER"
+  ),
+  getAllSalesOrders
+);
+
+router.get(
+  "/:id",
+  authorizeRoles(
+    "ADMIN",
+    "SALES",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER"
+  ),
+  getSalesOrderById
+);
+
+router.post(
+  "/",
+  authorizeRoles("ADMIN", "SALES"),
+  createSalesOrder
+);
+
+router.patch(
+  "/:id/status",
+  authorizeRoles("ADMIN", "SALES"),
+  updateSalesOrderStatus
+);
 
 module.exports = router;
