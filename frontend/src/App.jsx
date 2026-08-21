@@ -8,6 +8,7 @@ import useAuth from "./hooks/useAuth";
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import ModulePlaceholderPage from "./pages/ModulePlaceholderPage";
+import ProductsPage from "./pages/ProductsPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { navigationGroups } from "./utils/navigation";
 
@@ -15,8 +16,12 @@ const App = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
   const moduleRoutes = navigationGroups
-    .flatMap((group) => group.items)
-    .filter((item) => item.path !== "/");
+  .flatMap((group) => group.items)
+  .filter(
+    (item) =>
+      item.path !== "/" &&
+      item.path !== "/products",
+  );
 
   const loginElement = isLoading ? (
     <main className="session-loading">
@@ -39,7 +44,7 @@ const App = () => {
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route index element={<DashboardPage />} />
-
+          <Route path="products" element={<ProductsPage />} />
           {moduleRoutes.map((item) => (
             <Route
               key={item.path}
