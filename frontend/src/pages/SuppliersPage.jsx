@@ -7,6 +7,8 @@ import {
     Pencil,
     Phone,
     Plus,
+    Power,
+    PowerOff,
     RefreshCw,
     Search,
     X,
@@ -20,9 +22,11 @@ import {
     getSupplierByIdRequest,
     getSuppliersRequest,
     updateSupplierRequest,
+    updateSupplierStatusRequest,
 } from "../api/suppliers";
 import SupplierFormModal from "../components/suppliers/SupplierFormModal";
 import StatusFilter from "../components/filters/StatusFilter";
+import SupplierStatusDialog from "../components/suppliers/SupplierStatusDialog";
 import useAuth from "../hooks/useAuth";
 import { formatNumber } from "../utils/formatters";
 import "../styles/products.css";
@@ -67,6 +71,14 @@ const SuppliersPage = () => {
         useState(false);
     const [formError, setFormError] = useState("");
     const [actionError, setActionError] =
+        useState("");
+    const [statusSupplier, setStatusSupplier] =
+        useState(null);
+    const [isStatusDialogOpen, setIsStatusDialogOpen] =
+        useState(false);
+    const [isUpdatingStatus, setIsUpdatingStatus] =
+        useState(false);
+    const [statusError, setStatusError] =
         useState("");
 
     useEffect(() => {
@@ -209,6 +221,55 @@ const SuppliersPage = () => {
             );
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleOpenStatusDialog = (supplier) => {
+        if (!canManageSuppliers) {
+            return;
+        }
+
+        setStatusSupplier(supplier);
+        setStatusError("");
+        setIsStatusDialogOpen(true);
+    };
+
+    const handleCloseStatusDialog = () => {
+        if (isUpdatingStatus) {
+            return;
+        }
+
+        setIsStatusDialogOpen(false);
+        setStatusSupplier(null);
+        setStatusError("");
+    };
+
+    const handleConfirmSupplierStatus = async (
+        nextStatus,
+    ) => {
+        if (!statusSupplier) {
+            return;
+        }
+
+        try {
+            setIsUpdatingStatus(true);
+            setStatusError("");
+
+            await updateSupplierStatusRequest(
+                statusSupplier.id,
+                nextStatus,
+            );
+
+            setIsStatusDialogOpen(false);
+            setStatusSupplier(null);
+            setReloadKey((current) => current + 1);
+        } catch (error) {
+            setStatusError(
+                error.response?.data?.message ||
+                "Status supplier gagal diperbarui.",
+            );
+        } finally {
+            setIsUpdatingStatus(false);
         }
     };
 
@@ -446,17 +507,45 @@ const SuppliersPage = () => {
                                                 className="table-action-cell"
                                                 data-label="Aksi"
                                             >
-                                                <button
-                                                    type="button"
-                                                    className="table-edit-action"
-                                                    disabled={isPreparingForm}
-                                                    onClick={() =>
-                                                        handleOpenEditForm(supplier)
-                                                    }
-                                                >
-                                                    <Pencil aria-hidden="true" />
-                                                    Edit
-                                                </button>
+                                                <div className="table-action-buttons">
+                                                    <button
+                                                        type="button"
+                                                        className="table-edit-action"
+                                                        disabled={
+                                                            isPreparingForm || isUpdatingStatus
+                                                        }
+                                                        onClick={() =>
+                                                            handleOpenEditForm(supplier)
+                                                        }
+                                                    >
+                                                        <Pencil aria-hidden="true" />
+                                                        Edit
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        className={`table-status-action ${supplier.status === "ACTIVE"
+                                                                ? "is-deactivate"
+                                                                : "is-activate"
+                                                            }`}
+                                                        disabled={
+                                                            isPreparingForm || isUpdatingStatus
+                                                        }
+                                                        onClick={() =>
+                                                            handleOpenStatusDialog(supplier)
+                                                        }
+                                                    >
+                                                        {supplier.status === "ACTIVE" ? (
+                                                            <PowerOff aria-hidden="true" />
+                                                        ) : (
+                                                            <Power aria-hidden="true" />
+                                                        )}
+
+                                                        {supplier.status === "ACTIVE"
+                                                            ? "Nonaktifkan"
+                                                            : "Aktifkan"}
+                                                    </button>
+                                                </div>
                                             </td>
                                         )}
                                     </tr>
@@ -518,6 +607,16 @@ const SuppliersPage = () => {
                     requestError={formError}
                     onClose={handleCloseSupplierForm}
                     onSubmit={handleSaveSupplier}
+                />
+            )}
+            {isStatusDialogOpen && (
+                <SupplierStatusDialog
+                    isOpen
+                    supplier={statusSupplier}
+                    isSubmitting={isUpdatingStatus}
+                    requestError={statusError}
+                    onCancel={handleCloseStatusDialog}
+                    onConfirm={handleConfirmSupplierStatus}
                 />
             )}
         </div>
