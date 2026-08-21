@@ -338,3 +338,65 @@
     margin-bottom: 30px;
   }
 }
+
+.login-brand-panel,
+.login-form-panel,
+.login-brand-content,
+.login-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.login-eyebrow,
+.login-brand-content h1,
+.login-brand-content > p:last-child {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .login-brand-panel,
+  .login-form-panel {
+    width: 100%;
+  }
+
+  .login-brand-content {
+    padding: 42px 0 8px;
+  }
+
+  .login-brand-content h1 {
+    font-size: clamp(2rem, 7vw, 3rem);
+  }
+
+  .login-brand-content > p:last-child {
+    margin-top: 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-brand-panel {
+    padding: 22px 20px 28px;
+  }
+
+  .login-brand-content {
+    padding: 34px 0 4px;
+  }
+
+  .login-eyebrow {
+    margin-bottom: 12px;
+    font-size: 0.64rem;
+    letter-spacing: 0.09em;
+  }
+
+  .login-brand-content h1 {
+    font-size: 2rem;
+    line-height: 1.1;
+  }
+
+  .login-brand-content > p:last-child {
+    display: none;
+  }
+
+  .login-form-panel {
+    padding: 40px 20px 48px;
+  }
+}
