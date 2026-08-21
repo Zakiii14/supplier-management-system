@@ -30,6 +30,7 @@ import { getCategoriesRequest } from "../api/categories";
 import { getActiveSuppliersRequest } from "../api/suppliers";
 import ProductFormModal from "../components/products/ProductFormModal";
 import ProductStatusDialog from "../components/products/ProductStatusDialog";
+import StatusFilter from "../components/filters/StatusFilter";
 import useAuth from "../hooks/useAuth";
 
 const PAGE_LIMIT = 10;
@@ -140,9 +141,9 @@ const ProductsPage = () => {
     setAppliedSearch(searchInput.trim());
   };
 
-  const handleStatusChange = (event) => {
+  const handleStatusChange = (nextStatus) => {
     setPage(1);
-    setStatus(event.target.value);
+    setStatus(nextStatus);
   };
 
   const handleLowStockChange = (event) => {
@@ -419,15 +420,11 @@ const ProductsPage = () => {
             </button>
           </div>
 
-          <select
+          <StatusFilter
             value={status}
             onChange={handleStatusChange}
-            aria-label="Filter status produk"
-          >
-            <option value="">Semua status</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
-          </select>
+            ariaLabel="Filter status produk"
+          />
 
           <label className="checkbox-filter">
             <input

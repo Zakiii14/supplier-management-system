@@ -3,6 +3,10 @@ const isValidUUID = value => {
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 	return uuidRegex.test(value)
 };
+const normalizeSupplierCode = value =>
+	typeof value === "string"
+		? value.trim().toUpperCase()
+		: "";
 const getAllSuppliers = async (req, res) => {
 	try {
 		const {
@@ -178,30 +182,34 @@ const createSupplier = async (req, res) => {
 			payment_terms_days,
 			notes
 		} = req.body;
-		if (!supplier_code || !supplier_name) {
+		const normalizedSupplierCode =
+			normalizeSupplierCode(supplier_code);
+		if (!normalizedSupplierCode || !supplier_name) {
 			return res.status(400).json({
 				success: false,
 				message: "supplier_code and supplier_name are required"
 			})
 		}
-		const result = await pool.query(`\n      INSERT INTO app.suppliers (\n        supplier_code,\n        supplier_name,\n        contact_person,\n        phone,\n        email,\n        address,\n        city,\n        payment_terms_days,\n        notes\n      )\n      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n      RETURNING *\n      `, [supplier_code, supplier_name, contact_person || null, phone || null, email || null, address || null, city || null, payment_terms_days ?? 0, notes || null]);
+		const result = await pool.query(`\n      INSERT INTO app.suppliers (\n        supplier_code,\n        supplier_name,\n        contact_person,\n        phone,\n        email,\n        address,\n        city,\n        payment_terms_days,\n        notes\n      )\n      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n      RETURNING *\n      `, [normalizedSupplierCode, supplier_name, contact_person || null, phone || null, email || null, address || null, city || null, payment_terms_days ?? 0, notes || null]);
 		res.status(201).json({
 			success: true,
 			message: "Supplier created successfully",
 			data: result.rows[0]
 		})
 	} catch (error) {
-		console.error("Error creating supplier:", error);
 		if (error.code === "23505") {
 			return res.status(409).json({
 				success: false,
 				message: "Supplier code already exists"
-			})
+			});
 		}
+
+		console.error("Error creating supplier:", error);
+
 		res.status(500).json({
 			success: false,
 			message: "Failed to create supplier"
-		})
+		});
 	}
 };
 const updateSupplier = async (req, res) => {
@@ -220,7 +228,9 @@ const updateSupplier = async (req, res) => {
 			payment_terms_days,
 			notes
 		} = req.body;
-		if (!supplier_code || !supplier_name) {
+		const normalizedSupplierCode =
+			normalizeSupplierCode(supplier_code);
+		if (!normalizedSupplierCode || !supplier_name) {
 			return res.status(400).json({
 				success: false,
 				message: "supplier_code and supplier_name are required"
@@ -232,7 +242,7 @@ const updateSupplier = async (req, res) => {
 				message: "Invalid supplier ID",
 			});
 		}
-		const result = await pool.query(`\n      UPDATE app.suppliers\n      SET\n        supplier_code = $1,\n        supplier_name = $2,\n        contact_person = $3,\n        phone = $4,\n        email = $5,\n        address = $6,\n        city = $7,\n        payment_terms_days = $8,\n        notes = $9\n      WHERE id = $10\n      RETURNING *\n      `, [supplier_code, supplier_name, contact_person || null, phone || null, email || null, address || null, city || null, payment_terms_days ?? 0, notes || null, id]);
+		const result = await pool.query(`\n      UPDATE app.suppliers\n      SET\n        supplier_code = $1,\n        supplier_name = $2,\n        contact_person = $3,\n        phone = $4,\n        email = $5,\n        address = $6,\n        city = $7,\n        payment_terms_days = $8,\n        notes = $9\n      WHERE id = $10\n      RETURNING *\n      `, [normalizedSupplierCode, supplier_name, contact_person || null, phone || null, email || null, address || null, city || null, payment_terms_days ?? 0, notes || null, id]);
 		if (result.rows.length === 0) {
 			return res.status(404).json({
 				success: false,
@@ -245,17 +255,19 @@ const updateSupplier = async (req, res) => {
 			data: result.rows[0]
 		})
 	} catch (error) {
-		console.error("Error updating supplier:", error);
 		if (error.code === "23505") {
 			return res.status(409).json({
 				success: false,
 				message: "Supplier code already exists"
-			})
+			});
 		}
+
+		console.error("Error updating supplier:", error);
+
 		res.status(500).json({
 			success: false,
 			message: "Failed to update supplier"
-		})
+		});
 	}
 };
 const updateSupplierStatus = async (req, res) => {

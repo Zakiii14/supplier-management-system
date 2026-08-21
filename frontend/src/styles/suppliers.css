@@ -83,3 +83,31 @@
     justify-content: flex-end;
   }
 }
+
+.supplier-table.has-actions th:nth-child(1) {
+  width: 11%;
+}
+
+.supplier-table.has-actions th:nth-child(2) {
+  width: 19%;
+}
+
+.supplier-table.has-actions th:nth-child(3) {
+  width: 23%;
+}
+
+.supplier-table.has-actions th:nth-child(4) {
+  width: 12%;
+}
+
+.supplier-table.has-actions th:nth-child(5) {
+  width: 11%;
+}
+
+.supplier-table.has-actions th:nth-child(6) {
+  width: 12%;
+}
+
+.supplier-table.has-actions th:nth-child(7) {
+  width: 12%;
+}
