@@ -3,6 +3,8 @@ import {
   ChevronLeft,
   ChevronRight,
   PackageSearch,
+  Pencil,
+  Plus,
   RefreshCw,
   Search,
   X,
@@ -11,16 +13,30 @@ import {
   useEffect,
   useState,
 } from "react";
-import { getProductsRequest } from "../api/products";
+import {
+  createProductRequest,
+  getProductsRequest,
+  updateProductRequest,
+} from "../api/products";
 import {
   formatCurrency,
   formatNumber,
 } from "../utils/formatters";
 import "../styles/products.css";
+import { getCategoriesRequest } from "../api/categories";
+import { getActiveSuppliersRequest } from "../api/suppliers";
+import ProductFormModal from "../components/products/ProductFormModal";
+import useAuth from "../hooks/useAuth";
 
 const PAGE_LIMIT = 10;
 
 const ProductsPage = () => {
+  const { user } = useAuth();
+
+  const canManageProducts = [
+    "ADMIN",
+    "PURCHASING",
+  ].includes(user?.role);
   const [products, setProducts] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -41,6 +57,18 @@ const ProductsPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] =
     useState("");
+  const [isProductFormOpen, setIsProductFormOpen] =
+    useState(false);
+  const [categories, setCategories] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [selectedProduct, setSelectedProduct] =
+    useState(null);
+  const [isPreparingForm, setIsPreparingForm] =
+    useState(false);
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+  const [formError, setFormError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     let isCancelled = false;
@@ -71,7 +99,7 @@ const ProductsPage = () => {
           setProducts([]);
           setErrorMessage(
             error.response?.data?.message ||
-              "Produk gagal dimuat. Silakan coba kembali.",
+            "Produk gagal dimuat. Silakan coba kembali.",
           );
         }
       } finally {
@@ -118,6 +146,125 @@ const ProductsPage = () => {
     setPage(1);
   };
 
+  const loadProductOptions = async (product = null) => {
+    const [categoryData, supplierData] =
+      await Promise.all([
+        getCategoriesRequest(),
+        getActiveSuppliersRequest(),
+      ]);
+
+    const availableCategories = categoryData.filter(
+      (category) =>
+        category.status === "ACTIVE" ||
+        category.id === product?.category_id,
+    );
+
+    const availableSuppliers = [...supplierData];
+
+    if (
+      product?.supplier_id &&
+      !availableSuppliers.some(
+        (supplier) =>
+          supplier.id === product.supplier_id,
+      )
+    ) {
+      availableSuppliers.push({
+        id: product.supplier_id,
+        supplier_name: product.supplier_name,
+      });
+    }
+
+    setCategories(availableCategories);
+    setSuppliers(availableSuppliers);
+  };
+
+  const handleOpenCreateForm = async () => {
+    if (!canManageProducts) {
+      return;
+    }
+
+    try {
+      setIsPreparingForm(true);
+      setActionError("");
+      setFormError("");
+
+      await loadProductOptions();
+
+      setSelectedProduct(null);
+      setIsProductFormOpen(true);
+    } catch (error) {
+      setActionError(
+        error.response?.data?.message ||
+        "Kategori dan supplier gagal dimuat.",
+      );
+    } finally {
+      setIsPreparingForm(false);
+    }
+  };
+
+  const handleOpenEditForm = async (product) => {
+    if (!canManageProducts) {
+      return;
+    }
+
+    try {
+      setIsPreparingForm(true);
+      setActionError("");
+      setFormError("");
+
+      await loadProductOptions(product);
+
+      setSelectedProduct(product);
+      setIsProductFormOpen(true);
+    } catch (error) {
+      setActionError(
+        error.response?.data?.message ||
+        "Data pendukung produk gagal dimuat.",
+      );
+    } finally {
+      setIsPreparingForm(false);
+    }
+  };
+
+  const handleCloseProductForm = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsProductFormOpen(false);
+    setSelectedProduct(null);
+    setFormError("");
+  };
+
+  const handleSaveProduct = async (payload) => {
+    try {
+      setIsSubmitting(true);
+      setFormError("");
+
+      if (selectedProduct) {
+        await updateProductRequest(
+          selectedProduct.id,
+          payload,
+        );
+      } else {
+        await createProductRequest(payload);
+        setPage(1);
+      }
+
+      setIsProductFormOpen(false);
+      setSelectedProduct(null);
+      setReloadKey((current) => current + 1);
+    } catch (error) {
+      setFormError(
+        error.response?.data?.message ||
+        `Produk gagal ${selectedProduct ? "diperbarui" : "ditambahkan"
+        }.`,
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const totalPages = Math.max(
     pagination.total_pages,
     1,
@@ -140,21 +287,53 @@ const ProductsPage = () => {
           </span>
         </div>
 
-        <button
-          type="button"
-          className="secondary-action"
-          onClick={() =>
-            setReloadKey((current) => current + 1)
-          }
-          disabled={isLoading}
-        >
-          <RefreshCw
-            className={isLoading ? "is-spinning" : ""}
-            aria-hidden="true"
-          />
-          Muat ulang
-        </button>
+        <div className="page-heading-actions">
+          {canManageProducts && (
+            <button
+              type="button"
+              className="primary-action"
+              disabled={isPreparingForm}
+              onClick={handleOpenCreateForm}
+            >
+              {isPreparingForm ? (
+                <RefreshCw
+                  className="is-spinning"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Plus aria-hidden="true" />
+              )}
+              <span>
+                {isPreparingForm
+                  ? "Menyiapkan..."
+                  : "Tambah produk"}
+              </span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={() =>
+              setReloadKey((current) => current + 1)
+            }
+            disabled={isLoading}
+          >
+            <RefreshCw
+              className={isLoading ? "is-spinning" : ""}
+              aria-hidden="true"
+            />
+            Muat ulang
+          </button>
+        </div>
       </section>
+
+      {actionError && (
+        <div className="product-action-error" role="alert">
+          <AlertTriangle aria-hidden="true" />
+          <span>{actionError}</span>
+        </div>
+      )}
 
       <section className="data-panel">
         <form
@@ -243,6 +422,7 @@ const ProductsPage = () => {
                 <th>Harga Beli</th>
                 <th>Harga Jual</th>
                 <th>Status</th>
+                {canManageProducts && <th>Aksi</th>}
               </tr>
             </thead>
 
@@ -251,7 +431,7 @@ const ProductsPage = () => {
                 <tr>
                   <td
                     className="table-message"
-                    colSpan="7"
+                    colSpan={canManageProducts ? 8 : 7}
                   >
                     <RefreshCw
                       className="is-spinning"
@@ -264,7 +444,7 @@ const ProductsPage = () => {
                 <tr>
                   <td
                     className="table-message"
-                    colSpan="7"
+                    colSpan={canManageProducts ? 8 : 7}
                   >
                     <PackageSearch aria-hidden="true" />
                     Tidak ada produk yang sesuai.
@@ -330,15 +510,33 @@ const ProductsPage = () => {
 
                     <td data-label="Status">
                       <span
-                        className={`status-badge ${
-                          product.status === "ACTIVE"
-                            ? "is-active"
-                            : "is-inactive"
-                        }`}
+                        className={`status-badge ${product.status === "ACTIVE"
+                          ? "is-active"
+                          : "is-inactive"
+                          }`}
                       >
                         {product.status}
                       </span>
                     </td>
+
+                    {canManageProducts && (
+                      <td
+                        className="table-action-cell"
+                        data-label="Aksi"
+                      >
+                        <button
+                          type="button"
+                          className="table-edit-action"
+                          disabled={isPreparingForm}
+                          onClick={() =>
+                            handleOpenEditForm(product)
+                          }
+                        >
+                          <Pencil aria-hidden="true" />
+                          Edit
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -385,6 +583,20 @@ const ProductsPage = () => {
           </div>
         </div>
       </section>
+      {isProductFormOpen && (
+        <ProductFormModal
+          key={selectedProduct?.id ?? "create"}
+          isOpen
+          mode={selectedProduct ? "edit" : "create"}
+          product={selectedProduct}
+          categories={categories}
+          suppliers={suppliers}
+          isSubmitting={isSubmitting}
+          requestError={formError}
+          onClose={handleCloseProductForm}
+          onSubmit={handleSaveProduct}
+        />
+      )}
     </div>
   );
 };

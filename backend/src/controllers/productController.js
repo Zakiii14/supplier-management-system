@@ -1,5 +1,10 @@
 const pool = require("../config/database");
 
+const normalizeSku = (value) =>
+  typeof value === "string"
+    ? value.trim().toUpperCase()
+    : "";
+
 const getAllProducts = async (req, res) => {
   try {
     const {
@@ -275,8 +280,10 @@ const createProduct = async (req, res) => {
       description,
     } = req.body;
 
+    const normalizedSku = normalizeSku(sku);
+
     if (
-      !sku ||
+      !normalizedSku ||
       !product_name ||
       !category_id ||
       !supplier_id
@@ -326,26 +333,26 @@ const createProduct = async (req, res) => {
 
     const result = await pool.query(
       `
-      INSERT INTO app.products (
-        sku,
-        product_name,
-        category_id,
-        supplier_id,
-        unit,
-        purchase_price,
-        selling_price,
-        minimum_stock,
-        current_stock,
-        description
-      )
-      VALUES (
-        $1, $2, $3, $4, $5,
-        $6, $7, $8, 0, $9
-      )
-      RETURNING *
-      `,
+  INSERT INTO app.products (
+    sku,
+    product_name,
+    category_id,
+    supplier_id,
+    unit,
+    purchase_price,
+    selling_price,
+    minimum_stock,
+    current_stock,
+    description
+  )
+  VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8, 0, $9
+  )
+  RETURNING *
+  `,
       [
-        sku,
+        normalizedSku,
         product_name,
         category_id,
         supplier_id,
@@ -363,14 +370,14 @@ const createProduct = async (req, res) => {
       data: result.rows[0],
     });
   } catch (error) {
-    console.error("Error creating product:", error);
-
     if (error.code === "23505") {
       return res.status(409).json({
         success: false,
         message: "SKU already exists",
       });
     }
+
+    console.error("Error creating product:", error);
 
     res.status(500).json({
       success: false,
@@ -395,8 +402,10 @@ const updateProduct = async (req, res) => {
       description,
     } = req.body;
 
+    const normalizedSku = normalizeSku(sku);
+
     if (
-      !sku ||
+      !normalizedSku ||
       !product_name ||
       !category_id ||
       !supplier_id
@@ -459,7 +468,7 @@ const updateProduct = async (req, res) => {
       RETURNING *
       `,
       [
-        sku,
+        normalizedSku,
         product_name,
         category_id,
         supplier_id,
@@ -485,8 +494,6 @@ const updateProduct = async (req, res) => {
       data: result.rows[0],
     });
   } catch (error) {
-    console.error("Error updating product:", error);
-
     if (error.code === "23505") {
       return res.status(409).json({
         success: false,
@@ -494,9 +501,11 @@ const updateProduct = async (req, res) => {
       });
     }
 
+    console.error("Error creating product:", error);
+
     res.status(500).json({
       success: false,
-      message: "Failed to update product",
+      message: "Failed to create product",
     });
   }
 };

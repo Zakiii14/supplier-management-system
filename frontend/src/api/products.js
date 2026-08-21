@@ -16,7 +16,43 @@ const getProductByIdRequest = async (productId) => {
   return response.data.data;
 };
 
+const createProductRequest = async (payload) => {
+  const response = await apiClient.post(
+    "/products",
+    payload,
+  );
+
+  return response.data.data;
+};
+
+const updateProductRequest = async (
+  productId,
+  payload,
+) => {
+  const response = await apiClient.put(
+    `/products/${productId}`,
+    payload,
+  );
+
+  return response.data.data;
+};
+
+const updateProductStatusRequest = async (
+  productId,
+  status,
+) => {
+  const response = await apiClient.patch(
+    `/products/${productId}/status`,
+    { status },
+  );
+
+  return response.data.data;
+};
+
 export {
-  getProductsRequest,
+  createProductRequest,
   getProductByIdRequest,
+  getProductsRequest,
+  updateProductRequest,
+  updateProductStatusRequest,
 };
