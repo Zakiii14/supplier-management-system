@@ -4,90 +4,92 @@ const isValidUUID = value => {
 	return uuidRegex.test(value)
 };
 const getAllSuppliers = async (req, res) => {
-  try {
-    const {
-      search = "",
-      status,
-      page = 1,
-      limit = 10,
-    } = req.query;
+	try {
+		const {
+			search = "",
+			status,
+			page = 1,
+			limit = 10,
+		} = req.query;
 
-    const pageNumber = Number(page);
-    const limitNumber = Number(limit);
+		const pageNumber = Number(page);
+		const limitNumber = Number(limit);
 
-    if (
-      !Number.isInteger(pageNumber) ||
-      pageNumber < 1 ||
-      !Number.isInteger(limitNumber) ||
-      limitNumber < 1 ||
-      limitNumber > 100
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid pagination parameters",
-      });
-    }
+		if (
+			!Number.isInteger(pageNumber) ||
+			pageNumber < 1 ||
+			!Number.isInteger(limitNumber) ||
+			limitNumber < 1 ||
+			limitNumber > 100
+		) {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid pagination parameters",
+			});
+		}
 
-    if (status && !["ACTIVE", "INACTIVE"].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Status must be ACTIVE or INACTIVE",
-      });
-    }
+		if (status && !["ACTIVE", "INACTIVE"].includes(status)) {
+			return res.status(400).json({
+				success: false,
+				message: "Status must be ACTIVE or INACTIVE",
+			});
+		}
 
-    const offset = (pageNumber - 1) * limitNumber;
+		const offset = (pageNumber - 1) * limitNumber;
 
-    const conditions = [];
-    const values = [];
+		const conditions = [];
+		const values = [];
 
-    if (search) {
-      values.push(`%${search}%`);
+		if (search) {
+			values.push(`%${search}%`);
 
-      conditions.push(`
-        (
-          supplier_code ILIKE $${values.length}
-          OR supplier_name ILIKE $${values.length}
-          OR contact_person ILIKE $${values.length}
-          OR city ILIKE $${values.length}
-        )
-      `);
-    }
+			conditions.push(`
+  (
+    supplier_code ILIKE $${values.length}
+    OR supplier_name ILIKE $${values.length}
+    OR contact_person ILIKE $${values.length}
+    OR phone ILIKE $${values.length}
+    OR email ILIKE $${values.length}
+    OR city ILIKE $${values.length}
+  )
+`);
+		}
 
-    if (status) {
-      values.push(status);
+		if (status) {
+			values.push(status);
 
-      conditions.push(
-        `status = $${values.length}`
-      );
-    }
+			conditions.push(
+				`status = $${values.length}`
+			);
+		}
 
-    const whereClause =
-      conditions.length > 0
-        ? `WHERE ${conditions.join(" AND ")}`
-        : "";
+		const whereClause =
+			conditions.length > 0
+				? `WHERE ${conditions.join(" AND ")}`
+				: "";
 
-    const countQuery = `
+		const countQuery = `
       SELECT COUNT(*)::INTEGER AS total
       FROM app.suppliers
       ${whereClause}
     `;
 
-    const countResult = await pool.query(
-      countQuery,
-      values
-    );
+		const countResult = await pool.query(
+			countQuery,
+			values
+		);
 
-    const total = countResult.rows[0].total;
+		const total = countResult.rows[0].total;
 
-    const dataValues = [...values];
+		const dataValues = [...values];
 
-    dataValues.push(limitNumber);
-    const limitParam = dataValues.length;
+		dataValues.push(limitNumber);
+		const limitParam = dataValues.length;
 
-    dataValues.push(offset);
-    const offsetParam = dataValues.length;
+		dataValues.push(offset);
+		const offsetParam = dataValues.length;
 
-    const dataQuery = `
+		const dataQuery = `
       SELECT
         id,
         supplier_code,
@@ -107,30 +109,30 @@ const getAllSuppliers = async (req, res) => {
       OFFSET $${offsetParam}
     `;
 
-    const result = await pool.query(
-      dataQuery,
-      dataValues
-    );
+		const result = await pool.query(
+			dataQuery,
+			dataValues
+		);
 
-    res.status(200).json({
-      success: true,
-      message: "Suppliers retrieved successfully",
-      data: result.rows,
-      pagination: {
-        page: pageNumber,
-        limit: limitNumber,
-        total,
-        total_pages: Math.ceil(total / limitNumber),
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching suppliers:", error);
+		res.status(200).json({
+			success: true,
+			message: "Suppliers retrieved successfully",
+			data: result.rows,
+			pagination: {
+				page: pageNumber,
+				limit: limitNumber,
+				total,
+				total_pages: Math.ceil(total / limitNumber),
+			},
+		});
+	} catch (error) {
+		console.error("Error fetching suppliers:", error);
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve suppliers",
-    });
-  }
+		res.status(500).json({
+			success: false,
+			message: "Failed to retrieve suppliers",
+		});
+	}
 };
 const getSupplierById = async (req, res) => {
 	try {

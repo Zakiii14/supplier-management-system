@@ -1,0 +1,371 @@
+import {
+  AlertTriangle,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  Mail,
+  Phone,
+  RefreshCw,
+  Search,
+  X,
+} from "lucide-react";
+import {
+  useEffect,
+  useState,
+} from "react";
+import { getSuppliersRequest } from "../api/suppliers";
+import { formatNumber } from "../utils/formatters";
+import "../styles/products.css";
+import "../styles/suppliers.css";
+
+const PAGE_LIMIT = 10;
+
+const SuppliersPage = () => {
+  const [suppliers, setSuppliers] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: PAGE_LIMIT,
+    total: 0,
+    total_pages: 0,
+  });
+
+  const [searchInput, setSearchInput] =
+    useState("");
+  const [appliedSearch, setAppliedSearch] =
+    useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const [isLoading, setIsLoading] =
+    useState(true);
+  const [errorMessage, setErrorMessage] =
+    useState("");
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchSuppliers = async () => {
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
+
+        const response = await getSuppliersRequest({
+          page,
+          limit: PAGE_LIMIT,
+          ...(appliedSearch && {
+            search: appliedSearch,
+          }),
+          ...(status && { status }),
+        });
+
+        if (!isCancelled) {
+          setSuppliers(response.data);
+          setPagination(response.pagination);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setSuppliers([]);
+          setErrorMessage(
+            error.response?.data?.message ||
+              "Supplier gagal dimuat. Silakan coba kembali.",
+          );
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchSuppliers();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    page,
+    appliedSearch,
+    status,
+    reloadKey,
+  ]);
+
+  const handleSearch = (event) => {
+    event.preventDefault();
+    setPage(1);
+    setAppliedSearch(searchInput.trim());
+  };
+
+  const handleStatusChange = (event) => {
+    setPage(1);
+    setStatus(event.target.value);
+  };
+
+  const handleResetFilters = () => {
+    setSearchInput("");
+    setAppliedSearch("");
+    setStatus("");
+    setPage(1);
+  };
+
+  const totalPages = Math.max(
+    pagination.total_pages,
+    1,
+  );
+
+  const hasActiveFilters =
+    Boolean(appliedSearch) || Boolean(status);
+
+  return (
+    <div className="products-page suppliers-page">
+      <section className="page-heading">
+        <div>
+          <p>Master Data</p>
+          <h2>Suppliers</h2>
+          <span>
+            Kelola data pemasok, kontak, lokasi, dan
+            ketentuan pembayaran.
+          </span>
+        </div>
+
+        <button
+          type="button"
+          className="secondary-action"
+          disabled={isLoading}
+          onClick={() =>
+            setReloadKey((current) => current + 1)
+          }
+        >
+          <RefreshCw
+            className={isLoading ? "is-spinning" : ""}
+            aria-hidden="true"
+          />
+          Muat ulang
+        </button>
+      </section>
+
+      <section className="data-panel">
+        <form
+          className="product-filters supplier-filters"
+          onSubmit={handleSearch}
+        >
+          <div className="search-control">
+            <Search aria-hidden="true" />
+
+            <input
+              type="search"
+              value={searchInput}
+              placeholder="Cari kode, nama, kontak, telepon, email, atau kota"
+              aria-label="Cari supplier"
+              onChange={(event) =>
+                setSearchInput(event.target.value)
+              }
+            />
+
+            <button type="submit">Cari</button>
+          </div>
+
+          <select
+            value={status}
+            aria-label="Filter status supplier"
+            onChange={handleStatusChange}
+          >
+            <option value="">Semua status</option>
+            <option value="ACTIVE">Active</option>
+            <option value="INACTIVE">Inactive</option>
+          </select>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              className="reset-filter"
+              onClick={handleResetFilters}
+            >
+              <X aria-hidden="true" />
+              Reset
+            </button>
+          )}
+        </form>
+
+        {errorMessage && (
+          <div className="data-error" role="alert">
+            <AlertTriangle aria-hidden="true" />
+
+            <div>
+              <strong>
+                Data tidak dapat ditampilkan
+              </strong>
+              <span>{errorMessage}</span>
+            </div>
+          </div>
+        )}
+
+        <div className="table-summary">
+          <p>
+            Menampilkan{" "}
+            <strong>{suppliers.length}</strong> dari{" "}
+            <strong>
+              {formatNumber(pagination.total)}
+            </strong>{" "}
+            supplier
+          </p>
+        </div>
+
+        <div className="data-table-wrapper">
+          <table className="data-table supplier-table">
+            <thead>
+              <tr>
+                <th>Kode</th>
+                <th>Supplier</th>
+                <th>Kontak</th>
+                <th>Kota</th>
+                <th>Termin</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td
+                    className="table-message"
+                    colSpan="6"
+                  >
+                    <RefreshCw
+                      className="is-spinning"
+                      aria-hidden="true"
+                    />
+                    Memuat data supplier...
+                  </td>
+                </tr>
+              ) : suppliers.length === 0 ? (
+                <tr>
+                  <td
+                    className="table-message"
+                    colSpan="6"
+                  >
+                    <Building2 aria-hidden="true" />
+                    Tidak ada supplier yang sesuai.
+                  </td>
+                </tr>
+              ) : (
+                suppliers.map((supplier) => (
+                  <tr key={supplier.id}>
+                    <td data-label="Kode">
+                      <strong className="sku-text">
+                        {supplier.supplier_code}
+                      </strong>
+                    </td>
+
+                    <td data-label="Supplier">
+                      <div className="supplier-name-cell">
+                        <strong>
+                          {supplier.supplier_name}
+                        </strong>
+                        <span>
+                          {supplier.contact_person ||
+                            "Belum ada kontak"}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td data-label="Kontak">
+                      <div className="supplier-contact-cell">
+                        {supplier.phone ? (
+                          <a
+                            href={`tel:${supplier.phone}`}
+                          >
+                            <Phone aria-hidden="true" />
+                            {supplier.phone}
+                          </a>
+                        ) : (
+                          <span>-</span>
+                        )}
+
+                        {supplier.email && (
+                          <a
+                            href={`mailto:${supplier.email}`}
+                          >
+                            <Mail aria-hidden="true" />
+                            {supplier.email}
+                          </a>
+                        )}
+                      </div>
+                    </td>
+
+                    <td data-label="Kota">
+                      {supplier.city || "-"}
+                    </td>
+
+                    <td data-label="Termin">
+                      {formatNumber(
+                        supplier.payment_terms_days,
+                      )}{" "}
+                      hari
+                    </td>
+
+                    <td data-label="Status">
+                      <span
+                        className={`status-badge ${
+                          supplier.status === "ACTIVE"
+                            ? "is-active"
+                            : "is-inactive"
+                        }`}
+                      >
+                        {supplier.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="pagination-bar">
+          <p>
+            Halaman <strong>{pagination.page}</strong>{" "}
+            dari <strong>{totalPages}</strong>
+          </p>
+
+          <div>
+            <button
+              type="button"
+              disabled={page <= 1 || isLoading}
+              aria-label="Halaman sebelumnya"
+              onClick={() =>
+                setPage((current) =>
+                  Math.max(current - 1, 1),
+                )
+              }
+            >
+              <ChevronLeft aria-hidden="true" />
+              Sebelumnya
+            </button>
+
+            <button
+              type="button"
+              disabled={
+                page >= totalPages || isLoading
+              }
+              aria-label="Halaman berikutnya"
+              onClick={() =>
+                setPage((current) =>
+                  Math.min(
+                    current + 1,
+                    totalPages,
+                  ),
+                )
+              }
+            >
+              Berikutnya
+              <ChevronRight aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
+export default SuppliersPage;
