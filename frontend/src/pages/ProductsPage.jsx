@@ -5,6 +5,8 @@ import {
   PackageSearch,
   Pencil,
   Plus,
+  Power,
+  PowerOff,
   RefreshCw,
   Search,
   X,
@@ -17,6 +19,7 @@ import {
   createProductRequest,
   getProductsRequest,
   updateProductRequest,
+  updateProductStatusRequest,
 } from "../api/products";
 import {
   formatCurrency,
@@ -26,6 +29,7 @@ import "../styles/products.css";
 import { getCategoriesRequest } from "../api/categories";
 import { getActiveSuppliersRequest } from "../api/suppliers";
 import ProductFormModal from "../components/products/ProductFormModal";
+import ProductStatusDialog from "../components/products/ProductStatusDialog";
 import useAuth from "../hooks/useAuth";
 
 const PAGE_LIMIT = 10;
@@ -69,6 +73,14 @@ const ProductsPage = () => {
     useState(false);
   const [formError, setFormError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [statusProduct, setStatusProduct] =
+    useState(null);
+  const [isStatusDialogOpen, setIsStatusDialogOpen] =
+    useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] =
+    useState(false);
+  const [statusError, setStatusError] =
+    useState("");
 
   useEffect(() => {
     let isCancelled = false;
@@ -262,6 +274,55 @@ const ProductsPage = () => {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenStatusDialog = (product) => {
+    if (!canManageProducts) {
+      return;
+    }
+
+    setStatusProduct(product);
+    setStatusError("");
+    setIsStatusDialogOpen(true);
+  };
+
+  const handleCloseStatusDialog = () => {
+    if (isUpdatingStatus) {
+      return;
+    }
+
+    setIsStatusDialogOpen(false);
+    setStatusProduct(null);
+    setStatusError("");
+  };
+
+  const handleConfirmProductStatus = async (
+    nextStatus,
+  ) => {
+    if (!statusProduct) {
+      return;
+    }
+
+    try {
+      setIsUpdatingStatus(true);
+      setStatusError("");
+
+      await updateProductStatusRequest(
+        statusProduct.id,
+        nextStatus,
+      );
+
+      setIsStatusDialogOpen(false);
+      setStatusProduct(null);
+      setReloadKey((current) => current + 1);
+    } catch (error) {
+      setStatusError(
+        error.response?.data?.message ||
+        "Status produk gagal diperbarui.",
+      );
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -524,17 +585,45 @@ const ProductsPage = () => {
                         className="table-action-cell"
                         data-label="Aksi"
                       >
-                        <button
-                          type="button"
-                          className="table-edit-action"
-                          disabled={isPreparingForm}
-                          onClick={() =>
-                            handleOpenEditForm(product)
-                          }
-                        >
-                          <Pencil aria-hidden="true" />
-                          Edit
-                        </button>
+                        <div className="table-action-buttons">
+                          <button
+                            type="button"
+                            className="table-edit-action"
+                            disabled={
+                              isPreparingForm || isUpdatingStatus
+                            }
+                            onClick={() =>
+                              handleOpenEditForm(product)
+                            }
+                          >
+                            <Pencil aria-hidden="true" />
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`table-status-action ${product.status === "ACTIVE"
+                              ? "is-deactivate"
+                              : "is-activate"
+                              }`}
+                            disabled={
+                              isPreparingForm || isUpdatingStatus
+                            }
+                            onClick={() =>
+                              handleOpenStatusDialog(product)
+                            }
+                          >
+                            {product.status === "ACTIVE" ? (
+                              <PowerOff aria-hidden="true" />
+                            ) : (
+                              <Power aria-hidden="true" />
+                            )}
+
+                            {product.status === "ACTIVE"
+                              ? "Nonaktifkan"
+                              : "Aktifkan"}
+                          </button>
+                        </div>
                       </td>
                     )}
                   </tr>
@@ -595,6 +684,16 @@ const ProductsPage = () => {
           requestError={formError}
           onClose={handleCloseProductForm}
           onSubmit={handleSaveProduct}
+        />
+      )}
+      {isStatusDialogOpen && (
+        <ProductStatusDialog
+          isOpen
+          product={statusProduct}
+          isSubmitting={isUpdatingStatus}
+          requestError={statusError}
+          onCancel={handleCloseStatusDialog}
+          onConfirm={handleConfirmProductStatus}
         />
       )}
     </div>
