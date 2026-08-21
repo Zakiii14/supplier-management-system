@@ -26,7 +26,9 @@ import {
   formatNumber,
 } from "../utils/formatters";
 import "../styles/products.css";
-import { getCategoriesRequest } from "../api/categories";
+import {
+  getCategoryOptionsRequest,
+} from "../api/categories";
 import { getActiveSuppliersRequest } from "../api/suppliers";
 import ProductFormModal from "../components/products/ProductFormModal";
 import ProductStatusDialog from "../components/products/ProductStatusDialog";
@@ -162,7 +164,7 @@ const ProductsPage = () => {
   const loadProductOptions = async (product = null) => {
     const [categoryData, supplierData] =
       await Promise.all([
-        getCategoriesRequest(),
+        getCategoryOptionsRequest(),
         getActiveSuppliersRequest(),
       ]);
 

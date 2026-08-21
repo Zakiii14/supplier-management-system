@@ -1,0 +1,453 @@
+.categories-page {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.category-action-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.85rem;
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+.category-action-error svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 auto;
+}
+
+.category-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.category-filters .search-control {
+  flex: 1 1 22rem;
+}
+
+.category-code {
+  color: #1d4ed8;
+  font-size: 0.84rem;
+  letter-spacing: 0.025em;
+}
+
+.category-name {
+  color: #172033;
+}
+
+.category-table.has-actions th:nth-child(1) {
+  width: 16%;
+}
+
+.category-table.has-actions th:nth-child(2) {
+  width: 26%;
+}
+
+.category-table.has-actions th:nth-child(3) {
+  width: 14%;
+}
+
+.category-table.has-actions th:nth-child(4) {
+  width: 18%;
+}
+
+.category-table.has-actions th:nth-child(5) {
+  width: 26%;
+}
+
+/* Form modal */
+
+.category-form-backdrop,
+.category-status-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: rgb(15 23 42 / 58%);
+  backdrop-filter: blur(3px);
+}
+
+.category-form-modal {
+  width: min(100%, 35rem);
+  max-height: calc(100vh - 2.5rem);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  background: #ffffff;
+  box-shadow:
+    0 24px 60px rgb(15 23 42 / 20%),
+    0 8px 24px rgb(15 23 42 / 12%);
+}
+
+.category-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.category-form-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.category-form-icon {
+  display: grid;
+  width: 2.65rem;
+  height: 2.65rem;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 0.8rem;
+  color: #ffffff;
+  background: linear-gradient(
+    135deg,
+    #2563eb,
+    #1d4ed8
+  );
+}
+
+.category-form-icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.category-form-heading p {
+  margin: 0 0 0.15rem;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.category-form-heading h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1.15rem;
+}
+
+.category-form-close,
+.category-status-close {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 0.7rem;
+  color: #64748b;
+  background: transparent;
+  cursor: pointer;
+}
+
+.category-form-close:hover:not(:disabled),
+.category-status-close:hover:not(:disabled) {
+  color: #172033;
+  background: #f1f5f9;
+}
+
+.category-form-close svg,
+.category-status-close svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.category-form {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.category-form-body {
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+
+.category-form-description {
+  margin: 0 0 1.15rem;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.category-form-error,
+.category-status-error {
+  margin-bottom: 1rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.75rem;
+  color: #b91c1c;
+  background: #fef2f2;
+  font-size: 0.86rem;
+}
+
+.category-form-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.category-form-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.category-form-field > span {
+  color: #334155;
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+
+.category-form-field > span strong {
+  margin-left: 0.2rem;
+  color: #dc2626;
+}
+
+.category-form-field input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  outline: none;
+  color: #172033;
+  background: #ffffff;
+  font: inherit;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.category-form-field input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgb(37 99 235 / 12%);
+}
+
+.category-form-field input:disabled {
+  color: #94a3b8;
+  background: #f8fafc;
+  cursor: not-allowed;
+}
+
+.category-form-field small {
+  color: #64748b;
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.category-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  background: #f8fafc;
+}
+
+.category-form-cancel,
+.category-form-submit,
+.category-status-cancel,
+.category-status-confirm {
+  min-height: 2.6rem;
+  padding: 0.65rem 1rem;
+  border-radius: 0.75rem;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.category-form-cancel,
+.category-status-cancel {
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  background: #ffffff;
+}
+
+.category-form-submit {
+  border: 1px solid #2563eb;
+  color: #ffffff;
+  background: #2563eb;
+}
+
+.category-form-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.category-form-cancel:disabled,
+.category-form-submit:disabled,
+.category-status-cancel:disabled,
+.category-status-confirm:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Status dialog */
+
+.category-status-dialog {
+  position: relative;
+  width: min(100%, 29rem);
+  padding: 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  text-align: center;
+  background: #ffffff;
+  box-shadow:
+    0 24px 60px rgb(15 23 42 / 20%),
+    0 8px 24px rgb(15 23 42 / 12%);
+}
+
+.category-status-close {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+}
+
+.category-status-icon {
+  display: grid;
+  width: 3.6rem;
+  height: 3.6rem;
+  place-items: center;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+}
+
+.category-status-icon svg {
+  width: 1.65rem;
+  height: 1.65rem;
+}
+
+.category-status-icon.is-warning {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+.category-status-icon.is-success {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.category-status-dialog h2 {
+  margin: 0 0 0.65rem;
+  color: #172033;
+  font-size: 1.2rem;
+}
+
+.category-status-dialog > p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.category-status-dialog > p strong {
+  color: #334155;
+}
+
+.category-status-error {
+  margin-top: 1rem;
+  margin-bottom: 0;
+  text-align: left;
+}
+
+.category-status-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.4rem;
+}
+
+.category-status-confirm {
+  border: 1px solid transparent;
+  color: #ffffff;
+}
+
+.category-status-confirm.is-deactivate {
+  border-color: #dc2626;
+  background: #dc2626;
+}
+
+.category-status-confirm.is-activate {
+  border-color: #16a34a;
+  background: #16a34a;
+}
+
+.category-status-confirm.is-deactivate:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.category-status-confirm.is-activate:hover:not(:disabled) {
+  background: #15803d;
+}
+
+@media (max-width: 720px) {
+  .category-filters {
+    align-items: stretch;
+  }
+
+  .category-filters .search-control {
+    flex-basis: 100%;
+  }
+
+  .category-form-backdrop,
+  .category-status-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+
+  .category-form-modal,
+  .category-status-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 1rem);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 1.25rem 1.25rem 0 0;
+  }
+
+  .category-form-actions,
+  .category-status-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .category-form-cancel,
+  .category-form-submit,
+  .category-status-cancel,
+  .category-status-confirm {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .category-filters {
+    padding: 0.85rem;
+  }
+
+  .category-form-header,
+  .category-form-body,
+  .category-form-actions {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .category-status-dialog {
+    padding: 1.35rem 1rem 1rem;
+  }
+
+  .category-status-actions {
+    gap: 0.6rem;
+  }
+}

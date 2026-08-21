@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Save, X } from "lucide-react";
+import FormSelect from "../forms/FormSelect";
 
 const emptyValues = {
   sku: "",
@@ -83,6 +84,15 @@ const ProductFormModal = ({
     setValues((currentValues) => ({
       ...currentValues,
       [name]: normalizedValue,
+    }));
+
+    setValidationError("");
+  };
+
+  const handleSelectChange = (name, value) => {
+    setValues((currentValues) => ({
+      ...currentValues,
+      [name]: value,
     }));
 
     setValidationError("");
@@ -203,45 +213,37 @@ const ProductFormModal = ({
               />
             </label>
 
-            <label className="product-form-field">
-              <span>Kategori</span>
-              <select
-                name="category_id"
+            <div className="product-form-field">
+              <FormSelect
+                label="Kategori"
                 value={values.category_id}
+                placeholder="Pilih kategori"
                 disabled={isSubmitting}
-                onChange={handleChange}
-              >
-                <option value="">Pilih kategori</option>
-                {categories.map((category) => (
-                  <option
-                    key={category.id}
-                    value={category.id}
-                  >
-                    {category.category_name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={categories.map((category) => ({
+                  value: category.id,
+                  label: category.category_name,
+                }))}
+                onChange={(value) =>
+                  handleSelectChange("category_id", value)
+                }
+              />
+            </div>
 
-            <label className="product-form-field">
-              <span>Supplier</span>
-              <select
-                name="supplier_id"
+            <div className="product-form-field">
+              <FormSelect
+                label="Supplier"
                 value={values.supplier_id}
+                placeholder="Pilih supplier"
                 disabled={isSubmitting}
-                onChange={handleChange}
-              >
-                <option value="">Pilih supplier</option>
-                {suppliers.map((supplier) => (
-                  <option
-                    key={supplier.id}
-                    value={supplier.id}
-                  >
-                    {supplier.supplier_name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={suppliers.map((supplier) => ({
+                  value: supplier.id,
+                  label: supplier.supplier_name,
+                }))}
+                onChange={(value) =>
+                  handleSelectChange("supplier_id", value)
+                }
+              />
+            </div>
 
             <label className="product-form-field">
               <span>Satuan</span>

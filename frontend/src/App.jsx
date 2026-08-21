@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import ModulePlaceholderPage from "./pages/ModulePlaceholderPage";
 import ProductsPage from "./pages/ProductsPage";
 import SuppliersPage from "./pages/SuppliersPage";
+import CategoriesPage from "./pages/CategoriesPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { navigationGroups } from "./utils/navigation";
 
@@ -22,6 +23,7 @@ const App = () => {
       (item) =>
         item.path !== "/" &&
         item.path !== "/suppliers" &&
+        item.path !== "/categories" &&
         item.path !== "/products",
     );
 
@@ -49,6 +51,10 @@ const App = () => {
           <Route
             path="suppliers"
             element={<SuppliersPage />}
+          />
+          <Route
+            path="categories"
+            element={<CategoriesPage />}
           />
           <Route path="products" element={<ProductsPage />} />
           {moduleRoutes.map((item) => (
