@@ -29,7 +29,6 @@ import StatusFilter from "../components/filters/StatusFilter";
 import SupplierStatusDialog from "../components/suppliers/SupplierStatusDialog";
 import useAuth from "../hooks/useAuth";
 import { formatNumber } from "../utils/formatters";
-import "../styles/products.css";
 import "../styles/suppliers.css";
 
 const PAGE_LIMIT = 10;
@@ -334,7 +333,7 @@ const SuppliersPage = () => {
 
             <section className="data-panel">
                 <form
-                    className="product-filters supplier-filters"
+                    className="data-filters supplier-filters"
                     onSubmit={handleSearch}
                 >
                     <div className="search-control">
@@ -525,8 +524,8 @@ const SuppliersPage = () => {
                                                     <button
                                                         type="button"
                                                         className={`table-status-action ${supplier.status === "ACTIVE"
-                                                                ? "is-deactivate"
-                                                                : "is-activate"
+                                                            ? "is-deactivate"
+                                                            : "is-activate"
                                                             }`}
                                                         disabled={
                                                             isPreparingForm || isUpdatingStatus

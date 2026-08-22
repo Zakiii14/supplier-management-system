@@ -98,7 +98,7 @@ const CategoriesPage = () => {
           setCategories([]);
           setErrorMessage(
             error.response?.data?.message ||
-              "Kategori gagal dimuat. Silakan coba kembali.",
+            "Kategori gagal dimuat. Silakan coba kembali.",
           );
         }
       } finally {
@@ -191,11 +191,10 @@ const CategoriesPage = () => {
     } catch (error) {
       setFormError(
         error.response?.data?.message ||
-          `Kategori gagal ${
-            selectedCategory
-              ? "diperbarui"
-              : "ditambahkan"
-          }.`,
+        `Kategori gagal ${selectedCategory
+          ? "diperbarui"
+          : "ditambahkan"
+        }.`,
       );
     } finally {
       setIsSubmitting(false);
@@ -245,7 +244,7 @@ const CategoriesPage = () => {
     } catch (error) {
       setStatusError(
         error.response?.data?.message ||
-          "Status kategori gagal diperbarui.",
+        "Status kategori gagal diperbarui.",
       );
     } finally {
       setIsUpdatingStatus(false);
@@ -315,7 +314,7 @@ const CategoriesPage = () => {
 
       <section className="data-panel">
         <form
-          className="category-filters"
+          className="data-filters category-filters"
           onSubmit={handleSearch}
         >
           <div className="search-control">
@@ -376,11 +375,10 @@ const CategoriesPage = () => {
 
         <div className="data-table-wrapper">
           <table
-            className={`data-table category-table ${
-              canManageCategories
+            className={`data-table category-table ${canManageCategories
                 ? "has-actions"
                 : ""
-            }`}
+              }`}
           >
             <thead>
               <tr>
@@ -439,11 +437,10 @@ const CategoriesPage = () => {
 
                     <td data-label="Status">
                       <span
-                        className={`status-badge ${
-                          category.status === "ACTIVE"
+                        className={`status-badge ${category.status === "ACTIVE"
                             ? "is-active"
                             : "is-inactive"
-                        }`}
+                          }`}
                       >
                         {category.status}
                       </span>
@@ -487,12 +484,11 @@ const CategoriesPage = () => {
 
                           <button
                             type="button"
-                            className={`table-status-action ${
-                              category.status ===
-                              "ACTIVE"
+                            className={`table-status-action ${category.status ===
+                                "ACTIVE"
                                 ? "is-deactivate"
                                 : "is-activate"
-                            }`}
+                              }`}
                             disabled={
                               isSubmitting ||
                               isUpdatingStatus
@@ -504,7 +500,7 @@ const CategoriesPage = () => {
                             }
                           >
                             {category.status ===
-                            "ACTIVE" ? (
+                              "ACTIVE" ? (
                               <PowerOff
                                 aria-hidden="true"
                               />

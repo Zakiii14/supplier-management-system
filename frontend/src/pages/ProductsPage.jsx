@@ -401,7 +401,7 @@ const ProductsPage = () => {
 
       <section className="data-panel">
         <form
-          className="product-filters"
+          className="data-filters product-filters"
           onSubmit={handleSearch}
         >
           <div className="search-control">
