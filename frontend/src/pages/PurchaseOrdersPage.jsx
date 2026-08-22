@@ -3,19 +3,29 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
+  Plus,
   RefreshCw,
   Search,
   ShoppingCart,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  createPurchaseOrderRequest,
   getPurchaseOrderByIdRequest,
   getPurchaseOrdersRequest,
 } from "../api/purchaseOrders";
 import StatusFilter from "../components/filters/StatusFilter";
 import PurchaseOrderDetailDialog from "../components/purchase-orders/PurchaseOrderDetailDialog";
 import "../styles/purchase-orders.css";
+import { getActiveProductsBySupplierRequest } from "../api/products";
+import { getActiveSuppliersRequest } from "../api/suppliers";
+import PurchaseOrderFormModal from "../components/purchase-orders/PurchaseOrderFormModal";
+import useAuth from "../hooks/useAuth";
 import {
   formatCurrency,
   formatDate,
@@ -75,6 +85,13 @@ const statusPresentation = {
 };
 
 const PurchaseOrdersPage = () => {
+  const { user } = useAuth();
+  const productRequestIdRef = useRef(0);
+
+  const canManagePurchaseOrders = [
+    "ADMIN",
+    "PURCHASING",
+  ].includes(user?.role);
   const [purchaseOrders, setPurchaseOrders] =
     useState([]);
   const [pagination, setPagination] = useState({
@@ -100,6 +117,22 @@ const PurchaseOrdersPage = () => {
   const [loadingDetailId, setLoadingDetailId] =
     useState("");
   const [detailError, setDetailError] =
+    useState("");
+  const [isFormOpen, setIsFormOpen] =
+    useState(false);
+  const [suppliers, setSuppliers] =
+    useState([]);
+  const [formProducts, setFormProducts] =
+    useState([]);
+  const [isPreparingForm, setIsPreparingForm] =
+    useState(false);
+  const [isLoadingProducts, setIsLoadingProducts] =
+    useState(false);
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
+  const [formError, setFormError] =
+    useState("");
+  const [actionError, setActionError] =
     useState("");
 
   useEffect(() => {
@@ -169,6 +202,105 @@ const PurchaseOrdersPage = () => {
     setPage(1);
   };
 
+  const handleOpenCreateForm = async () => {
+    if (!canManagePurchaseOrders) {
+      return;
+    }
+
+    try {
+      setIsPreparingForm(true);
+      setActionError("");
+      setFormError("");
+      setFormProducts([]);
+
+      const supplierData =
+        await getActiveSuppliersRequest();
+
+      setSuppliers(supplierData);
+      setIsFormOpen(true);
+    } catch (error) {
+      setActionError(
+        error.response?.data?.message ||
+        "Supplier aktif gagal dimuat.",
+      );
+    } finally {
+      setIsPreparingForm(false);
+    }
+  };
+
+  const handleSupplierChange = async (supplierId) => {
+    const requestId =
+      productRequestIdRef.current + 1;
+
+    productRequestIdRef.current = requestId;
+    setFormProducts([]);
+    setFormError("");
+
+    if (!supplierId) {
+      setIsLoadingProducts(false);
+      return;
+    }
+
+    try {
+      setIsLoadingProducts(true);
+
+      const productData =
+        await getActiveProductsBySupplierRequest(
+          supplierId,
+        );
+
+      if (productRequestIdRef.current === requestId) {
+        setFormProducts(productData);
+      }
+    } catch (error) {
+      if (productRequestIdRef.current === requestId) {
+        setFormError(
+          error.response?.data?.message ||
+          "Produk supplier gagal dimuat.",
+        );
+      }
+    } finally {
+      if (productRequestIdRef.current === requestId) {
+        setIsLoadingProducts(false);
+      }
+    }
+  };
+
+  const handleCloseForm = () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    productRequestIdRef.current += 1;
+    setIsFormOpen(false);
+    setSuppliers([]);
+    setFormProducts([]);
+    setIsLoadingProducts(false);
+    setFormError("");
+  };
+
+  const handleCreatePurchaseOrder = async (payload) => {
+    try {
+      setIsSubmitting(true);
+      setFormError("");
+
+      await createPurchaseOrderRequest(payload);
+
+      setIsFormOpen(false);
+      setSuppliers([]);
+      setFormProducts([]);
+      setPage(1);
+      setReloadKey((current) => current + 1);
+    } catch (error) {
+      setFormError(
+        error.response?.data?.message ||
+        "Purchase order gagal ditambahkan.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleOpenDetail = async (purchaseOrderId) => {
     try {
       setLoadingDetailId(purchaseOrderId);
@@ -217,6 +349,29 @@ const PurchaseOrdersPage = () => {
         </div>
 
         <div className="page-heading-actions">
+          {canManagePurchaseOrders && (
+            <button
+              type="button"
+              className="primary-action"
+              disabled={isPreparingForm}
+              onClick={handleOpenCreateForm}
+            >
+              {isPreparingForm ? (
+                <RefreshCw
+                  className="is-spinning"
+                  aria-hidden="true"
+                />
+              ) : (
+                <Plus aria-hidden="true" />
+              )}
+
+              <span>
+                {isPreparingForm
+                  ? "Menyiapkan..."
+                  : "Tambah PO"}
+              </span>
+            </button>
+          )}
           <button
             type="button"
             className="secondary-action"
@@ -234,6 +389,15 @@ const PurchaseOrdersPage = () => {
         </div>
       </section>
 
+      {actionError && (
+        <div
+          className="purchase-order-action-error"
+          role="alert"
+        >
+          <AlertTriangle aria-hidden="true" />
+          <span>{actionError}</span>
+        </div>
+      )}
       <section className="data-panel">
         <form
           className="data-filters purchase-order-filters"
@@ -470,6 +634,19 @@ const PurchaseOrdersPage = () => {
           </div>
         </div>
       </section>
+      {isFormOpen && (
+        <PurchaseOrderFormModal
+          isOpen
+          suppliers={suppliers}
+          products={formProducts}
+          isLoadingProducts={isLoadingProducts}
+          isSubmitting={isSubmitting}
+          requestError={formError}
+          onClose={handleCloseForm}
+          onSupplierChange={handleSupplierChange}
+          onSubmit={handleCreatePurchaseOrder}
+        />
+      )}
       {isDetailOpen && (
         <PurchaseOrderDetailDialog
           isOpen

@@ -8,6 +8,23 @@ const getProductsRequest = async (params = {}) => {
   return response.data;
 };
 
+const getActiveProductsBySupplierRequest = async (
+  supplierId,
+) => {
+  if (!supplierId) {
+    return [];
+  }
+
+  const response = await getProductsRequest({
+    supplier_id: supplierId,
+    status: "ACTIVE",
+    page: 1,
+    limit: 100,
+  });
+
+  return response.data;
+};
+
 const getProductByIdRequest = async (productId) => {
   const response = await apiClient.get(
     `/products/${productId}`,
@@ -51,6 +68,7 @@ const updateProductStatusRequest = async (
 
 export {
   createProductRequest,
+  getActiveProductsBySupplierRequest,
   getProductByIdRequest,
   getProductsRequest,
   updateProductRequest,
