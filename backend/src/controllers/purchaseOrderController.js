@@ -1,7 +1,116 @@
 const pool = require("../config/database");
 const getAllPurchaseOrders = async (req, res) => {
-	try {
-		const result = await pool.query(`
+  try {
+    const {
+      search = "",
+      status = "",
+      page = "1",
+      limit = "10",
+    } = req.query;
+
+    const parsedPage = Number(page);
+    const parsedLimit = Number(limit);
+
+    if (
+      !Number.isInteger(parsedPage) ||
+      !Number.isInteger(parsedLimit) ||
+      parsedPage < 1 ||
+      parsedLimit < 1 ||
+      parsedLimit > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid pagination parameters",
+      });
+    }
+
+    const allowedStatuses = [
+      "DRAFT",
+      "SUBMITTED",
+      "PARTIALLY_RECEIVED",
+      "RECEIVED",
+      "CANCELLED",
+    ];
+
+    const normalizedStatus =
+      typeof status === "string"
+        ? status.trim().toUpperCase()
+        : "";
+
+    if (
+      normalizedStatus &&
+      !allowedStatuses.includes(normalizedStatus)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid purchase order status",
+      });
+    }
+
+    const normalizedSearch =
+      typeof search === "string"
+        ? search.trim()
+        : "";
+
+    const conditions = [];
+    const values = [];
+
+    if (normalizedSearch) {
+      values.push(`%${normalizedSearch}%`);
+
+      conditions.push(`
+        (
+          po.po_number ILIKE $${values.length}
+          OR s.supplier_code ILIKE $${values.length}
+          OR s.supplier_name ILIKE $${values.length}
+          OR COALESCE(po.notes, '') ILIKE $${values.length}
+        )
+      `);
+    }
+
+    if (normalizedStatus) {
+      values.push(normalizedStatus);
+
+      conditions.push(
+        `po.status = $${values.length}`,
+      );
+    }
+
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
+
+    const countResult = await pool.query(
+      `
+      SELECT COUNT(*)::INTEGER AS total
+      FROM app.purchase_orders po
+      JOIN app.suppliers s
+        ON s.id = po.supplier_id
+      ${whereClause}
+      `,
+      values,
+    );
+
+    const total = countResult.rows[0].total;
+    const totalPages =
+      total === 0
+        ? 0
+        : Math.ceil(total / parsedLimit);
+
+    const offset =
+      (parsedPage - 1) * parsedLimit;
+
+    const listValues = [
+      ...values,
+      parsedLimit,
+      offset,
+    ];
+
+    const limitPosition = values.length + 1;
+    const offsetPosition = values.length + 2;
+
+    const result = await pool.query(
+      `
       SELECT
         po.id,
         po.po_number,
@@ -9,47 +118,64 @@ const getAllPurchaseOrders = async (req, res) => {
         po.expected_date,
         po.status,
         po.notes,
-		po.created_by,
-
+        po.created_by,
+        po.created_at,
+        po.updated_at,
         s.id AS supplier_id,
         s.supplier_code,
         s.supplier_name,
-
-        COALESCE(
-          SUM(poi.quantity * poi.unit_price),
-          0
-        ) AS total_amount,
-
-        COUNT(poi.id)::INTEGER AS total_items
-
+        COALESCE(summary.total_amount, 0)
+          AS total_amount,
+        COALESCE(summary.total_items, 0)
+          AS total_items
       FROM app.purchase_orders po
-
       JOIN app.suppliers s
         ON s.id = po.supplier_id
-
-      LEFT JOIN app.purchase_order_items poi
-        ON poi.purchase_order_id = po.id
-
-      GROUP BY
-        po.id,
-        s.id,
-        s.supplier_code,
-        s.supplier_name
-
+      LEFT JOIN LATERAL (
+        SELECT
+          COALESCE(
+            SUM(
+              poi.quantity * poi.unit_price
+            ),
+            0
+          ) AS total_amount,
+          COUNT(poi.id)::INTEGER
+            AS total_items
+        FROM app.purchase_order_items poi
+        WHERE poi.purchase_order_id = po.id
+      ) summary ON TRUE
+      ${whereClause}
       ORDER BY po.created_at DESC
-    `);
-		res.status(200).json({
-			success: true,
-			message: "Purchase orders retrieved successfully",
-			data: result.rows,
-		});
-	} catch (error) {
-		console.error("Error fetching purchase orders:", error);
-		res.status(500).json({
-			success: false,
-			message: "Failed to retrieve purchase orders",
-		});
-	}
+      LIMIT $${limitPosition}
+      OFFSET $${offsetPosition}
+      `,
+      listValues,
+    );
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Purchase orders retrieved successfully",
+      data: result.rows,
+      pagination: {
+        page: parsedPage,
+        limit: parsedLimit,
+        total,
+        total_pages: totalPages,
+      },
+    });
+  } catch (error) {
+    console.error(
+      "Error fetching purchase orders:",
+      error,
+    );
+
+    res.status(500).json({
+      success: false,
+      message:
+        "Failed to retrieve purchase orders",
+    });
+  }
 };
 const getPurchaseOrderById = async (req, res) => {
 	try {
