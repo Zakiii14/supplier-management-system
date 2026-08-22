@@ -1,0 +1,154 @@
+.purchase-orders-page {
+  display: grid;
+  gap: 20px;
+}
+
+.purchase-order-filters .status-filter {
+  min-width: 205px;
+}
+
+.purchase-order-filters .status-filter-menu {
+  min-width: 205px;
+}
+
+.purchase-order-table th:nth-child(1) {
+  width: 14%;
+}
+
+.purchase-order-table th:nth-child(2) {
+  width: 20%;
+}
+
+.purchase-order-table th:nth-child(3),
+.purchase-order-table th:nth-child(4) {
+  width: 13%;
+}
+
+.purchase-order-table th:nth-child(5) {
+  width: 8%;
+}
+
+.purchase-order-table th:nth-child(6) {
+  width: 15%;
+}
+
+.purchase-order-table th:nth-child(7) {
+  width: 17%;
+}
+
+.purchase-order-number {
+  color: #1d4ed8;
+  font-weight: 750;
+}
+
+.purchase-order-supplier,
+.purchase-order-total {
+  display: block;
+  color: #25324a;
+  font-weight: 700;
+}
+
+.purchase-order-subtext {
+  display: block;
+  margin-top: 4px;
+  color: #98a2b3;
+  font-size: 0.7rem;
+}
+
+.purchase-order-items {
+  white-space: nowrap;
+}
+
+.purchase-order-status {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 750;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.purchase-order-status.is-draft {
+  color: #475467;
+  background: #f2f4f7;
+  border-color: #d0d5dd;
+}
+
+.purchase-order-status.is-submitted {
+  color: #175cd3;
+  background: #eff8ff;
+  border-color: #b2ddff;
+}
+
+.purchase-order-status.is-partially-received {
+  color: #b54708;
+  background: #fffaeb;
+  border-color: #fedf89;
+}
+
+.purchase-order-status.is-received {
+  color: #067647;
+  background: #ecfdf3;
+  border-color: #abefc6;
+}
+
+.purchase-order-status.is-cancelled {
+  color: #b42318;
+  background: #fef3f2;
+  border-color: #fecdca;
+}
+
+@container (min-width: 701px) and (max-width: 1050px) {
+  .purchase-order-table th:nth-child(1) {
+    width: 15%;
+  }
+
+  .purchase-order-table th:nth-child(2) {
+    width: 18%;
+  }
+
+  .purchase-order-table th:nth-child(3),
+  .purchase-order-table th:nth-child(4) {
+    width: 13%;
+  }
+
+  .purchase-order-table th:nth-child(5) {
+    width: 8%;
+  }
+
+  .purchase-order-table th:nth-child(6) {
+    width: 15%;
+  }
+
+  .purchase-order-table th:nth-child(7) {
+    width: 18%;
+  }
+
+  .purchase-order-status {
+    padding-right: 6px;
+    padding-left: 6px;
+    font-size: 0.59rem;
+  }
+}
+
+@media (max-width: 700px) {
+  .purchase-order-filters .status-filter {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .purchase-order-filters .status-filter-menu {
+    min-width: 100%;
+  }
+
+  .purchase-order-supplier,
+  .purchase-order-total,
+  .purchase-order-subtext {
+    text-align: right;
+  }
+}

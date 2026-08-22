@@ -9,6 +9,7 @@ import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import ModulePlaceholderPage from "./pages/ModulePlaceholderPage";
 import ProductsPage from "./pages/ProductsPage";
+import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
 import SuppliersPage from "./pages/SuppliersPage";
 import CategoriesPage from "./pages/CategoriesPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -24,9 +25,9 @@ const App = () => {
         item.path !== "/" &&
         item.path !== "/suppliers" &&
         item.path !== "/categories" &&
-        item.path !== "/products",
+        item.path !== "/products" &&
+        item.path !== "/purchase-orders",
     );
-
   const loginElement = isLoading ? (
     <main className="session-loading">
       <div
@@ -57,6 +58,10 @@ const App = () => {
             element={<CategoriesPage />}
           />
           <Route path="products" element={<ProductsPage />} />
+          <Route
+            path="purchase-orders"
+            element={<PurchaseOrdersPage />}
+          />
           {moduleRoutes.map((item) => (
             <Route
               key={item.path}

@@ -9,7 +9,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-const statusOptions = [
+const defaultStatusOptions = [
   {
     value: "",
     label: "Semua status",
@@ -28,15 +28,19 @@ const StatusFilter = ({
   value,
   onChange,
   ariaLabel = "Filter status",
+  options = defaultStatusOptions,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const listboxId = useId();
+  const availableOptions = options.length
+    ? options
+    : defaultStatusOptions;
 
   const selectedOption =
-    statusOptions.find(
+    availableOptions.find(
       (option) => option.value === value,
-    ) ?? statusOptions[0];
+    ) ?? availableOptions[0];
 
   useEffect(() => {
     if (!isOpen) {
@@ -117,7 +121,7 @@ const StatusFilter = ({
           role="listbox"
           aria-label={ariaLabel}
         >
-          {statusOptions.map((option) => {
+          {availableOptions.map((option) => {
             const isSelected =
               option.value === value;
 
@@ -125,9 +129,8 @@ const StatusFilter = ({
               <button
                 key={option.value || "all"}
                 type="button"
-                className={`status-filter-option ${
-                  isSelected ? "is-selected" : ""
-                }`}
+                className={`status-filter-option ${isSelected ? "is-selected" : ""
+                  }`}
                 role="option"
                 aria-selected={isSelected}
                 onClick={() =>
