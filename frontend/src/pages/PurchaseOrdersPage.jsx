@@ -2,14 +2,19 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
+  Eye,
   RefreshCw,
   Search,
   ShoppingCart,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getPurchaseOrdersRequest } from "../api/purchaseOrders";
+import {
+  getPurchaseOrderByIdRequest,
+  getPurchaseOrdersRequest,
+} from "../api/purchaseOrders";
 import StatusFilter from "../components/filters/StatusFilter";
+import PurchaseOrderDetailDialog from "../components/purchase-orders/PurchaseOrderDetailDialog";
 import "../styles/purchase-orders.css";
 import {
   formatCurrency,
@@ -88,6 +93,14 @@ const PurchaseOrdersPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] =
     useState("");
+  const [selectedPurchaseOrder, setSelectedPurchaseOrder] =
+    useState(null);
+  const [isDetailOpen, setIsDetailOpen] =
+    useState(false);
+  const [loadingDetailId, setLoadingDetailId] =
+    useState("");
+  const [detailError, setDetailError] =
+    useState("");
 
   useEffect(() => {
     let isCancelled = false;
@@ -121,7 +134,7 @@ const PurchaseOrdersPage = () => {
           });
           setErrorMessage(
             error.response?.data?.message ||
-              "Purchase order gagal dimuat. Silakan coba kembali.",
+            "Purchase order gagal dimuat. Silakan coba kembali.",
           );
         }
       } finally {
@@ -154,6 +167,33 @@ const PurchaseOrdersPage = () => {
     setAppliedSearch("");
     setStatus("");
     setPage(1);
+  };
+
+  const handleOpenDetail = async (purchaseOrderId) => {
+    try {
+      setLoadingDetailId(purchaseOrderId);
+      setDetailError("");
+
+      const detail =
+        await getPurchaseOrderByIdRequest(
+          purchaseOrderId,
+        );
+
+      setSelectedPurchaseOrder(detail);
+      setIsDetailOpen(true);
+    } catch (error) {
+      setDetailError(
+        error.response?.data?.message ||
+        "Detail purchase order gagal dimuat.",
+      );
+    } finally {
+      setLoadingDetailId("");
+    }
+  };
+
+  const handleCloseDetail = () => {
+    setIsDetailOpen(false);
+    setSelectedPurchaseOrder(null);
   };
 
   const totalPages = Math.max(
@@ -245,6 +285,17 @@ const PurchaseOrdersPage = () => {
           </div>
         )}
 
+        {detailError && (
+          <div className="data-error" role="alert">
+            <AlertTriangle aria-hidden="true" />
+
+            <div>
+              <strong>Detail tidak dapat ditampilkan</strong>
+              <span>{detailError}</span>
+            </div>
+          </div>
+        )}
+
         <div className="table-summary">
           <p>
             Menampilkan{" "}
@@ -267,13 +318,14 @@ const PurchaseOrdersPage = () => {
                 <th>Item</th>
                 <th>Total</th>
                 <th>Status</th>
+                <th>Aksi</th>
               </tr>
             </thead>
 
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td className="table-message" colSpan={7}>
+                  <td className="table-message" colSpan={8}>
                     <RefreshCw
                       className="is-spinning"
                       aria-hidden="true"
@@ -283,7 +335,7 @@ const PurchaseOrdersPage = () => {
                 </tr>
               ) : purchaseOrders.length === 0 ? (
                 <tr>
-                  <td className="table-message" colSpan={7}>
+                  <td className="table-message" colSpan={8}>
                     <ShoppingCart aria-hidden="true" />
                     Tidak ada purchase order yang sesuai.
                   </td>
@@ -292,7 +344,7 @@ const PurchaseOrdersPage = () => {
                 purchaseOrders.map((purchaseOrder) => {
                   const presentation =
                     statusPresentation[
-                      purchaseOrder.status
+                    purchaseOrder.status
                     ] ?? {
                       label: purchaseOrder.status,
                       className: "is-draft",
@@ -349,6 +401,30 @@ const PurchaseOrdersPage = () => {
                           {presentation.label}
                         </span>
                       </td>
+                      <td
+                        className="table-action-cell"
+                        data-label="Aksi"
+                      >
+                        <button
+                          type="button"
+                          className="table-edit-action purchase-order-detail-action"
+                          disabled={Boolean(loadingDetailId)}
+                          onClick={() =>
+                            handleOpenDetail(purchaseOrder.id)
+                          }
+                        >
+                          {loadingDetailId === purchaseOrder.id ? (
+                            <RefreshCw
+                              className="is-spinning"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <Eye aria-hidden="true" />
+                          )}
+
+                          Detail
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -394,6 +470,13 @@ const PurchaseOrdersPage = () => {
           </div>
         </div>
       </section>
+      {isDetailOpen && (
+        <PurchaseOrderDetailDialog
+          isOpen
+          purchaseOrder={selectedPurchaseOrder}
+          onClose={handleCloseDetail}
+        />
+      )}
     </div>
   );
 };
