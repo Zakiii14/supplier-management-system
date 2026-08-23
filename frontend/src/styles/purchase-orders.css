@@ -1214,3 +1214,56 @@
     order: 2;
   }
 }
+
+.purchase-order-table th:last-child {
+  width: 270px;
+}
+
+.purchase-order-table .table-action-cell {
+  min-width: 270px;
+}
+
+.purchase-order-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.purchase-order-action-buttons > button {
+  white-space: nowrap;
+}
+
+@container (max-width: 1049px) {
+  .purchase-order-table .table-action-cell {
+    min-width: 0;
+  }
+
+  .purchase-order-action-buttons {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .purchase-order-action-buttons > button {
+    flex: 1 1 110px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .purchase-order-action-buttons {
+    display: grid;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .purchase-order-action-buttons
+    .purchase-order-detail-action {
+    grid-column: 1 / -1;
+  }
+
+  .purchase-order-action-buttons > button {
+    width: 100%;
+    min-width: 0;
+  }
+}

@@ -1,11 +1,13 @@
 import {
   AlertTriangle,
+  Ban,
   ChevronLeft,
   ChevronRight,
   Eye,
   Plus,
   RefreshCw,
   Search,
+  Send,
   ShoppingCart,
   X,
 } from "lucide-react";
@@ -18,9 +20,11 @@ import {
   createPurchaseOrderRequest,
   getPurchaseOrderByIdRequest,
   getPurchaseOrdersRequest,
+  updatePurchaseOrderStatusRequest,
 } from "../api/purchaseOrders";
 import StatusFilter from "../components/filters/StatusFilter";
 import PurchaseOrderDetailDialog from "../components/purchase-orders/PurchaseOrderDetailDialog";
+import PurchaseOrderStatusDialog from "../components/purchase-orders/PurchaseOrderStatusDialog";
 import "../styles/purchase-orders.css";
 import { getActiveProductsBySupplierRequest } from "../api/products";
 import { getActiveSuppliersRequest } from "../api/suppliers";
@@ -133,6 +137,26 @@ const PurchaseOrdersPage = () => {
   const [formError, setFormError] =
     useState("");
   const [actionError, setActionError] =
+    useState("");
+  const [
+    statusPurchaseOrder,
+    setStatusPurchaseOrder,
+  ] = useState(null);
+
+  const [
+    nextPurchaseOrderStatus,
+    setNextPurchaseOrderStatus,
+  ] = useState("");
+
+  const [
+    isStatusDialogOpen,
+    setIsStatusDialogOpen,
+  ] = useState(false);
+
+  const [isUpdatingStatus, setIsUpdatingStatus] =
+    useState(false);
+
+  const [statusError, setStatusError] =
     useState("");
 
   useEffect(() => {
@@ -326,6 +350,61 @@ const PurchaseOrdersPage = () => {
   const handleCloseDetail = () => {
     setIsDetailOpen(false);
     setSelectedPurchaseOrder(null);
+  };
+
+  const handleOpenStatusDialog = (
+    purchaseOrder,
+    nextStatus,
+  ) => {
+    if (!canManagePurchaseOrders) {
+      return;
+    }
+
+    setStatusPurchaseOrder(purchaseOrder);
+    setNextPurchaseOrderStatus(nextStatus);
+    setStatusError("");
+    setIsStatusDialogOpen(true);
+  };
+
+  const handleCloseStatusDialog = () => {
+    if (isUpdatingStatus) {
+      return;
+    }
+
+    setIsStatusDialogOpen(false);
+    setStatusPurchaseOrder(null);
+    setNextPurchaseOrderStatus("");
+    setStatusError("");
+  };
+
+  const handleConfirmStatus = async (
+    nextStatus,
+  ) => {
+    if (!statusPurchaseOrder) {
+      return;
+    }
+
+    try {
+      setIsUpdatingStatus(true);
+      setStatusError("");
+
+      await updatePurchaseOrderStatusRequest(
+        statusPurchaseOrder.id,
+        nextStatus,
+      );
+
+      setIsStatusDialogOpen(false);
+      setStatusPurchaseOrder(null);
+      setNextPurchaseOrderStatus("");
+      setReloadKey((current) => current + 1);
+    } catch (error) {
+      setStatusError(
+        error.response?.data?.message ||
+        "Status purchase order gagal diperbarui.",
+      );
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const totalPages = Math.max(
@@ -569,25 +648,74 @@ const PurchaseOrdersPage = () => {
                         className="table-action-cell"
                         data-label="Aksi"
                       >
-                        <button
-                          type="button"
-                          className="table-edit-action purchase-order-detail-action"
-                          disabled={Boolean(loadingDetailId)}
-                          onClick={() =>
-                            handleOpenDetail(purchaseOrder.id)
-                          }
-                        >
-                          {loadingDetailId === purchaseOrder.id ? (
-                            <RefreshCw
-                              className="is-spinning"
-                              aria-hidden="true"
-                            />
-                          ) : (
-                            <Eye aria-hidden="true" />
-                          )}
+                        <div className="table-action-buttons purchase-order-action-buttons">
+                          <button
+                            type="button"
+                            className="table-edit-action purchase-order-detail-action"
+                            disabled={
+                              Boolean(loadingDetailId) ||
+                              isUpdatingStatus
+                            }
+                            onClick={() =>
+                              handleOpenDetail(purchaseOrder.id)
+                            }
+                          >
+                            {loadingDetailId === purchaseOrder.id ? (
+                              <RefreshCw
+                                className="is-spinning"
+                                aria-hidden="true"
+                              />
+                            ) : (
+                              <Eye aria-hidden="true" />
+                            )}
 
-                          Detail
-                        </button>
+                            Detail
+                          </button>
+
+                          {canManagePurchaseOrders &&
+                            purchaseOrder.status === "DRAFT" && (
+                              <button
+                                type="button"
+                                className="table-status-action is-activate"
+                                disabled={
+                                  Boolean(loadingDetailId) ||
+                                  isUpdatingStatus
+                                }
+                                onClick={() =>
+                                  handleOpenStatusDialog(
+                                    purchaseOrder,
+                                    "SUBMITTED",
+                                  )
+                                }
+                              >
+                                <Send aria-hidden="true" />
+                                Ajukan
+                              </button>
+                            )}
+
+                          {canManagePurchaseOrders &&
+                            ["DRAFT", "SUBMITTED"].includes(
+                              purchaseOrder.status,
+                            ) && (
+                              <button
+                                type="button"
+                                className="table-status-action is-deactivate"
+                                disabled={
+                                  Boolean(loadingDetailId) ||
+                                  isUpdatingStatus
+                                }
+                                onClick={() =>
+                                  handleOpenStatusDialog(
+                                    purchaseOrder,
+                                    "CANCELLED",
+                                  )
+                                }
+                              >
+                                <Ban aria-hidden="true" />
+                                Batalkan
+                              </button>
+                            )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -652,6 +780,17 @@ const PurchaseOrdersPage = () => {
           isOpen
           purchaseOrder={selectedPurchaseOrder}
           onClose={handleCloseDetail}
+        />
+      )}
+      {isStatusDialogOpen && (
+        <PurchaseOrderStatusDialog
+          isOpen
+          purchaseOrder={statusPurchaseOrder}
+          nextStatus={nextPurchaseOrderStatus}
+          isSubmitting={isUpdatingStatus}
+          requestError={statusError}
+          onCancel={handleCloseStatusDialog}
+          onConfirm={handleConfirmStatus}
         />
       )}
     </div>
