@@ -417,45 +417,119 @@ VALUES (
 	}
 };
 const updatePurchaseOrderStatus = async (req, res) => {
-	try {
-		const {
-			id
-		} = req.params;
-		const {
-			status
-		} = req.body;
-		const allowedStatus = ["DRAFT", "SUBMITTED", "CANCELLED",];
-		if (!allowedStatus.includes(status)) {
-			return res.status(400).json({
-				success: false,
-				message: "Status must be DRAFT, SUBMITTED, or CANCELLED",
-			});
-		}
-		const result = await pool.query(`
+  try {
+    const { id } = req.params;
+
+    const normalizedStatus =
+      typeof req.body.status === "string"
+        ? req.body.status.trim().toUpperCase()
+        : "";
+
+    const allowedTargetStatuses = [
+      "SUBMITTED",
+      "CANCELLED",
+    ];
+
+    if (
+      !allowedTargetStatuses.includes(
+        normalizedStatus,
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Status must be SUBMITTED or CANCELLED",
+      });
+    }
+
+    const currentResult = await pool.query(
+      `
+      SELECT id, status
+      FROM app.purchase_orders
+      WHERE id = $1
+      `,
+      [id],
+    );
+
+    if (currentResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Purchase order not found",
+      });
+    }
+
+    const currentStatus =
+      currentResult.rows[0].status;
+
+    const allowedTransitions = {
+      DRAFT: ["SUBMITTED", "CANCELLED"],
+      SUBMITTED: ["CANCELLED"],
+      PARTIALLY_RECEIVED: [],
+      RECEIVED: [],
+      CANCELLED: [],
+    };
+
+    if (
+      !allowedTransitions[currentStatus]?.includes(
+        normalizedStatus,
+      )
+    ) {
+      return res.status(409).json({
+        success: false,
+        message:
+          `Purchase order status cannot be changed ` +
+          `from ${currentStatus} to ${normalizedStatus}`,
+      });
+    }
+
+    const result = await pool.query(
+      `
       UPDATE app.purchase_orders
       SET status = $1
       WHERE id = $2
+      AND status = $3
       RETURNING *
       `,
-			[status, id]);
-		if (result.rows.length === 0) {
-			return res.status(404).json({
-				success: false,
-				message: "Purchase order not found",
-			});
-		}
-		res.status(200).json({
-			success: true,
-			message: "Purchase order status updated successfully",
-			data: result.rows[0],
-		});
-	} catch (error) {
-		console.error("Error updating purchase order status:", error);
-		res.status(500).json({
-			success: false,
-			message: "Failed to update purchase order status",
-		});
-	}
+      [
+        normalizedStatus,
+        id,
+        currentStatus,
+      ],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Purchase order status changed during the request",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Purchase order status updated successfully",
+      data: result.rows[0],
+    });
+  } catch (error) {
+    if (error.code === "22P02") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid purchase order ID",
+      });
+    }
+
+    console.error(
+      "Error updating purchase order status:",
+      error,
+    );
+
+    res.status(500).json({
+      success: false,
+      message:
+        "Failed to update purchase order status",
+    });
+  }
 };
 module.exports = {
 	getAllPurchaseOrders,
