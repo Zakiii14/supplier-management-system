@@ -408,6 +408,33 @@ test(
     );
 
     response = await request(app)
+      .get("/api/inventory-movements")
+      .query({
+        search: `Inventory Admin ${suffix}`,
+        page: 1,
+        limit: 10,
+      })
+      .set(
+        "Authorization",
+        adminAuthorization,
+      );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.length, 2);
+    assert.equal(
+      response.body.pagination.total_data,
+      2,
+    );
+
+    assert.ok(
+      response.body.data.every(
+        (movement) =>
+          movement.created_by_name ===
+          `Inventory Admin ${suffix}`,
+      ),
+    );
+
+    response = await request(app)
       .get(
         `/api/inventory-movements/${purchaseMovementId}`,
       )

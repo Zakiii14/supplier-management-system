@@ -31,6 +31,14 @@ const getAllInventoryMovements = async (req, res) => {
             ILIKE $${values.length}
           OR COALESCE(im.notes, '')
             ILIKE $${values.length}
+          OR COALESCE(u.full_name, '')
+            ILIKE $${values.length}
+          OR COALESCE(u.username, '')
+            ILIKE $${values.length}
+          OR (
+            im.created_by IS NULL
+            AND 'Sistem' ILIKE $${values.length}
+          )
         )
       `);
     }
@@ -64,6 +72,9 @@ const getAllInventoryMovements = async (req, res) => {
 
       JOIN app.products p
         ON p.id = im.product_id
+
+      LEFT JOIN app.users u
+        ON u.id = im.created_by
 
       ${whereClause}
       `,
