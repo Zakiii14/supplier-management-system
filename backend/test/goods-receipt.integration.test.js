@@ -57,6 +57,9 @@ const expectedDate = new Date(
   .toISOString()
   .slice(0, 10);
 
+const firstReceiptDate = "2026-01-15";
+const secondReceiptDate = "2026-02-20";
+
 let authorization;
 
 before(async () => {
@@ -278,15 +281,17 @@ before(async () => {
     INSERT INTO app.goods_receipts (
       receipt_number,
       purchase_order_id,
+      received_date,
       received_by,
       notes
     )
-    VALUES ($1, $2, $3, $4)
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING id
     `,
     [
       testData.firstReceiptNumber,
       firstPoId,
+      firstReceiptDate,
       userId,
       `First receipt note ${suffix}`,
     ],
@@ -297,15 +302,17 @@ before(async () => {
     INSERT INTO app.goods_receipts (
       receipt_number,
       purchase_order_id,
+      received_date,
       received_by,
       notes
     )
-    VALUES ($1, $2, $3, $4)
+    VALUES ($1, $2, $3, $4, $5)
     RETURNING id
     `,
     [
       testData.secondReceiptNumber,
       secondPoId,
+      secondReceiptDate,
       userId,
       `Second receipt note ${suffix}`,
     ],
@@ -441,7 +448,7 @@ after(async () => {
 });
 
 test(
-  "goods receipt list supports search and pagination",
+  "goods receipt list supports search, date range, and pagination",
   async () => {
     let response = await request(app)
       .get("/api/goods-receipts")
@@ -533,6 +540,68 @@ test(
 
     assert.equal(response.status, 200);
     assert.equal(response.body.data.length, 2);
+
+    response = await request(app)
+      .get("/api/goods-receipts")
+      .query({
+        search: suffix,
+        date_from: firstReceiptDate,
+        date_to: firstReceiptDate,
+        page: 1,
+        limit: 10,
+      })
+      .set("Authorization", authorization);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.length, 1);
+    assert.equal(response.body.pagination.total, 1);
+    assert.equal(
+      response.body.data[0].receipt_number,
+      testData.firstReceiptNumber,
+    );
+
+    response = await request(app)
+      .get("/api/goods-receipts")
+      .query({
+        search: suffix,
+        date_from: firstReceiptDate,
+        date_to: secondReceiptDate,
+        page: 1,
+        limit: 10,
+      })
+      .set("Authorization", authorization);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.length, 2);
+    assert.equal(response.body.pagination.total, 2);
+
+    response = await request(app)
+      .get("/api/goods-receipts")
+      .query({
+        search: suffix,
+        date_from: "2026-03-01",
+        page: 1,
+        limit: 10,
+      })
+      .set("Authorization", authorization);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.length, 0);
+    assert.equal(response.body.pagination.total, 0);
+
+    response = await request(app)
+      .get("/api/goods-receipts")
+      .query({
+        date_from: secondReceiptDate,
+        date_to: firstReceiptDate,
+      })
+      .set("Authorization", authorization);
+
+    assert.equal(response.status, 400);
+    assert.equal(
+      response.body.message,
+      "date_from cannot be later than date_to",
+    );
 
     response = await request(app)
       .get("/api/goods-receipts")

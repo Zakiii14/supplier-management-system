@@ -1,4 +1,7 @@
 const pool = require("../config/database");
+const {
+  parseDateRange,
+} = require("../utils/dateRange");
 
 const getAllInventoryMovements = async (req, res) => {
   try {
@@ -6,6 +9,8 @@ const getAllInventoryMovements = async (req, res) => {
       search = "",
       movement_type,
       product_id,
+      date_from = "",
+      date_to = "",
       page = 1,
       limit = 10,
     } = req.query;
@@ -16,6 +21,19 @@ const getAllInventoryMovements = async (req, res) => {
       100
     );
     const offset = (parsedPage - 1) * parsedLimit;
+
+    const {
+      dateFrom,
+      dateTo,
+      error: dateRangeError,
+    } = parseDateRange(date_from, date_to);
+
+    if (dateRangeError) {
+      return res.status(400).json({
+        success: false,
+        message: dateRangeError,
+      });
+    }
 
     const conditions = [];
     const values = [];
@@ -56,6 +74,22 @@ const getAllInventoryMovements = async (req, res) => {
 
       conditions.push(
         `im.product_id = $${values.length}`
+      );
+    }
+
+    if (dateFrom) {
+      values.push(dateFrom);
+
+      conditions.push(
+        `im.movement_date >= $${values.length}::DATE`
+      );
+    }
+
+    if (dateTo) {
+      values.push(dateTo);
+
+      conditions.push(
+        `im.movement_date < ($${values.length}::DATE + INTERVAL '1 day')`
       );
     }
 

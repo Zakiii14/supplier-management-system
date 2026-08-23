@@ -49,6 +49,9 @@ const testData = {
 const password =
   `Inventory-${randomBytes(16).toString("hex")}`;
 
+const movementDate = "2026-03-10";
+const nextMovementDate = "2026-03-11";
+
 let adminAuthorization;
 let salesAuthorization;
 let adminId;
@@ -225,14 +228,15 @@ before(async () => {
         12,
         'INVENTORY_TEST',
         gen_random_uuid(),
-        NOW() - INTERVAL '1 minute',
-        $2,
-        $3
+        $2::DATE + INTERVAL '1 second',
+        $3,
+        $4
       )
       RETURNING id
       `,
       [
         productId,
+        movementDate,
         `Inventory purchase ${suffix}`,
         adminId,
       ],
@@ -259,13 +263,15 @@ before(async () => {
       3,
       'INVENTORY_TEST',
       gen_random_uuid(),
-      NOW(),
-      $2,
-      $3
+      $2::DATE + INTERVAL '1 day' -
+        INTERVAL '1 millisecond',
+      $3,
+      $4
     )
     `,
     [
       productId,
+      movementDate,
       `Inventory sales ${suffix}`,
       adminId,
     ],
@@ -327,7 +333,7 @@ after(async () => {
 });
 
 test(
-  "inventory movement list and detail support filters, pagination, and RBAC",
+  "inventory movement list and detail support filters, date range, pagination, and RBAC",
   async () => {
     let response = await request(app)
       .get("/api/inventory-movements")
@@ -432,6 +438,65 @@ test(
           movement.created_by_name ===
           `Inventory Admin ${suffix}`,
       ),
+    );
+
+    response = await request(app)
+      .get("/api/inventory-movements")
+      .query({
+        search: suffix,
+        date_from: movementDate,
+        date_to: movementDate,
+        page: 1,
+        limit: 10,
+      })
+      .set(
+        "Authorization",
+        adminAuthorization,
+      );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.length, 2);
+    assert.equal(
+      response.body.pagination.total_data,
+      2,
+    );
+
+    response = await request(app)
+      .get("/api/inventory-movements")
+      .query({
+        search: suffix,
+        date_from: nextMovementDate,
+        date_to: nextMovementDate,
+        page: 1,
+        limit: 10,
+      })
+      .set(
+        "Authorization",
+        adminAuthorization,
+      );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.length, 0);
+    assert.equal(
+      response.body.pagination.total_data,
+      0,
+    );
+
+    response = await request(app)
+      .get("/api/inventory-movements")
+      .query({
+        date_from: nextMovementDate,
+        date_to: movementDate,
+      })
+      .set(
+        "Authorization",
+        adminAuthorization,
+      );
+
+    assert.equal(response.status, 400);
+    assert.equal(
+      response.body.message,
+      "date_from cannot be later than date_to",
     );
 
     response = await request(app)

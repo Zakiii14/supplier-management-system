@@ -1,9 +1,15 @@
 const pool = require("../config/database");
+const {
+  parseDateRange,
+} = require("../utils/dateRange");
+
 const getAllPurchaseOrders = async (req, res) => {
   try {
     const {
       search = "",
       status = "",
+      date_from = "",
+      date_to = "",
       page = "1",
       limit = "10",
     } = req.query;
@@ -52,6 +58,19 @@ const getAllPurchaseOrders = async (req, res) => {
         ? search.trim()
         : "";
 
+    const {
+      dateFrom,
+      dateTo,
+      error: dateRangeError,
+    } = parseDateRange(date_from, date_to);
+
+    if (dateRangeError) {
+      return res.status(400).json({
+        success: false,
+        message: dateRangeError,
+      });
+    }
+
     const conditions = [];
     const values = [];
 
@@ -73,6 +92,22 @@ const getAllPurchaseOrders = async (req, res) => {
 
       conditions.push(
         `po.status = $${values.length}`,
+      );
+    }
+
+    if (dateFrom) {
+      values.push(dateFrom);
+
+      conditions.push(
+        `po.order_date >= $${values.length}::DATE`,
+      );
+    }
+
+    if (dateTo) {
+      values.push(dateTo);
+
+      conditions.push(
+        `po.order_date <= $${values.length}::DATE`,
       );
     }
 

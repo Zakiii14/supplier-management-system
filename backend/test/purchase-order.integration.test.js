@@ -266,7 +266,7 @@ after(async () => {
 });
 
 test(
-    "purchase order list supports search, status filter, and pagination",
+    "purchase order list supports search, status, date range, and pagination",
     async () => {
         const commonSearch = suffix;
 
@@ -345,6 +345,63 @@ test(
         assert.equal(
             response.body.data[0].po_number,
             testData.firstPoNumber,
+        );
+
+        response = await request(app)
+            .get("/api/purchase-orders")
+            .query({
+                search: commonSearch,
+                date_from: today,
+                date_to: today,
+                page: 1,
+                limit: 10,
+            })
+            .set("Authorization", authorization);
+
+        assert.equal(response.status, 200);
+        assert.equal(response.body.data.length, 2);
+        assert.equal(response.body.pagination.total, 2);
+
+        response = await request(app)
+            .get("/api/purchase-orders")
+            .query({
+                search: commonSearch,
+                date_from: expectedDate,
+                date_to: expectedDate,
+                page: 1,
+                limit: 10,
+            })
+            .set("Authorization", authorization);
+
+        assert.equal(response.status, 200);
+        assert.equal(response.body.data.length, 0);
+        assert.equal(response.body.pagination.total, 0);
+
+        response = await request(app)
+            .get("/api/purchase-orders")
+            .query({
+                date_from: "2026-02-30",
+            })
+            .set("Authorization", authorization);
+
+        assert.equal(response.status, 400);
+        assert.equal(
+            response.body.message,
+            "date_from must be a valid date in YYYY-MM-DD format",
+        );
+
+        response = await request(app)
+            .get("/api/purchase-orders")
+            .query({
+                date_from: expectedDate,
+                date_to: today,
+            })
+            .set("Authorization", authorization);
+
+        assert.equal(response.status, 400);
+        assert.equal(
+            response.body.message,
+            "date_from cannot be later than date_to",
         );
 
         response = await request(app)

@@ -1,4 +1,7 @@
 const pool = require("../config/database");
+const {
+  parseDateRange,
+} = require("../utils/dateRange");
 
 const createGoodsReceipt = async (req, res) => {
   const client = await pool.connect();
@@ -365,6 +368,8 @@ const getAllGoodsReceipts = async (req, res) => {
   try {
     const {
       search = "",
+      date_from = "",
+      date_to = "",
       page = "1",
       limit = "10",
     } = req.query;
@@ -390,6 +395,19 @@ const getAllGoodsReceipts = async (req, res) => {
         ? search.trim()
         : "";
 
+    const {
+      dateFrom,
+      dateTo,
+      error: dateRangeError,
+    } = parseDateRange(date_from, date_to);
+
+    if (dateRangeError) {
+      return res.status(400).json({
+        success: false,
+        message: dateRangeError,
+      });
+    }
+
     const conditions = [];
     const values = [];
 
@@ -408,6 +426,22 @@ const getAllGoodsReceipts = async (req, res) => {
             ILIKE $${values.length}
         )
       `);
+    }
+
+    if (dateFrom) {
+      values.push(dateFrom);
+
+      conditions.push(
+        `gr.received_date >= $${values.length}::DATE`,
+      );
+    }
+
+    if (dateTo) {
+      values.push(dateTo);
+
+      conditions.push(
+        `gr.received_date <= $${values.length}::DATE`,
+      );
     }
 
     const whereClause = conditions.length
