@@ -363,54 +363,168 @@ const createGoodsReceipt = async (req, res) => {
 
 const getAllGoodsReceipts = async (req, res) => {
   try {
-    const result = await pool.query(`
+    const {
+      search = "",
+      page = "1",
+      limit = "10",
+    } = req.query;
+
+    const parsedPage = Number(page);
+    const parsedLimit = Number(limit);
+
+    if (
+      !Number.isInteger(parsedPage) ||
+      !Number.isInteger(parsedLimit) ||
+      parsedPage < 1 ||
+      parsedLimit < 1 ||
+      parsedLimit > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid pagination parameters",
+      });
+    }
+
+    const normalizedSearch =
+      typeof search === "string"
+        ? search.trim()
+        : "";
+
+    const conditions = [];
+    const values = [];
+
+    if (normalizedSearch) {
+      values.push(`%${normalizedSearch}%`);
+
+      conditions.push(`
+        (
+          gr.receipt_number ILIKE $${values.length}
+          OR po.po_number ILIKE $${values.length}
+          OR s.supplier_code ILIKE $${values.length}
+          OR s.supplier_name ILIKE $${values.length}
+          OR COALESCE(gr.notes, '')
+            ILIKE $${values.length}
+          OR COALESCE(u.full_name, '')
+            ILIKE $${values.length}
+        )
+      `);
+    }
+
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
+
+    const countResult = await pool.query(
+      `
+      SELECT COUNT(*)::INTEGER AS total
+      FROM app.goods_receipts gr
+      JOIN app.purchase_orders po
+        ON po.id = gr.purchase_order_id
+      JOIN app.suppliers s
+        ON s.id = po.supplier_id
+      LEFT JOIN app.users u
+        ON u.id = gr.received_by
+      ${whereClause}
+      `,
+      values,
+    );
+
+    const total = countResult.rows[0].total;
+
+    const totalPages =
+      total === 0
+        ? 0
+        : Math.ceil(total / parsedLimit);
+
+    const offset =
+      (parsedPage - 1) * parsedLimit;
+
+    const listValues = [
+      ...values,
+      parsedLimit,
+      offset,
+    ];
+
+    const limitPosition = values.length + 1;
+    const offsetPosition = values.length + 2;
+
+    const result = await pool.query(
+      `
       SELECT
-        gr.*,
+        gr.id,
+        gr.receipt_number,
+        gr.purchase_order_id,
+        gr.received_date,
+        gr.received_by,
+        gr.notes,
+        gr.created_at,
         po.po_number,
         po.status AS purchase_order_status,
         s.supplier_code,
         s.supplier_name,
-
-        (
-          SELECT COUNT(*)::INTEGER
-          FROM app.goods_receipt_items gri
-          WHERE gri.goods_receipt_id = gr.id
-        ) AS total_items,
-
-        (
-          SELECT COALESCE(SUM(gri.quantity_received), 0)
-          FROM app.goods_receipt_items gri
-          WHERE gri.goods_receipt_id = gr.id
+        u.full_name AS received_by_name,
+        COALESCE(summary.total_items, 0)
+          AS total_items,
+        COALESCE(
+          summary.total_quantity_received,
+          0
         ) AS total_quantity_received,
-
-        (
-          SELECT COALESCE(SUM(gri.quantity_damaged), 0)
-          FROM app.goods_receipt_items gri
-          WHERE gri.goods_receipt_id = gr.id
+        COALESCE(
+          summary.total_quantity_damaged,
+          0
         ) AS total_quantity_damaged
-
       FROM app.goods_receipts gr
-
       JOIN app.purchase_orders po
         ON po.id = gr.purchase_order_id
-
       JOIN app.suppliers s
         ON s.id = po.supplier_id
-
+      LEFT JOIN app.users u
+        ON u.id = gr.received_by
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(gri.id)::INTEGER
+            AS total_items,
+          COALESCE(
+            SUM(gri.quantity_received),
+            0
+          ) AS total_quantity_received,
+          COALESCE(
+            SUM(gri.quantity_damaged),
+            0
+          ) AS total_quantity_damaged
+        FROM app.goods_receipt_items gri
+        WHERE gri.goods_receipt_id = gr.id
+      ) summary ON TRUE
+      ${whereClause}
       ORDER BY gr.created_at DESC
-    `);
+      LIMIT $${limitPosition}
+      OFFSET $${offsetPosition}
+      `,
+      listValues,
+    );
 
     res.status(200).json({
       success: true,
-      message: "Goods receipts retrieved successfully",
+      message:
+        "Goods receipts retrieved successfully",
       data: result.rows,
+      pagination: {
+        page: parsedPage,
+        limit: parsedLimit,
+        total,
+        total_pages: totalPages,
+      },
     });
   } catch (error) {
-    console.error("Error fetching goods receipts:", error);
+    console.error(
+      "Error fetching goods receipts:",
+      error,
+    );
 
     res.status(500).json({
       success: false,
-      message: "Failed to retrieve goods receipts",
+      message:
+        "Failed to retrieve goods receipts",
     });
   }
 };
