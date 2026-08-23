@@ -90,12 +90,15 @@ const getAllInventoryMovements = async (req, res) => {
         im.reference_id,
         im.notes,
         im.created_by,
+        u.full_name AS created_by_name,
         im.movement_date
 
       FROM app.inventory_movements im
 
       JOIN app.products p
         ON p.id = im.product_id
+      LEFT JOIN app.users u
+        ON u.id = im.created_by
 
       ${whereClause}
 
@@ -156,12 +159,15 @@ const getInventoryMovementById = async (req, res) => {
         im.reference_id,
         im.notes,
         im.created_by,
+        u.full_name AS created_by_name,
         im.movement_date
 
       FROM app.inventory_movements im
 
       JOIN app.products p
         ON p.id = im.product_id
+      LEFT JOIN app.users u
+        ON u.id = im.created_by
 
       WHERE im.id = $1
       `,
