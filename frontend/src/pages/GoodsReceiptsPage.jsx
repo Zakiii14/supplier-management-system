@@ -6,10 +6,12 @@ import {
     PackageOpen,
     RefreshCw,
     Search,
+    Plus,
     X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
+    createGoodsReceiptRequest,
     getGoodsReceiptByIdRequest,
     getGoodsReceiptsRequest,
 } from "../api/goodsReceipts";
@@ -19,6 +21,12 @@ import {
     formatNumber,
 } from "../utils/formatters";
 import GoodsReceiptDetailDialog from "../components/goods-receipts/GoodsReceiptDetailDialog";
+import {
+    getPurchaseOrderByIdRequest,
+    getReceivablePurchaseOrdersRequest,
+} from "../api/purchaseOrders";
+import GoodsReceiptFormModal from "../components/goods-receipts/GoodsReceiptFormModal";
+import useAuth from "../hooks/useAuth";
 
 const PAGE_LIMIT = 10;
 
@@ -31,6 +39,12 @@ const purchaseOrderStatusLabels = {
 };
 
 const GoodsReceiptsPage = () => {
+    const { user } = useAuth();
+
+    const canCreateGoodsReceipt = [
+        "ADMIN",
+        "WAREHOUSE",
+    ].includes(user?.role);
     const [goodsReceipts, setGoodsReceipts] =
         useState([]);
 
@@ -67,6 +81,34 @@ const GoodsReceiptsPage = () => {
         useState("");
 
     const [detailError, setDetailError] =
+        useState("");
+
+    const [isFormOpen, setIsFormOpen] =
+        useState(false);
+
+    const [purchaseOrders, setPurchaseOrders] =
+        useState([]);
+
+    const [
+        selectedPurchaseOrder,
+        setSelectedPurchaseOrder,
+    ] = useState(null);
+
+    const [isPreparingForm, setIsPreparingForm] =
+        useState(false);
+
+    const [
+        isLoadingPurchaseOrder,
+        setIsLoadingPurchaseOrder,
+    ] = useState(false);
+
+    const [isSubmitting, setIsSubmitting] =
+        useState(false);
+
+    const [formError, setFormError] =
+        useState("");
+
+    const [actionError, setActionError] =
         useState("");
 
     useEffect(() => {
@@ -164,6 +206,112 @@ const GoodsReceiptsPage = () => {
         setSelectedGoodsReceipt(null);
     };
 
+    const handleOpenCreateForm = async () => {
+        if (!canCreateGoodsReceipt) {
+            return;
+        }
+
+        try {
+            setIsPreparingForm(true);
+            setActionError("");
+            setFormError("");
+            setSelectedPurchaseOrder(null);
+
+            const data =
+                await getReceivablePurchaseOrdersRequest();
+
+            setPurchaseOrders(data);
+            setIsFormOpen(true);
+        } catch (error) {
+            setActionError(
+                error.response?.data?.message ||
+                "Purchase order yang dapat diterima gagal dimuat.",
+            );
+        } finally {
+            setIsPreparingForm(false);
+        }
+    };
+
+    const handlePurchaseOrderChange = async (
+        purchaseOrderId,
+    ) => {
+        setSelectedPurchaseOrder(null);
+        setFormError("");
+
+        if (!purchaseOrderId) {
+            return null;
+        }
+
+        try {
+            setIsLoadingPurchaseOrder(true);
+
+            const detail =
+                await getPurchaseOrderByIdRequest(
+                    purchaseOrderId,
+                );
+
+            if (
+                ![
+                    "SUBMITTED",
+                    "PARTIALLY_RECEIVED",
+                ].includes(detail.status)
+            ) {
+                setFormError(
+                    "Purchase order ini sudah tidak dapat menerima barang.",
+                );
+                return null;
+            }
+
+            setSelectedPurchaseOrder(detail);
+            return detail;
+        } catch (error) {
+            setFormError(
+                error.response?.data?.message ||
+                "Rincian purchase order gagal dimuat.",
+            );
+
+            return null;
+        } finally {
+            setIsLoadingPurchaseOrder(false);
+        }
+    };
+
+    const handleCloseForm = () => {
+        if (isSubmitting) {
+            return;
+        }
+
+        setIsFormOpen(false);
+        setPurchaseOrders([]);
+        setSelectedPurchaseOrder(null);
+        setIsLoadingPurchaseOrder(false);
+        setFormError("");
+    };
+
+    const handleCreateGoodsReceipt = async (
+        payload,
+    ) => {
+        try {
+            setIsSubmitting(true);
+            setFormError("");
+
+            await createGoodsReceiptRequest(payload);
+
+            setIsFormOpen(false);
+            setPurchaseOrders([]);
+            setSelectedPurchaseOrder(null);
+            setPage(1);
+            setReloadKey((current) => current + 1);
+        } catch (error) {
+            setFormError(
+                error.response?.data?.message ||
+                "Penerimaan barang gagal disimpan.",
+            );
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     const totalPages = Math.max(
         pagination.total_pages,
         1,
@@ -182,6 +330,29 @@ const GoodsReceiptsPage = () => {
                 </div>
 
                 <div className="page-heading-actions">
+                    {canCreateGoodsReceipt && (
+                        <button
+                            type="button"
+                            className="primary-action"
+                            disabled={isPreparingForm}
+                            onClick={handleOpenCreateForm}
+                        >
+                            {isPreparingForm ? (
+                                <RefreshCw
+                                    className="is-spinning"
+                                    aria-hidden="true"
+                                />
+                            ) : (
+                                <Plus aria-hidden="true" />
+                            )}
+
+                            <span>
+                                {isPreparingForm
+                                    ? "Menyiapkan..."
+                                    : "Tambah penerimaan"}
+                            </span>
+                        </button>
+                    )}
                     <button
                         type="button"
                         className="secondary-action"
@@ -200,6 +371,16 @@ const GoodsReceiptsPage = () => {
                     </button>
                 </div>
             </section>
+
+            {actionError && (
+                <div
+                    className="goods-receipt-action-error"
+                    role="alert"
+                >
+                    <AlertTriangle aria-hidden="true" />
+                    <span>{actionError}</span>
+                </div>
+            )}
 
             <section className="data-panel">
                 <form
@@ -375,8 +556,8 @@ const GoodsReceiptsPage = () => {
                                                     goodsReceipt
                                                         .total_quantity_damaged,
                                                 ) > 0
-                                                        ? "has-damage"
-                                                        : ""
+                                                    ? "has-damage"
+                                                    : ""
                                                     }`}
                                             >
                                                 {formatNumber(
@@ -471,6 +652,25 @@ const GoodsReceiptsPage = () => {
                     isOpen
                     goodsReceipt={selectedGoodsReceipt}
                     onClose={handleCloseDetail}
+                />
+            )}
+            {isFormOpen && (
+                <GoodsReceiptFormModal
+                    isOpen
+                    purchaseOrders={purchaseOrders}
+                    selectedPurchaseOrder={
+                        selectedPurchaseOrder
+                    }
+                    isLoadingPurchaseOrder={
+                        isLoadingPurchaseOrder
+                    }
+                    isSubmitting={isSubmitting}
+                    requestError={formError}
+                    onClose={handleCloseForm}
+                    onPurchaseOrderChange={
+                        handlePurchaseOrderChange
+                    }
+                    onSubmit={handleCreateGoodsReceipt}
                 />
             )}
         </div>

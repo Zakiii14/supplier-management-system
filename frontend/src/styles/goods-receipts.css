@@ -631,3 +631,640 @@
     grid-template-columns: 1fr;
   }
 }
+.goods-receipt-action-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  color: #b42318;
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  border-radius: 11px;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.goods-receipt-action-error svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.goods-receipt-form-backdrop {
+  position: fixed;
+  z-index: 1300;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(15 23 42 / 58%);
+  backdrop-filter: blur(3px);
+}
+
+.goods-receipt-form-modal {
+  display: flex;
+  width: min(980px, 100%);
+  max-height: calc(100dvh - 48px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #dbe4f0;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 28px 75px rgb(15 23 42 / 30%);
+}
+
+.goods-receipt-form-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e7edf5;
+}
+
+.goods-receipt-form-header span {
+  display: block;
+  color: #2563eb;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.goods-receipt-form-header h2 {
+  margin: 5px 0 0;
+  color: #172033;
+  font-size: 1.3rem;
+}
+
+.goods-receipt-form-close {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #667085;
+  background: #f8fafc;
+  border: 1px solid #dbe4f0;
+  border-radius: 11px;
+  cursor: pointer;
+}
+
+.goods-receipt-form-close:hover:not(:disabled) {
+  color: #172033;
+  background: #eef2f7;
+}
+
+.goods-receipt-form-close:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.goods-receipt-form-close svg {
+  width: 19px;
+  height: 19px;
+}
+
+.goods-receipt-form {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.goods-receipt-form-content {
+  display: grid;
+  min-height: 0;
+  gap: 18px;
+  padding: 22px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.goods-receipt-form-section {
+  display: grid;
+  gap: 17px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.goods-receipt-form-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.goods-receipt-form-section-heading p {
+  margin: 0;
+  color: #25324a;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.goods-receipt-form-section-heading span {
+  display: block;
+  margin-top: 4px;
+  color: #667085;
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.goods-receipt-form-section-heading > svg {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  color: #2563eb;
+}
+
+.goods-receipt-form-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 15px;
+}
+
+.goods-receipt-form-field {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.goods-receipt-form-field.is-full {
+  grid-column: 1 / -1;
+}
+
+.goods-receipt-form-field > span {
+  color: #344054;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.goods-receipt-form-field .form-select-label {
+  margin-bottom: 7px;
+  font-size: 0.78rem;
+}
+
+.goods-receipt-form-field input,
+.goods-receipt-form-field textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 11px 13px;
+  color: #172033;
+  background: #fff;
+  border: 1px solid #d5deea;
+  border-radius: 11px;
+  outline: none;
+  font: inherit;
+  font-size: 0.82rem;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.goods-receipt-form-field input {
+  height: 46px;
+}
+
+.goods-receipt-form-field textarea {
+  min-height: 82px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.goods-receipt-form-field input:focus,
+.goods-receipt-form-field textarea:focus {
+  border-color: #2f6fed;
+  box-shadow:
+    0 0 0 3px rgb(47 111 237 / 12%);
+}
+
+.goods-receipt-form-field input:disabled,
+.goods-receipt-form-field textarea:disabled {
+  color: #64748b;
+  background: #f1f5f9;
+  cursor: not-allowed;
+}
+
+.goods-receipt-form-field input::placeholder,
+.goods-receipt-form-field textarea::placeholder {
+  color: #98a2b3;
+}
+
+.goods-receipt-form-modal .form-select-menu {
+  z-index: 80;
+}
+
+.goods-receipt-form-hint {
+  padding: 11px 13px;
+  color: #475467;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  font-size: 0.77rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.goods-receipt-form-hint.is-warning {
+  color: #b54708;
+  background: #fffaeb;
+  border-color: #fedf89;
+}
+
+.goods-receipt-form-po-summary {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.goods-receipt-form-po-summary > div {
+  min-width: 0;
+  padding: 11px 13px;
+  border: 1px solid #dfe7f1;
+  border-radius: 11px;
+  background: #f8fafc;
+}
+
+.goods-receipt-form-po-summary span,
+.goods-receipt-form-readonly span,
+.goods-receipt-form-totals span {
+  display: block;
+  color: #98a2b3;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.goods-receipt-form-po-summary strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 5px;
+  color: #25324a;
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goods-receipt-form-items {
+  display: grid;
+  gap: 12px;
+}
+
+.goods-receipt-form-item {
+  display: grid;
+  gap: 13px;
+  padding: 14px;
+  border: 1px solid #dfe7f1;
+  border-radius: 14px;
+  background: #fbfdff;
+}
+
+.goods-receipt-form-item-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.goods-receipt-form-item-heading > div {
+  min-width: 0;
+}
+
+.goods-receipt-form-item-heading strong {
+  display: block;
+  overflow: hidden;
+  color: #25324a;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goods-receipt-form-item-heading > div > span {
+  display: block;
+  margin-top: 3px;
+  color: #98a2b3;
+  font-size: 0.68rem;
+}
+
+.goods-receipt-form-item-heading > span {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  color: #175cd3;
+  background: #eff8ff;
+  border: 1px solid #b2ddff;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.goods-receipt-form-item-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.goods-receipt-form-readonly {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.goods-receipt-form-readonly strong {
+  display: flex;
+  height: 46px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 13px;
+  color: #475467;
+  background: #f8fafc;
+  border: 1px solid #dfe7f1;
+  border-radius: 11px;
+  font-size: 0.82rem;
+}
+
+.goods-receipt-form-totals {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.goods-receipt-form-totals > div {
+  padding: 12px 14px;
+  border: 1px solid #dfe7f1;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.goods-receipt-form-totals strong {
+  display: block;
+  margin-top: 5px;
+  color: #25324a;
+  font-size: 1rem;
+}
+
+.goods-receipt-form-totals .is-damaged {
+  border-color: #fecdca;
+  background: #fef3f2;
+}
+
+.goods-receipt-form-totals .is-damaged strong {
+  color: #b42318;
+}
+
+.goods-receipt-form-totals .is-stock {
+  border-color: #abefc6;
+  background: #ecfdf3;
+}
+
+.goods-receipt-form-totals .is-stock strong {
+  color: #067647;
+}
+
+.goods-receipt-form-error {
+  padding: 12px 14px;
+  color: #b42318;
+  background: #fef3f2;
+  border: 1px solid #fecdca;
+  border-radius: 11px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.goods-receipt-form-actions {
+  display: grid;
+  grid-template-columns:
+    minmax(120px, auto)
+    minmax(190px, auto);
+  flex: 0 0 auto;
+  justify-content: end;
+  gap: 10px;
+  padding: 15px 24px;
+  border-top: 1px solid #e7edf5;
+}
+
+.goods-receipt-form-actions button {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-radius: 11px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.goods-receipt-form-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.goods-receipt-form-cancel {
+  color: #475467;
+  background: #fff;
+  border: 1px solid #d5deea;
+}
+
+.goods-receipt-form-cancel:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.goods-receipt-form-submit {
+  color: #fff;
+  background: #2563eb;
+  border: 1px solid #2563eb;
+}
+
+.goods-receipt-form-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.goods-receipt-form-submit svg {
+  width: 17px;
+  height: 17px;
+}
+
+.goods-receipt-form-close:focus-visible,
+.goods-receipt-form-actions button:focus-visible {
+  outline:
+    3px solid rgb(59 130 246 / 22%);
+  outline-offset: 2px;
+}
+
+@media (max-width: 850px) {
+  .goods-receipt-form-item-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .goods-receipt-form-backdrop {
+    align-items: flex-end;
+    padding: 0;
+    backdrop-filter: none;
+  }
+
+  .goods-receipt-form-modal {
+    width: 100%;
+    max-height: calc(100dvh - 10px);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .goods-receipt-form-header {
+    padding: 17px;
+  }
+
+  .goods-receipt-form-header h2 {
+    font-size: 1.12rem;
+  }
+
+  .goods-receipt-form-content {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .goods-receipt-form-section {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .goods-receipt-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .goods-receipt-form-field.is-full {
+    grid-column: auto;
+  }
+
+  .goods-receipt-form-po-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .goods-receipt-form-item {
+    padding: 12px;
+  }
+
+  .goods-receipt-form-totals {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+  }
+
+  .goods-receipt-form-actions {
+    grid-template-columns: 1fr 1.4fr;
+    padding:
+      13px
+      14px
+      calc(13px + env(safe-area-inset-bottom));
+  }
+
+  .goods-receipt-form-actions button {
+    padding: 0 10px;
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .goods-receipt-form-item-grid,
+  .goods-receipt-form-totals,
+  .goods-receipt-form-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .goods-receipt-form-cancel {
+    order: 2;
+  }
+}
+/* Prevent long numeric values from expanding the receipt form */
+[class*="goods-receipt-form"] {
+  min-width: 0;
+}
+
+[class*="goods-receipt-form"] > * {
+  min-width: 0;
+}
+
+[class*="goods-receipt-form"] input[type="number"] {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Keep calculated totals inside their cards */
+[class*="goods-receipt-form"] [class*="summary"],
+[class*="goods-receipt-form"] [class*="total"] {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+[class*="goods-receipt-form"] [class*="summary"] strong,
+[class*="goods-receipt-form"] [class*="summary"] span,
+[class*="goods-receipt-form"] [class*="total"] strong,
+[class*="goods-receipt-form"] [class*="total"] span {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Prevent the item title and remaining badge from overflowing */
+[class*="goods-receipt-form"] [class*="item-header"] {
+  min-width: 0;
+  max-width: 100%;
+  gap: 12px;
+}
+
+[class*="goods-receipt-form"] [class*="item-header"] > * {
+  min-width: 0;
+}
+
+[class*="goods-receipt-form"] [class*="remaining"],
+[class*="goods-receipt-form"] [class*="badge"] {
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 700px) {
+  [class*="goods-receipt-form"] {
+    max-width: 100%;
+  }
+
+  [class*="goods-receipt-form"] input[type="number"] {
+    width: 100%;
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  [class*="goods-receipt-form"] [class*="item-header"] {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  [class*="goods-receipt-form"] [class*="summary"] strong,
+  [class*="goods-receipt-form"] [class*="total"] strong {
+    font-size: clamp(0.9rem, 5vw, 1.15rem);
+    line-height: 1.35;
+  }
+}

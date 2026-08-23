@@ -11,6 +11,38 @@ const getPurchaseOrdersRequest = async (
   return response.data;
 };
 
+const getReceivablePurchaseOrdersRequest =
+  async () => {
+    const [
+      submittedResponse,
+      partiallyReceivedResponse,
+    ] = await Promise.all([
+      getPurchaseOrdersRequest({
+        status: "SUBMITTED",
+        page: 1,
+        limit: 100,
+      }),
+      getPurchaseOrdersRequest({
+        status: "PARTIALLY_RECEIVED",
+        page: 1,
+        limit: 100,
+      }),
+    ]);
+
+    return [
+      ...submittedResponse.data,
+      ...partiallyReceivedResponse.data,
+    ].sort(
+      (firstPurchaseOrder, secondPurchaseOrder) =>
+        new Date(
+          secondPurchaseOrder.created_at,
+        ).getTime() -
+        new Date(
+          firstPurchaseOrder.created_at,
+        ).getTime(),
+    );
+  };
+
 const getPurchaseOrderByIdRequest = async (
   purchaseOrderId,
 ) => {
@@ -48,5 +80,6 @@ export {
   createPurchaseOrderRequest,
   getPurchaseOrderByIdRequest,
   getPurchaseOrdersRequest,
+  getReceivablePurchaseOrdersRequest,
   updatePurchaseOrderStatusRequest,
 };
