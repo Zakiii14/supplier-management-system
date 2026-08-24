@@ -44,7 +44,7 @@ const CustomersPage = () => {
     const [pagination, setPagination] = useState({
         page: 1,
         limit: PAGE_LIMIT,
-        total: 0,
+        total_data: 0,
         total_pages: 0,
     });
 
@@ -388,7 +388,7 @@ const CustomersPage = () => {
                         Menampilkan{" "}
                         <strong>{customers.length}</strong> dari{" "}
                         <strong>
-                            {formatNumber(pagination.total)}
+                            {formatNumber(pagination.total_data)}
                         </strong>{" "}
                         customer
                     </p>
