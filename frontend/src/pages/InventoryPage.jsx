@@ -15,6 +15,8 @@ import {
 } from "../api/inventoryMovements";
 import StatusFilter from "../components/filters/StatusFilter";
 import InventoryMovementDetailDialog from "../components/inventory/InventoryMovementDetailDialog";
+import DateRangeFilter from "../components/filters/DateRangeFilter";
+import useStickyDataFilters from "../hooks/useStickyDataFilters";
 import "../styles/inventory.css";
 import { formatNumber } from "../utils/formatters";
 
@@ -108,6 +110,7 @@ const formatDateTime = (value) => {
 };
 
 const InventoryPage = () => {
+    const filtersRef = useStickyDataFilters();
     const [inventoryMovements, setInventoryMovements] =
         useState([]);
 
@@ -126,6 +129,9 @@ const InventoryPage = () => {
 
     const [movementType, setMovementType] =
         useState("");
+
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
 
     const [page, setPage] = useState(1);
     const [reloadKey, setReloadKey] = useState(0);
@@ -166,6 +172,12 @@ const InventoryPage = () => {
                         ...(movementType && {
                             movement_type: movementType,
                         }),
+                        ...(dateFrom && {
+                            date_from: dateFrom,
+                        }),
+                        ...(dateTo && {
+                            date_to: dateTo,
+                        }),
                     });
 
                 if (!isCancelled) {
@@ -204,6 +216,8 @@ const InventoryPage = () => {
         page,
         appliedSearch,
         movementType,
+        dateFrom,
+        dateTo,
         reloadKey,
     ]);
 
@@ -220,10 +234,22 @@ const InventoryPage = () => {
         setPage(1);
     };
 
+    const handleDateFromChange = (nextDateFrom) => {
+        setPage(1);
+        setDateFrom(nextDateFrom);
+    };
+
+    const handleDateToChange = (nextDateTo) => {
+        setPage(1);
+        setDateTo(nextDateTo);
+    };
+
     const handleResetFilters = () => {
         setSearchInput("");
         setAppliedSearch("");
         setMovementType("");
+        setDateFrom("");
+        setDateTo("");
         setPage(1);
     };
 
@@ -297,6 +323,7 @@ const InventoryPage = () => {
 
             <section className="data-panel">
                 <form
+                    ref={filtersRef}
                     className="data-filters inventory-filters"
                     onSubmit={handleSearch}
                 >
@@ -323,7 +350,12 @@ const InventoryPage = () => {
                         onChange={handleMovementTypeChange}
                     />
 
-                    {(appliedSearch || movementType) && (
+                    {(
+                        appliedSearch ||
+                        movementType ||
+                        dateFrom ||
+                        dateTo
+                    ) && (
                         <button
                             type="button"
                             className="reset-filter"
@@ -333,6 +365,14 @@ const InventoryPage = () => {
                             Reset
                         </button>
                     )}
+
+                    <DateRangeFilter
+                        dateFrom={dateFrom}
+                        dateTo={dateTo}
+                        disabled={isLoading}
+                        onDateFromChange={handleDateFromChange}
+                        onDateToChange={handleDateToChange}
+                    />
                 </form>
 
                 {errorMessage && (

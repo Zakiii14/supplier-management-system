@@ -22,6 +22,7 @@ import {
   getPurchaseOrdersRequest,
   updatePurchaseOrderStatusRequest,
 } from "../api/purchaseOrders";
+import DateRangeFilter from "../components/filters/DateRangeFilter";
 import StatusFilter from "../components/filters/StatusFilter";
 import PurchaseOrderDetailDialog from "../components/purchase-orders/PurchaseOrderDetailDialog";
 import PurchaseOrderStatusDialog from "../components/purchase-orders/PurchaseOrderStatusDialog";
@@ -30,6 +31,7 @@ import { getActiveProductsBySupplierRequest } from "../api/products";
 import { getActiveSuppliersRequest } from "../api/suppliers";
 import PurchaseOrderFormModal from "../components/purchase-orders/PurchaseOrderFormModal";
 import useAuth from "../hooks/useAuth";
+import useStickyDataFilters from "../hooks/useStickyDataFilters";
 import {
   formatCurrency,
   formatDate,
@@ -89,6 +91,7 @@ const statusPresentation = {
 };
 
 const PurchaseOrdersPage = () => {
+  const filtersRef = useStickyDataFilters();
   const { user } = useAuth();
   const productRequestIdRef = useRef(0);
 
@@ -109,6 +112,8 @@ const PurchaseOrdersPage = () => {
   const [appliedSearch, setAppliedSearch] =
     useState("");
   const [status, setStatus] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -174,6 +179,12 @@ const PurchaseOrdersPage = () => {
             search: appliedSearch,
           }),
           ...(status && { status }),
+          ...(dateFrom && {
+            date_from: dateFrom,
+          }),
+          ...(dateTo && {
+            date_to: dateTo,
+          }),
         });
 
         if (!isCancelled) {
@@ -206,7 +217,14 @@ const PurchaseOrdersPage = () => {
     return () => {
       isCancelled = true;
     };
-  }, [page, appliedSearch, status, reloadKey]);
+  }, [
+    page,
+    appliedSearch,
+    status,
+    dateFrom,
+    dateTo,
+    reloadKey,
+  ]);
 
   const handleSearch = (event) => {
     event.preventDefault();
@@ -219,10 +237,22 @@ const PurchaseOrdersPage = () => {
     setStatus(nextStatus);
   };
 
+  const handleDateFromChange = (nextDateFrom) => {
+    setPage(1);
+    setDateFrom(nextDateFrom);
+  };
+
+  const handleDateToChange = (nextDateTo) => {
+    setPage(1);
+    setDateTo(nextDateTo);
+  };
+
   const handleResetFilters = () => {
     setSearchInput("");
     setAppliedSearch("");
     setStatus("");
+    setDateFrom("");
+    setDateTo("");
     setPage(1);
   };
 
@@ -413,7 +443,10 @@ const PurchaseOrdersPage = () => {
   );
 
   const hasActiveFilters =
-    Boolean(appliedSearch) || Boolean(status);
+    Boolean(appliedSearch) ||
+    Boolean(status) ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo);
 
   return (
     <div className="purchase-orders-page">
@@ -479,6 +512,7 @@ const PurchaseOrdersPage = () => {
       )}
       <section className="data-panel">
         <form
+          ref={filtersRef}
           className="data-filters purchase-order-filters"
           onSubmit={handleSearch}
         >
@@ -515,6 +549,14 @@ const PurchaseOrdersPage = () => {
               Reset
             </button>
           )}
+
+          <DateRangeFilter
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            disabled={isLoading}
+            onDateFromChange={handleDateFromChange}
+            onDateToChange={handleDateToChange}
+          />
         </form>
 
         {errorMessage && (

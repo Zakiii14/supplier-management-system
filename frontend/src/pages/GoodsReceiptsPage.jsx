@@ -15,6 +15,8 @@ import {
     getGoodsReceiptByIdRequest,
     getGoodsReceiptsRequest,
 } from "../api/goodsReceipts";
+import DateRangeFilter from "../components/filters/DateRangeFilter";
+import useStickyDataFilters from "../hooks/useStickyDataFilters";
 import "../styles/goods-receipts.css";
 import {
     formatDate,
@@ -39,6 +41,7 @@ const purchaseOrderStatusLabels = {
 };
 
 const GoodsReceiptsPage = () => {
+    const filtersRef = useStickyDataFilters();
     const { user } = useAuth();
 
     const canCreateGoodsReceipt = [
@@ -60,6 +63,9 @@ const GoodsReceiptsPage = () => {
 
     const [appliedSearch, setAppliedSearch] =
         useState("");
+
+    const [dateFrom, setDateFrom] = useState("");
+    const [dateTo, setDateTo] = useState("");
 
     const [page, setPage] = useState(1);
     const [reloadKey, setReloadKey] = useState(0);
@@ -126,6 +132,12 @@ const GoodsReceiptsPage = () => {
                         ...(appliedSearch && {
                             search: appliedSearch,
                         }),
+                        ...(dateFrom && {
+                            date_from: dateFrom,
+                        }),
+                        ...(dateTo && {
+                            date_to: dateTo,
+                        }),
                     });
 
                 if (!isCancelled) {
@@ -159,7 +171,13 @@ const GoodsReceiptsPage = () => {
         return () => {
             isCancelled = true;
         };
-    }, [page, appliedSearch, reloadKey]);
+    }, [
+        page,
+        appliedSearch,
+        dateFrom,
+        dateTo,
+        reloadKey,
+    ]);
 
     const handleSearch = (event) => {
         event.preventDefault();
@@ -167,9 +185,21 @@ const GoodsReceiptsPage = () => {
         setAppliedSearch(searchInput.trim());
     };
 
+    const handleDateFromChange = (nextDateFrom) => {
+        setPage(1);
+        setDateFrom(nextDateFrom);
+    };
+
+    const handleDateToChange = (nextDateTo) => {
+        setPage(1);
+        setDateTo(nextDateTo);
+    };
+
     const handleResetFilters = () => {
         setSearchInput("");
         setAppliedSearch("");
+        setDateFrom("");
+        setDateTo("");
         setPage(1);
     };
 
@@ -384,6 +414,7 @@ const GoodsReceiptsPage = () => {
 
             <section className="data-panel">
                 <form
+                    ref={filtersRef}
                     className="data-filters goods-receipt-filters"
                     onSubmit={handleSearch}
                 >
@@ -403,7 +434,7 @@ const GoodsReceiptsPage = () => {
                         <button type="submit">Cari</button>
                     </div>
 
-                    {appliedSearch && (
+                    {(appliedSearch || dateFrom || dateTo) && (
                         <button
                             type="button"
                             className="reset-filter"
@@ -413,6 +444,14 @@ const GoodsReceiptsPage = () => {
                             Reset
                         </button>
                     )}
+
+                    <DateRangeFilter
+                        dateFrom={dateFrom}
+                        dateTo={dateTo}
+                        disabled={isLoading}
+                        onDateFromChange={handleDateFromChange}
+                        onDateToChange={handleDateToChange}
+                    />
                 </form>
 
                 {errorMessage && (
