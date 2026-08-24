@@ -1,7 +1,5 @@
 import {
     AlertTriangle,
-    ChevronLeft,
-    ChevronRight,
     Eye,
     PackageOpen,
     RefreshCw,
@@ -28,6 +26,7 @@ import {
     getReceivablePurchaseOrdersRequest,
 } from "../api/purchaseOrders";
 import GoodsReceiptFormModal from "../components/goods-receipts/GoodsReceiptFormModal";
+import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 
 const PAGE_LIMIT = 10;
@@ -644,47 +643,12 @@ const GoodsReceiptsPage = () => {
                     </table>
                 </div>
 
-                <div className="pagination-bar">
-                    <p>
-                        Halaman <strong>{page}</strong> dari{" "}
-                        <strong>{totalPages}</strong>
-                    </p>
-
-                    <div>
-                        <button
-                            type="button"
-                            disabled={isLoading || page <= 1}
-                            onClick={() =>
-                                setPage((current) =>
-                                    Math.max(current - 1, 1),
-                                )
-                            }
-                        >
-                            <ChevronLeft aria-hidden="true" />
-                            Sebelumnya
-                        </button>
-
-                        <button
-                            type="button"
-                            disabled={
-                                isLoading ||
-                                pagination.total_pages === 0 ||
-                                page >= pagination.total_pages
-                            }
-                            onClick={() =>
-                                setPage((current) =>
-                                    Math.min(
-                                        current + 1,
-                                        totalPages,
-                                    ),
-                                )
-                            }
-                        >
-                            Berikutnya
-                            <ChevronRight aria-hidden="true" />
-                        </button>
-                    </div>
-                </div>
+                <PaginationBar
+                    page={page}
+                    totalPages={totalPages}
+                    isLoading={isLoading}
+                    onPageChange={setPage}
+                />
             </section>
             {isDetailOpen && (
                 <GoodsReceiptDetailDialog

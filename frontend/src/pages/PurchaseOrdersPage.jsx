@@ -1,8 +1,6 @@
 import {
   AlertTriangle,
   Ban,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   Plus,
   RefreshCw,
@@ -30,6 +28,7 @@ import "../styles/purchase-orders.css";
 import { getActiveProductsBySupplierRequest } from "../api/products";
 import { getActiveSuppliersRequest } from "../api/suppliers";
 import PurchaseOrderFormModal from "../components/purchase-orders/PurchaseOrderFormModal";
+import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 import useStickyDataFilters from "../hooks/useStickyDataFilters";
 import {
@@ -767,42 +766,12 @@ const PurchaseOrdersPage = () => {
           </table>
         </div>
 
-        <div className="pagination-bar">
-          <p>
-            Halaman <strong>{pagination.page}</strong>{" "}
-            dari <strong>{totalPages}</strong>
-          </p>
-
-          <div>
-            <button
-              type="button"
-              aria-label="Halaman sebelumnya"
-              disabled={page <= 1 || isLoading}
-              onClick={() =>
-                setPage((current) =>
-                  Math.max(current - 1, 1),
-                )
-              }
-            >
-              <ChevronLeft aria-hidden="true" />
-              Sebelumnya
-            </button>
-
-            <button
-              type="button"
-              aria-label="Halaman berikutnya"
-              disabled={page >= totalPages || isLoading}
-              onClick={() =>
-                setPage((current) =>
-                  Math.min(current + 1, totalPages),
-                )
-              }
-            >
-              Berikutnya
-              <ChevronRight aria-hidden="true" />
-            </button>
-          </div>
-        </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          isLoading={isLoading}
+          onPageChange={setPage}
+        />
       </section>
       {isFormOpen && (
         <PurchaseOrderFormModal

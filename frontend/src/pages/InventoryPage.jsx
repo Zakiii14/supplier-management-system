@@ -1,7 +1,5 @@
 import {
     AlertTriangle,
-    ChevronLeft,
-    ChevronRight,
     Eye,
     RefreshCw,
     Search,
@@ -16,6 +14,7 @@ import {
 import StatusFilter from "../components/filters/StatusFilter";
 import InventoryMovementDetailDialog from "../components/inventory/InventoryMovementDetailDialog";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
+import PaginationBar from "../components/tables/PaginationBar";
 import useStickyDataFilters from "../hooks/useStickyDataFilters";
 import "../styles/inventory.css";
 import { formatNumber } from "../utils/formatters";
@@ -356,15 +355,15 @@ const InventoryPage = () => {
                         dateFrom ||
                         dateTo
                     ) && (
-                        <button
-                            type="button"
-                            className="reset-filter"
-                            onClick={handleResetFilters}
-                        >
-                            <X aria-hidden="true" />
-                            Reset
-                        </button>
-                    )}
+                            <button
+                                type="button"
+                                className="reset-filter"
+                                onClick={handleResetFilters}
+                            >
+                                <X aria-hidden="true" />
+                                Reset
+                            </button>
+                        )}
 
                     <DateRangeFilter
                         dateFrom={dateFrom}
@@ -505,8 +504,8 @@ const InventoryPage = () => {
                                                 <td data-label="Kuantitas">
                                                     <strong
                                                         className={`inventory-quantity ${isOutbound
-                                                                ? "is-outbound"
-                                                                : "is-inbound"
+                                                            ? "is-outbound"
+                                                            : "is-inbound"
                                                             }`}
                                                     >
                                                         {isOutbound ? "-" : "+"}
@@ -583,44 +582,12 @@ const InventoryPage = () => {
                     </table>
                 </div>
 
-                <div className="pagination-bar">
-                    <p>
-                        Halaman <strong>{page}</strong> dari{" "}
-                        <strong>{totalPages}</strong>
-                    </p>
-
-                    <div>
-                        <button
-                            type="button"
-                            disabled={isLoading || page <= 1}
-                            onClick={() =>
-                                setPage((current) =>
-                                    Math.max(current - 1, 1),
-                                )
-                            }
-                        >
-                            <ChevronLeft aria-hidden="true" />
-                            Sebelumnya
-                        </button>
-
-                        <button
-                            type="button"
-                            disabled={
-                                isLoading ||
-                                page >= totalPages ||
-                                pagination.total_pages === 0
-                            }
-                            onClick={() =>
-                                setPage((current) =>
-                                    current + 1,
-                                )
-                            }
-                        >
-                            Berikutnya
-                            <ChevronRight aria-hidden="true" />
-                        </button>
-                    </div>
-                </div>
+                <PaginationBar
+                    page={page}
+                    totalPages={totalPages}
+                    isLoading={isLoading}
+                    onPageChange={setPage}
+                />
             </section>
             {isDetailOpen && (
                 <InventoryMovementDetailDialog

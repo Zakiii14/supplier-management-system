@@ -1,7 +1,5 @@
 import {
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
   PackageSearch,
   Pencil,
   Plus,
@@ -33,6 +31,7 @@ import { getActiveSuppliersRequest } from "../api/suppliers";
 import ProductFormModal from "../components/products/ProductFormModal";
 import ProductStatusDialog from "../components/products/ProductStatusDialog";
 import StatusFilter from "../components/filters/StatusFilter";
+import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 
 const PAGE_LIMIT = 10;
@@ -632,44 +631,12 @@ const ProductsPage = () => {
           </table>
         </div>
 
-        <div className="pagination-bar">
-          <p>
-            Halaman <strong>{pagination.page}</strong>{" "}
-            dari <strong>{totalPages}</strong>
-          </p>
-
-          <div>
-            <button
-              type="button"
-              onClick={() =>
-                setPage((current) =>
-                  Math.max(current - 1, 1),
-                )
-              }
-              disabled={page <= 1 || isLoading}
-              aria-label="Halaman sebelumnya"
-            >
-              <ChevronLeft aria-hidden="true" />
-              Sebelumnya
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setPage((current) =>
-                  Math.min(current + 1, totalPages),
-                )
-              }
-              disabled={
-                page >= totalPages || isLoading
-              }
-              aria-label="Halaman berikutnya"
-            >
-              Berikutnya
-              <ChevronRight aria-hidden="true" />
-            </button>
-          </div>
-        </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          isLoading={isLoading}
+          onPageChange={setPage}
+        />
       </section>
       {isProductFormOpen && (
         <ProductFormModal

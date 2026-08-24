@@ -1,8 +1,6 @@
 import {
     AlertTriangle,
     Building2,
-    ChevronLeft,
-    ChevronRight,
     Mail,
     Pencil,
     Phone,
@@ -27,6 +25,7 @@ import {
 import SupplierFormModal from "../components/suppliers/SupplierFormModal";
 import StatusFilter from "../components/filters/StatusFilter";
 import SupplierStatusDialog from "../components/suppliers/SupplierStatusDialog";
+import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 import { formatNumber } from "../utils/formatters";
 import "../styles/suppliers.css";
@@ -554,47 +553,12 @@ const SuppliersPage = () => {
                     </table>
                 </div>
 
-                <div className="pagination-bar">
-                    <p>
-                        Halaman <strong>{pagination.page}</strong>{" "}
-                        dari <strong>{totalPages}</strong>
-                    </p>
-
-                    <div>
-                        <button
-                            type="button"
-                            disabled={page <= 1 || isLoading}
-                            aria-label="Halaman sebelumnya"
-                            onClick={() =>
-                                setPage((current) =>
-                                    Math.max(current - 1, 1),
-                                )
-                            }
-                        >
-                            <ChevronLeft aria-hidden="true" />
-                            Sebelumnya
-                        </button>
-
-                        <button
-                            type="button"
-                            disabled={
-                                page >= totalPages || isLoading
-                            }
-                            aria-label="Halaman berikutnya"
-                            onClick={() =>
-                                setPage((current) =>
-                                    Math.min(
-                                        current + 1,
-                                        totalPages,
-                                    ),
-                                )
-                            }
-                        >
-                            Berikutnya
-                            <ChevronRight aria-hidden="true" />
-                        </button>
-                    </div>
-                </div>
+                <PaginationBar
+                    page={page}
+                    totalPages={totalPages}
+                    isLoading={isLoading}
+                    onPageChange={setPage}
+                />
             </section>
             {isSupplierFormOpen && (
                 <SupplierFormModal

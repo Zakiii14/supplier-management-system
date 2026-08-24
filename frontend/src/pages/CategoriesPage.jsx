@@ -1,7 +1,5 @@
 import {
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
   Pencil,
   Plus,
   Power,
@@ -21,6 +19,7 @@ import {
 import CategoryFormModal from "../components/categories/CategoryFormModal";
 import CategoryStatusDialog from "../components/categories/CategoryStatusDialog";
 import StatusFilter from "../components/filters/StatusFilter";
+import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 import "../styles/categories.css";
 
@@ -376,8 +375,8 @@ const CategoriesPage = () => {
         <div className="data-table-wrapper">
           <table
             className={`data-table category-table ${canManageCategories
-                ? "has-actions"
-                : ""
+              ? "has-actions"
+              : ""
               }`}
           >
             <thead>
@@ -438,8 +437,8 @@ const CategoriesPage = () => {
                     <td data-label="Status">
                       <span
                         className={`status-badge ${category.status === "ACTIVE"
-                            ? "is-active"
-                            : "is-inactive"
+                          ? "is-active"
+                          : "is-inactive"
                           }`}
                       >
                         {category.status}
@@ -485,9 +484,9 @@ const CategoriesPage = () => {
                           <button
                             type="button"
                             className={`table-status-action ${category.status ===
-                                "ACTIVE"
-                                ? "is-deactivate"
-                                : "is-activate"
+                              "ACTIVE"
+                              ? "is-deactivate"
+                              : "is-activate"
                               }`}
                             disabled={
                               isSubmitting ||
@@ -524,47 +523,12 @@ const CategoriesPage = () => {
           </table>
         </div>
 
-        <div className="pagination-bar">
-          <p>
-            Halaman <strong>{pagination.page}</strong>{" "}
-            dari <strong>{totalPages}</strong>
-          </p>
-
-          <div>
-            <button
-              type="button"
-              aria-label="Halaman sebelumnya"
-              disabled={page <= 1 || isLoading}
-              onClick={() =>
-                setPage((current) =>
-                  Math.max(current - 1, 1),
-                )
-              }
-            >
-              <ChevronLeft aria-hidden="true" />
-              Sebelumnya
-            </button>
-
-            <button
-              type="button"
-              aria-label="Halaman berikutnya"
-              disabled={
-                page >= totalPages || isLoading
-              }
-              onClick={() =>
-                setPage((current) =>
-                  Math.min(
-                    current + 1,
-                    totalPages,
-                  ),
-                )
-              }
-            >
-              Berikutnya
-              <ChevronRight aria-hidden="true" />
-            </button>
-          </div>
-        </div>
+        <PaginationBar
+          page={page}
+          totalPages={totalPages}
+          isLoading={isLoading}
+          onPageChange={setPage}
+        />
       </section>
 
       {isFormOpen && (

@@ -1,8 +1,6 @@
 import {
     AlertTriangle,
     UsersRound,
-    ChevronLeft,
-    ChevronRight,
     Mail,
     Pencil,
     Phone,
@@ -27,6 +25,7 @@ import {
 import CustomerFormModal from "../components/customers/CustomerFormModal";
 import StatusFilter from "../components/filters/StatusFilter";
 import CustomerStatusDialog from "../components/customers/CustomerStatusDialog";
+import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 import { formatNumber } from "../utils/formatters";
 import "../styles/customers.css";
@@ -563,47 +562,13 @@ const CustomersPage = () => {
                     </table>
                 </div>
 
-                <div className="pagination-bar">
-                    <p>
-                        Halaman <strong>{pagination.page}</strong>{" "}
-                        dari <strong>{totalPages}</strong>
-                    </p>
+                <PaginationBar
+                    page={page}
+                    totalPages={totalPages}
+                    isLoading={isLoading}
+                    onPageChange={setPage}
+                />
 
-                    <div>
-                        <button
-                            type="button"
-                            disabled={page <= 1 || isLoading}
-                            aria-label="Halaman sebelumnya"
-                            onClick={() =>
-                                setPage((current) =>
-                                    Math.max(current - 1, 1),
-                                )
-                            }
-                        >
-                            <ChevronLeft aria-hidden="true" />
-                            Sebelumnya
-                        </button>
-
-                        <button
-                            type="button"
-                            disabled={
-                                page >= totalPages || isLoading
-                            }
-                            aria-label="Halaman berikutnya"
-                            onClick={() =>
-                                setPage((current) =>
-                                    Math.min(
-                                        current + 1,
-                                        totalPages,
-                                    ),
-                                )
-                            }
-                        >
-                            Berikutnya
-                            <ChevronRight aria-hidden="true" />
-                        </button>
-                    </div>
-                </div>
             </section>
             {isCustomerFormOpen && (
                 <CustomerFormModal
