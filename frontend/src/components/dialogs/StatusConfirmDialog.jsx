@@ -1,18 +1,29 @@
-import { useEffect } from "react";
+import {
+  useEffect,
+  useId,
+} from "react";
 import {
   AlertTriangle,
   CheckCircle2,
   X,
 } from "lucide-react";
 
-const CategoryStatusDialog = ({
+const StatusConfirmDialog = ({
   isOpen,
-  category,
+  entityLabel = "data",
+  entityName = "",
+  identifierLabel = "kode",
+  identifierValue = "",
+  currentStatus = "",
   isSubmitting = false,
   requestError = "",
   onCancel,
   onConfirm,
 }) => {
+  const dialogId = useId();
+  const titleId = `${dialogId}-title`;
+  const descriptionId = `${dialogId}-description`;
+
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -47,20 +58,29 @@ const CategoryStatusDialog = ({
     };
   }, [isOpen, isSubmitting, onCancel]);
 
-  if (!isOpen || !category) {
+  if (
+    !isOpen ||
+    !entityName ||
+    !identifierValue ||
+    !currentStatus
+  ) {
     return null;
   }
 
   const isDeactivating =
-    category.status === "ACTIVE";
+    currentStatus === "ACTIVE";
 
   const nextStatus = isDeactivating
     ? "INACTIVE"
     : "ACTIVE";
 
+  const displayEntityLabel =
+    entityLabel.charAt(0).toUpperCase() +
+    entityLabel.slice(1);
+
   return (
     <div
-      className="category-status-backdrop"
+      className="status-dialog-backdrop"
       role="presentation"
       onMouseDown={(event) => {
         if (
@@ -72,15 +92,15 @@ const CategoryStatusDialog = ({
       }}
     >
       <section
-        className="category-status-dialog"
+        className="status-dialog"
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="category-status-title"
-        aria-describedby="category-status-description"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
       >
         <button
           type="button"
-          className="category-status-close"
+          className="status-dialog-close"
           aria-label="Tutup konfirmasi"
           disabled={isSubmitting}
           onClick={onCancel}
@@ -89,7 +109,7 @@ const CategoryStatusDialog = ({
         </button>
 
         <div
-          className={`category-status-icon ${
+          className={`status-dialog-icon ${
             isDeactivating
               ? "is-warning"
               : "is-success"
@@ -102,17 +122,17 @@ const CategoryStatusDialog = ({
           )}
         </div>
 
-        <h2 id="category-status-title">
+        <h2 id={titleId}>
           {isDeactivating
-            ? "Nonaktifkan kategori?"
-            : "Aktifkan kategori?"}
+            ? `Nonaktifkan ${entityLabel}?`
+            : `Aktifkan ${entityLabel}?`}
         </h2>
 
-        <p id="category-status-description">
-          Kategori{" "}
-          <strong>{category.category_name}</strong>{" "}
-          dengan kode{" "}
-          <strong>{category.category_code}</strong>{" "}
+        <p id={descriptionId}>
+          {displayEntityLabel}{" "}
+          <strong>{entityName}</strong> dengan{" "}
+          {identifierLabel}{" "}
+          <strong>{identifierValue}</strong>{" "}
           akan diubah menjadi{" "}
           <strong>
             {isDeactivating
@@ -124,17 +144,17 @@ const CategoryStatusDialog = ({
 
         {requestError && (
           <div
-            className="category-status-error"
+            className="status-dialog-error"
             role="alert"
           >
             {requestError}
           </div>
         )}
 
-        <div className="category-status-actions">
+        <div className="status-dialog-actions">
           <button
             type="button"
-            className="category-status-cancel"
+            className="status-dialog-cancel"
             disabled={isSubmitting}
             onClick={onCancel}
           >
@@ -143,7 +163,7 @@ const CategoryStatusDialog = ({
 
           <button
             type="button"
-            className={`category-status-confirm ${
+            className={`status-dialog-confirm ${
               isDeactivating
                 ? "is-deactivate"
                 : "is-activate"
@@ -163,4 +183,4 @@ const CategoryStatusDialog = ({
   );
 };
 
-export default CategoryStatusDialog;
+export default StatusConfirmDialog;

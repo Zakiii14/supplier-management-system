@@ -17,7 +17,7 @@ import {
   updateCategoryStatusRequest,
 } from "../api/categories";
 import CategoryFormModal from "../components/categories/CategoryFormModal";
-import CategoryStatusDialog from "../components/categories/CategoryStatusDialog";
+import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
 import StatusFilter from "../components/filters/StatusFilter";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
@@ -547,9 +547,19 @@ const CategoriesPage = () => {
       )}
 
       {isStatusDialogOpen && (
-        <CategoryStatusDialog
+        <StatusConfirmDialog
           isOpen
-          category={statusCategory}
+          entityLabel="kategori"
+          entityName={
+            statusCategory?.category_name ?? ""
+          }
+          identifierLabel="kode"
+          identifierValue={
+            statusCategory?.category_code ?? ""
+          }
+          currentStatus={
+            statusCategory?.status ?? ""
+          }
           isSubmitting={isUpdatingStatus}
           requestError={statusError}
           onCancel={handleCloseStatusDialog}

@@ -24,7 +24,7 @@ import {
 } from "../api/customers";
 import CustomerFormModal from "../components/customers/CustomerFormModal";
 import StatusFilter from "../components/filters/StatusFilter";
-import CustomerStatusDialog from "../components/customers/CustomerStatusDialog";
+import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 import { formatNumber } from "../utils/formatters";
@@ -583,9 +583,19 @@ const CustomersPage = () => {
                 />
             )}
             {isStatusDialogOpen && (
-                <CustomerStatusDialog
+                <StatusConfirmDialog
                     isOpen
-                    customer={statusCustomer}
+                    entityLabel="customer"
+                    entityName={
+                        statusCustomer?.customer_name ?? ""
+                    }
+                    identifierLabel="kode"
+                    identifierValue={
+                        statusCustomer?.customer_code ?? ""
+                    }
+                    currentStatus={
+                        statusCustomer?.status ?? ""
+                    }
                     isSubmitting={isUpdatingStatus}
                     requestError={statusError}
                     onCancel={handleCloseStatusDialog}

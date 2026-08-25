@@ -24,7 +24,7 @@ import {
 } from "../api/suppliers";
 import SupplierFormModal from "../components/suppliers/SupplierFormModal";
 import StatusFilter from "../components/filters/StatusFilter";
-import SupplierStatusDialog from "../components/suppliers/SupplierStatusDialog";
+import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 import { formatNumber } from "../utils/formatters";
@@ -573,9 +573,19 @@ const SuppliersPage = () => {
                 />
             )}
             {isStatusDialogOpen && (
-                <SupplierStatusDialog
+                <StatusConfirmDialog
                     isOpen
-                    supplier={statusSupplier}
+                    entityLabel="supplier"
+                    entityName={
+                        statusSupplier?.supplier_name ?? ""
+                    }
+                    identifierLabel="kode"
+                    identifierValue={
+                        statusSupplier?.supplier_code ?? ""
+                    }
+                    currentStatus={
+                        statusSupplier?.status ?? ""
+                    }
                     isSubmitting={isUpdatingStatus}
                     requestError={statusError}
                     onCancel={handleCloseStatusDialog}

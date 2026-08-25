@@ -29,7 +29,7 @@ import {
 } from "../api/categories";
 import { getActiveSuppliersRequest } from "../api/suppliers";
 import ProductFormModal from "../components/products/ProductFormModal";
-import ProductStatusDialog from "../components/products/ProductStatusDialog";
+import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
 import StatusFilter from "../components/filters/StatusFilter";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
@@ -653,9 +653,19 @@ const ProductsPage = () => {
         />
       )}
       {isStatusDialogOpen && (
-        <ProductStatusDialog
+        <StatusConfirmDialog
           isOpen
-          product={statusProduct}
+          entityLabel="produk"
+          entityName={
+            statusProduct?.product_name ?? ""
+          }
+          identifierLabel="SKU"
+          identifierValue={
+            statusProduct?.sku ?? ""
+          }
+          currentStatus={
+            statusProduct?.status ?? ""
+          }
           isSubmitting={isUpdatingStatus}
           requestError={statusError}
           onCancel={handleCloseStatusDialog}

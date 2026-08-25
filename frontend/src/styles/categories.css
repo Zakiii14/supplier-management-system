@@ -65,8 +65,7 @@
 
 /* Form modal */
 
-.category-form-backdrop,
-.category-status-backdrop {
+.category-form-backdrop {
   position: fixed;
   z-index: 1000;
   inset: 0;
@@ -112,11 +111,9 @@
   flex: 0 0 auto;
   border-radius: 0.8rem;
   color: #ffffff;
-  background: linear-gradient(
-    135deg,
-    #2563eb,
-    #1d4ed8
-  );
+  background: linear-gradient(135deg,
+      #2563eb,
+      #1d4ed8);
 }
 
 .category-form-icon svg {
@@ -139,8 +136,7 @@
   font-size: 1.15rem;
 }
 
-.category-form-close,
-.category-status-close {
+.category-form-close {
   display: grid;
   width: 2.35rem;
   height: 2.35rem;
@@ -153,14 +149,12 @@
   cursor: pointer;
 }
 
-.category-form-close:hover:not(:disabled),
-.category-status-close:hover:not(:disabled) {
+.category-form-close:hover:not(:disabled) {
   color: #172033;
   background: #f1f5f9;
 }
 
-.category-form-close svg,
-.category-status-close svg {
+.category-form-close svg {
   width: 1.15rem;
   height: 1.15rem;
 }
@@ -183,8 +177,7 @@
   line-height: 1.55;
 }
 
-.category-form-error,
-.category-status-error {
+.category-form-error {
   margin-bottom: 1rem;
   padding: 0.8rem 0.9rem;
   border: 1px solid #fecaca;
@@ -204,13 +197,13 @@
   gap: 0.45rem;
 }
 
-.category-form-field > span {
+.category-form-field>span {
   color: #334155;
   font-size: 0.83rem;
   font-weight: 700;
 }
 
-.category-form-field > span strong {
+.category-form-field>span strong {
   margin-left: 0.2rem;
   color: #dc2626;
 }
@@ -257,9 +250,7 @@
 }
 
 .category-form-cancel,
-.category-form-submit,
-.category-status-cancel,
-.category-status-confirm {
+.category-form-submit {
   min-height: 2.6rem;
   padding: 0.65rem 1rem;
   border-radius: 0.75rem;
@@ -269,8 +260,7 @@
   cursor: pointer;
 }
 
-.category-form-cancel,
-.category-status-cancel {
+.category-form-cancel {
   border: 1px solid #cbd5e1;
   color: #475569;
   background: #ffffff;
@@ -287,109 +277,9 @@
 }
 
 .category-form-cancel:disabled,
-.category-form-submit:disabled,
-.category-status-cancel:disabled,
-.category-status-confirm:disabled {
+.category-form-submit:disabled {
   opacity: 0.6;
   cursor: not-allowed;
-}
-
-/* Status dialog */
-
-.category-status-dialog {
-  position: relative;
-  width: min(100%, 29rem);
-  padding: 1.5rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 1.25rem;
-  text-align: center;
-  background: #ffffff;
-  box-shadow:
-    0 24px 60px rgb(15 23 42 / 20%),
-    0 8px 24px rgb(15 23 42 / 12%);
-}
-
-.category-status-close {
-  position: absolute;
-  top: 0.8rem;
-  right: 0.8rem;
-}
-
-.category-status-icon {
-  display: grid;
-  width: 3.6rem;
-  height: 3.6rem;
-  place-items: center;
-  margin: 0 auto 1rem;
-  border-radius: 50%;
-}
-
-.category-status-icon svg {
-  width: 1.65rem;
-  height: 1.65rem;
-}
-
-.category-status-icon.is-warning {
-  color: #b45309;
-  background: #fef3c7;
-}
-
-.category-status-icon.is-success {
-  color: #15803d;
-  background: #dcfce7;
-}
-
-.category-status-dialog h2 {
-  margin: 0 0 0.65rem;
-  color: #172033;
-  font-size: 1.2rem;
-}
-
-.category-status-dialog > p {
-  margin: 0;
-  color: #64748b;
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.category-status-dialog > p strong {
-  color: #334155;
-}
-
-.category-status-error {
-  margin-top: 1rem;
-  margin-bottom: 0;
-  text-align: left;
-}
-
-.category-status-actions {
-  display: flex;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-top: 1.4rem;
-}
-
-.category-status-confirm {
-  border: 1px solid transparent;
-  color: #ffffff;
-}
-
-.category-status-confirm.is-deactivate {
-  border-color: #dc2626;
-  background: #dc2626;
-}
-
-.category-status-confirm.is-activate {
-  border-color: #16a34a;
-  background: #16a34a;
-}
-
-.category-status-confirm.is-deactivate:hover:not(:disabled) {
-  background: #b91c1c;
-}
-
-.category-status-confirm.is-activate:hover:not(:disabled) {
-  background: #15803d;
 }
 
 @media (max-width: 720px) {
@@ -401,14 +291,12 @@
     flex-basis: 100%;
   }
 
-  .category-form-backdrop,
-  .category-status-backdrop {
+  .category-form-backdrop {
     align-items: end;
     padding: 0;
   }
 
-  .category-form-modal,
-  .category-status-dialog {
+  .category-form-modal {
     width: 100%;
     max-height: calc(100dvh - 1rem);
     border-right: 0;
@@ -417,16 +305,13 @@
     border-radius: 1.25rem 1.25rem 0 0;
   }
 
-  .category-form-actions,
-  .category-status-actions {
+  .category-form-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
   }
 
   .category-form-cancel,
-  .category-form-submit,
-  .category-status-cancel,
-  .category-status-confirm {
+  .category-form-submit {
     width: 100%;
   }
 }
@@ -443,11 +328,4 @@
     padding-left: 1rem;
   }
 
-  .category-status-dialog {
-    padding: 1.35rem 1rem 1rem;
-  }
-
-  .category-status-actions {
-    gap: 0.6rem;
-  }
 }
