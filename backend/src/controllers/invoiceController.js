@@ -1,21 +1,36 @@
 const pool = require("../config/database");
 
+const {
+  parseDateRange,
+} = require("../utils/dateRange");
+
 const getAllInvoices = async (req, res) => {
   try {
     const {
       search = "",
-      status,
-      customer_id,
-      page = 1,
-      limit = 10,
+      status = "",
+      customer_id = "",
+      date_from = "",
+      date_to = "",
+      page = "1",
+      limit = "10",
     } = req.query;
 
-    const pageNumber = Math.max(Number(page) || 1, 1);
-    const limitNumber = Math.min(
-      Math.max(Number(limit) || 10, 1),
-      100
-    );
-    const offset = (pageNumber - 1) * limitNumber;
+    const parsedPage = Number(page);
+    const parsedLimit = Number(limit);
+
+    if (
+      !Number.isInteger(parsedPage) ||
+      !Number.isInteger(parsedLimit) ||
+      parsedPage < 1 ||
+      parsedLimit < 1 ||
+      parsedLimit > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid pagination parameters",
+      });
+    }
 
     const allowedStatuses = [
       "UNPAID",
@@ -25,18 +40,62 @@ const getAllInvoices = async (req, res) => {
       "CANCELLED",
     ];
 
-    if (status && !allowedStatuses.includes(status)) {
+    const normalizedStatus =
+      typeof status === "string"
+        ? status.trim().toUpperCase()
+        : "";
+
+    if (
+      normalizedStatus &&
+      !allowedStatuses.includes(normalizedStatus)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Invalid invoice status",
       });
     }
 
+    const normalizedSearch =
+      typeof search === "string"
+        ? search.trim()
+        : "";
+
+    const normalizedCustomerId =
+      typeof customer_id === "string"
+        ? customer_id.trim()
+        : "";
+
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (
+      normalizedCustomerId &&
+      !uuidPattern.test(normalizedCustomerId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid customer ID",
+      });
+    }
+
+    const {
+      dateFrom,
+      dateTo,
+      error: dateRangeError,
+    } = parseDateRange(date_from, date_to);
+
+    if (dateRangeError) {
+      return res.status(400).json({
+        success: false,
+        message: dateRangeError,
+      });
+    }
+
     const conditions = [];
     const values = [];
 
-    if (search.trim()) {
-      values.push(`%${search.trim()}%`);
+    if (normalizedSearch) {
+      values.push(`%${normalizedSearch}%`);
 
       conditions.push(`
         (
@@ -44,28 +103,70 @@ const getAllInvoices = async (req, res) => {
           OR so.so_number ILIKE $${values.length}
           OR c.customer_code ILIKE $${values.length}
           OR c.customer_name ILIKE $${values.length}
+          OR COALESCE(i.notes, '')
+            ILIKE $${values.length}
         )
       `);
     }
 
-    if (status) {
-      values.push(status);
+    if (normalizedStatus === "OVERDUE") {
+      conditions.push(`
+        (
+          i.due_date < CURRENT_DATE
+          AND i.status IN (
+            'UNPAID',
+            'PARTIAL'
+          )
+        )
+      `);
+    } else if (
+      ["UNPAID", "PARTIAL"].includes(
+        normalizedStatus,
+      )
+    ) {
+      values.push(normalizedStatus);
+
+      conditions.push(`
+        (
+          i.status = $${values.length}
+          AND i.due_date >= CURRENT_DATE
+        )
+      `);
+    } else if (normalizedStatus) {
+      values.push(normalizedStatus);
+
       conditions.push(
-        `i.status::TEXT = $${values.length}`
+        `i.status = $${values.length}`,
       );
     }
 
-    if (customer_id) {
-      values.push(customer_id);
+    if (normalizedCustomerId) {
+      values.push(normalizedCustomerId);
+
       conditions.push(
-        `i.customer_id = $${values.length}`
+        `i.customer_id = $${values.length}`,
       );
     }
 
-    const whereClause =
-      conditions.length > 0
-        ? `WHERE ${conditions.join(" AND ")}`
-        : "";
+    if (dateFrom) {
+      values.push(dateFrom);
+
+      conditions.push(
+        `i.invoice_date >= $${values.length}::DATE`,
+      );
+    }
+
+    if (dateTo) {
+      values.push(dateTo);
+
+      conditions.push(
+        `i.invoice_date <= $${values.length}::DATE`,
+      );
+    }
+
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
 
     const countResult = await pool.query(
       `
@@ -77,14 +178,27 @@ const getAllInvoices = async (req, res) => {
         ON c.id = i.customer_id
       ${whereClause}
       `,
-      values
+      values,
     );
 
-    const queryValues = [
+    const total = countResult.rows[0].total;
+
+    const totalPages =
+      total === 0
+        ? 0
+        : Math.ceil(total / parsedLimit);
+
+    const offset =
+      (parsedPage - 1) * parsedLimit;
+
+    const listValues = [
       ...values,
-      limitNumber,
+      parsedLimit,
       offset,
     ];
+
+    const limitPosition = values.length + 1;
+    const offsetPosition = values.length + 2;
 
     const result = await pool.query(
       `
@@ -106,7 +220,16 @@ const getAllInvoices = async (req, res) => {
         (
           i.grand_total - i.paid_amount
         ) AS outstanding_amount,
-        i.status,
+        CASE
+          WHEN
+            i.due_date < CURRENT_DATE
+            AND i.status IN (
+              'UNPAID',
+              'PARTIAL'
+            )
+          THEN 'OVERDUE'::app.invoice_status
+          ELSE i.status
+        END AS status,
         (
           i.due_date < CURRENT_DATE
           AND i.status IN (
@@ -117,42 +240,42 @@ const getAllInvoices = async (req, res) => {
         i.notes,
         i.created_at,
         i.updated_at
-
       FROM app.invoices i
-
       JOIN app.sales_orders so
         ON so.id = i.sales_order_id
-
       JOIN app.customers c
         ON c.id = i.customer_id
-
       ${whereClause}
-
       ORDER BY i.created_at DESC
-
-      LIMIT $${queryValues.length - 1}
-      OFFSET $${queryValues.length}
+      LIMIT $${limitPosition}
+      OFFSET $${offsetPosition}
       `,
-      queryValues
+      listValues,
     );
-
-    const totalData = countResult.rows[0].total;
 
     res.status(200).json({
       success: true,
       message: "Invoices retrieved successfully",
       data: result.rows,
       pagination: {
-        page: pageNumber,
-        limit: limitNumber,
-        total_data: totalData,
-        total_pages: Math.ceil(
-          totalData / limitNumber
-        ),
+        page: parsedPage,
+        limit: parsedLimit,
+        total,
+        total_pages: totalPages,
       },
     });
   } catch (error) {
-    console.error("Error fetching invoices:", error);
+    console.error(
+      "Error fetching invoices:",
+      error,
+    );
+
+    if (error.code === "22P02") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid customer ID",
+      });
+    }
 
     res.status(500).json({
       success: false,
@@ -161,16 +284,17 @@ const getAllInvoices = async (req, res) => {
   }
 };
 
-const getInvoiceById = async (req, res) => {
+const getInvoiceEligibleSalesOrders = async (
+  req,
+  res,
+) => {
   try {
-    const { id } = req.params;
-
     const result = await pool.query(
       `
       SELECT
-        i.*,
+        so.id,
         so.so_number,
-        so.order_date,
+        so.customer_id,
         c.customer_code,
         c.customer_name,
         c.contact_person,
@@ -179,44 +303,207 @@ const getInvoiceById = async (req, res) => {
         c.address,
         c.city,
         c.payment_terms_days,
+        so.order_date,
+        so.requested_delivery_date,
+        so.status,
+        COALESCE(summary.total_items, 0)
+          AS total_items,
+        COALESCE(summary.subtotal, 0)
+          AS subtotal,
+        COALESCE(summary.discount_amount, 0)
+          AS discount_amount,
+        COALESCE(summary.total_amount, 0)
+          AS total_amount
+      FROM app.sales_orders so
+      JOIN app.customers c
+        ON c.id = so.customer_id
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(soi.id)::INTEGER
+            AS total_items,
+          COALESCE(
+            SUM(
+              soi.quantity * soi.unit_price
+            ),
+            0
+          ) AS subtotal,
+          COALESCE(
+            SUM(soi.discount_amount),
+            0
+          ) AS discount_amount,
+          COALESCE(
+            SUM(
+              soi.quantity * soi.unit_price
+              - soi.discount_amount
+            ),
+            0
+          ) AS total_amount
+        FROM app.sales_order_items soi
+        WHERE soi.sales_order_id = so.id
+      ) summary ON TRUE
+      WHERE so.status = 'DELIVERED'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM app.invoices i
+          WHERE i.sales_order_id = so.id
+        )
+      ORDER BY
+        so.order_date DESC,
+        so.so_number ASC
+      `,
+    );
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Invoice eligible sales orders retrieved successfully",
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error(
+      "Error fetching invoice eligible sales orders:",
+      error,
+    );
+
+    res.status(500).json({
+      success: false,
+      message:
+        "Failed to retrieve invoice eligible sales orders",
+    });
+  }
+};
+
+const getInvoiceById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const invoiceResult = await pool.query(
+      `
+      SELECT
+        i.id,
+        i.invoice_number,
+        i.sales_order_id,
+        so.so_number,
+        so.order_date,
+        i.customer_id,
+        c.customer_code,
+        c.customer_name,
+        c.contact_person,
+        c.phone,
+        c.email,
+        c.address,
+        c.city,
+        c.payment_terms_days,
+        i.invoice_date,
+        i.due_date,
+        i.subtotal,
+        i.discount_amount,
+        i.tax_amount,
+        i.grand_total,
+        i.paid_amount,
         (
           i.grand_total - i.paid_amount
         ) AS outstanding_amount,
+        CASE
+          WHEN
+            i.due_date < CURRENT_DATE
+            AND i.status IN (
+              'UNPAID',
+              'PARTIAL'
+            )
+          THEN 'OVERDUE'::app.invoice_status
+          ELSE i.status
+        END AS status,
         (
           i.due_date < CURRENT_DATE
           AND i.status IN (
             'UNPAID',
             'PARTIAL'
           )
-        ) AS is_overdue
-
+        ) AS is_overdue,
+        i.notes,
+        i.created_at,
+        i.updated_at
       FROM app.invoices i
-
       JOIN app.sales_orders so
         ON so.id = i.sales_order_id
-
       JOIN app.customers c
         ON c.id = i.customer_id
-
       WHERE i.id = $1
       `,
-      [id]
+      [id],
     );
 
-    if (result.rows.length === 0) {
+    if (invoiceResult.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: "Invoice not found",
       });
     }
 
+    const itemsResult = await pool.query(
+      `
+      SELECT
+        soi.id,
+        soi.product_id,
+        p.sku,
+        p.product_name,
+        p.unit,
+        soi.quantity,
+        soi.unit_price,
+        soi.discount_amount,
+        (
+          soi.quantity * soi.unit_price
+          - soi.discount_amount
+        ) AS subtotal
+      FROM app.sales_order_items soi
+      JOIN app.products p
+        ON p.id = soi.product_id
+      WHERE soi.sales_order_id = $1
+      ORDER BY p.product_name ASC
+      `,
+      [invoiceResult.rows[0].sales_order_id],
+    );
+
+    const paymentsResult = await pool.query(
+      `
+      SELECT
+        p.id,
+        p.payment_number,
+        p.payment_date,
+        p.amount,
+        p.method,
+        p.reference_number,
+        p.notes,
+        p.received_by,
+        u.full_name AS received_by_name,
+        p.created_at
+      FROM app.payments p
+      LEFT JOIN app.users u
+        ON u.id = p.received_by
+      WHERE p.invoice_id = $1
+      ORDER BY
+        p.payment_date DESC,
+        p.created_at DESC
+      `,
+      [id],
+    );
+
     res.status(200).json({
       success: true,
-      message: "Invoice retrieved successfully",
-      data: result.rows[0],
+      message:
+        "Invoice retrieved successfully",
+      data: {
+        ...invoiceResult.rows[0],
+        items: itemsResult.rows,
+        payments: paymentsResult.rows,
+      },
     });
   } catch (error) {
-    console.error("Error fetching invoice:", error);
+    console.error(
+      "Error fetching invoice:",
+      error,
+    );
 
     if (error.code === "22P02") {
       return res.status(400).json({
@@ -515,6 +802,7 @@ const cancelInvoice = async (req, res) => {
 
 module.exports = {
   getAllInvoices,
+  getInvoiceEligibleSalesOrders,
   getInvoiceById,
   createInvoice,
   cancelInvoice,

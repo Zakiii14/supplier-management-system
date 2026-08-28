@@ -1,11 +1,12 @@
 const express = require("express");
 
 const authorizeRoles = require(
-  "../middleware/authorizeRoles"
+  "../middleware/authorizeRoles",
 );
 
 const {
   getAllInvoices,
+  getInvoiceEligibleSalesOrders,
   getInvoiceById,
   createInvoice,
   cancelInvoice,
@@ -19,9 +20,20 @@ router.get(
     "ADMIN",
     "FINANCE",
     "SALES",
-    "MANAGER"
+    "MANAGER",
   ),
-  getAllInvoices
+  getAllInvoices,
+);
+
+router.get(
+  "/eligible-sales-orders",
+  authorizeRoles(
+    "ADMIN",
+    "FINANCE",
+    "SALES",
+    "MANAGER",
+  ),
+  getInvoiceEligibleSalesOrders,
 );
 
 router.get(
@@ -30,21 +42,21 @@ router.get(
     "ADMIN",
     "FINANCE",
     "SALES",
-    "MANAGER"
+    "MANAGER",
   ),
-  getInvoiceById
+  getInvoiceById,
 );
 
 router.post(
   "/",
   authorizeRoles("ADMIN", "FINANCE"),
-  createInvoice
+  createInvoice,
 );
 
 router.patch(
   "/:id/cancel",
   authorizeRoles("ADMIN", "FINANCE"),
-  cancelInvoice
+  cancelInvoice,
 );
 
 module.exports = router;
