@@ -15,6 +15,11 @@ const StatusConfirmDialog = ({
   identifierLabel = "kode",
   identifierValue = "",
   currentStatus = "",
+  nextStatus: requestedNextStatus = "",
+  title = "",
+  nextStatusLabel = "",
+  confirmLabel = "",
+  tone = "",
   isSubmitting = false,
   requestError = "",
   onCancel,
@@ -62,17 +67,41 @@ const StatusConfirmDialog = ({
     !isOpen ||
     !entityName ||
     !identifierValue ||
-    !currentStatus
+    (!currentStatus && !requestedNextStatus)
   ) {
     return null;
   }
 
-  const isDeactivating =
+  const isDefaultDeactivation =
     currentStatus === "ACTIVE";
 
-  const nextStatus = isDeactivating
-    ? "INACTIVE"
-    : "ACTIVE";
+  const resolvedNextStatus =
+    requestedNextStatus ||
+    (isDefaultDeactivation
+      ? "INACTIVE"
+      : "ACTIVE");
+
+  const isWarning =
+    tone === "warning" ||
+    (!tone && isDefaultDeactivation);
+
+  const resolvedNextStatusLabel =
+    nextStatusLabel ||
+    (isDefaultDeactivation
+      ? "tidak aktif"
+      : "aktif");
+
+  const resolvedTitle =
+    title ||
+    (isDefaultDeactivation
+      ? `Nonaktifkan ${entityLabel}?`
+      : `Aktifkan ${entityLabel}?`);
+
+  const resolvedConfirmLabel =
+    confirmLabel ||
+    (isDefaultDeactivation
+      ? "Nonaktifkan"
+      : "Aktifkan");
 
   const displayEntityLabel =
     entityLabel.charAt(0).toUpperCase() +
@@ -110,12 +139,12 @@ const StatusConfirmDialog = ({
 
         <div
           className={`status-dialog-icon ${
-            isDeactivating
+            isWarning
               ? "is-warning"
               : "is-success"
           }`}
         >
-          {isDeactivating ? (
+          {isWarning ? (
             <AlertTriangle aria-hidden="true" />
           ) : (
             <CheckCircle2 aria-hidden="true" />
@@ -123,9 +152,7 @@ const StatusConfirmDialog = ({
         </div>
 
         <h2 id={titleId}>
-          {isDeactivating
-            ? `Nonaktifkan ${entityLabel}?`
-            : `Aktifkan ${entityLabel}?`}
+          {resolvedTitle}
         </h2>
 
         <p id={descriptionId}>
@@ -135,9 +162,7 @@ const StatusConfirmDialog = ({
           <strong>{identifierValue}</strong>{" "}
           akan diubah menjadi{" "}
           <strong>
-            {isDeactivating
-              ? "tidak aktif"
-              : "aktif"}
+            {resolvedNextStatusLabel}
           </strong>
           .
         </p>
@@ -164,18 +189,18 @@ const StatusConfirmDialog = ({
           <button
             type="button"
             className={`status-dialog-confirm ${
-              isDeactivating
+              isWarning
                 ? "is-deactivate"
                 : "is-activate"
             }`}
             disabled={isSubmitting}
-            onClick={() => onConfirm(nextStatus)}
+            onClick={() =>
+              onConfirm(resolvedNextStatus)
+            }
           >
             {isSubmitting
               ? "Memproses..."
-              : isDeactivating
-                ? "Nonaktifkan"
-                : "Aktifkan"}
+              : resolvedConfirmLabel}
           </button>
         </div>
       </section>

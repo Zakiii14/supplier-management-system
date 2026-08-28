@@ -8,6 +8,16 @@ const getProductsRequest = async (params = {}) => {
   return response.data;
 };
 
+const getActiveProductsRequest = async () => {
+  const response = await getProductsRequest({
+    status: "ACTIVE",
+    page: 1,
+    limit: 100,
+  });
+
+  return response.data;
+};
+
 const getActiveProductsBySupplierRequest = async (
   supplierId,
 ) => {
@@ -71,6 +81,7 @@ export {
   getActiveProductsBySupplierRequest,
   getProductByIdRequest,
   getProductsRequest,
+  getActiveProductsRequest,
   updateProductRequest,
   updateProductStatusRequest,
 };

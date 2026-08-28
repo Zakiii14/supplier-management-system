@@ -1,0 +1,132 @@
+.sales-order-status {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 750;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.sales-order-status.is-draft {
+  color: #475467;
+  background: #f2f4f7;
+  border-color: #d0d5dd;
+}
+
+.sales-order-status.is-confirmed {
+  color: #175cd3;
+  background: #eff8ff;
+  border-color: #b2ddff;
+}
+
+.sales-order-status.is-partially-delivered {
+  color: #b54708;
+  background: #fffaeb;
+  border-color: #fedf89;
+}
+
+.sales-order-status.is-delivered {
+  color: #067647;
+  background: #ecfdf3;
+  border-color: #abefc6;
+}
+
+.sales-order-status.is-cancelled {
+  color: #b42318;
+  background: #fef3f2;
+  border-color: #fecdca;
+}
+
+.sales-order-form-item-grid {
+  grid-template-columns:
+    minmax(220px, 1.8fr)
+    minmax(85px, 0.55fr)
+    minmax(125px, 0.8fr)
+    minmax(125px, 0.8fr)
+    minmax(145px, 0.95fr);
+}
+
+.sales-order-detail-table {
+  min-width: 720px;
+}
+
+.sales-order-detail-table th:first-child {
+  width: 30%;
+}
+
+.sales-order-detail-table th:nth-child(2) {
+  width: 12%;
+}
+
+.sales-order-detail-table th:nth-child(3) {
+  width: 20%;
+}
+
+.sales-order-detail-table th:nth-child(4) {
+  width: 18%;
+}
+
+.sales-order-detail-table th:nth-child(5) {
+  width: 20%;
+}
+
+.sales-order-detail-table td:nth-child(2) {
+  white-space: nowrap;
+}
+
+.sales-order-detail-table td:nth-child(3),
+.sales-order-detail-table td:nth-child(4),
+.sales-order-detail-table td:nth-child(5) {
+  text-align: right;
+}
+
+.sales-order-detail-table th:nth-child(3),
+.sales-order-detail-table th:nth-child(4),
+.sales-order-detail-table th:nth-child(5) {
+  text-align: right;
+}
+
+@media (max-width: 1050px) {
+  .sales-order-form-item-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .sales-order-form-item-grid
+    .purchase-order-form-field.is-product {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .sales-order-status {
+    padding-right: 7px;
+    padding-left: 7px;
+    font-size: 0.61rem;
+  }
+
+  .sales-order-form-item-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-order-form-item-grid
+    .purchase-order-form-field.is-product {
+    grid-column: auto;
+  }
+
+  .sales-order-detail-table {
+    min-width: 0;
+  }
+
+  .sales-order-detail-table td:nth-child(2),
+  .sales-order-detail-table td:nth-child(3),
+  .sales-order-detail-table td:nth-child(4),
+  .sales-order-detail-table td:nth-child(5) {
+    text-align: right;
+  }
+}
