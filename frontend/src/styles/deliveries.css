@@ -1,0 +1,266 @@
+.delivery-status {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 750;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.delivery-status.is-pending {
+  color: #b54708;
+  background: #fffaeb;
+  border-color: #fedf89;
+}
+
+.delivery-status.is-shipped {
+  color: #175cd3;
+  background: #eff8ff;
+  border-color: #b2ddff;
+}
+
+.delivery-status.is-delivered {
+  color: #067647;
+  background: #ecfdf3;
+  border-color: #abefc6;
+}
+
+.delivery-status.is-cancelled {
+  color: #b42318;
+  background: #fef3f2;
+  border-color: #fecdca;
+}
+
+.delivery-table th:nth-child(1) {
+  width: 13%;
+}
+
+.delivery-table th:nth-child(2) {
+  width: 12%;
+}
+
+.delivery-table th:nth-child(3) {
+  width: 16%;
+}
+
+.delivery-table th:nth-child(4) {
+  width: 11%;
+}
+
+.delivery-table th:nth-child(5) {
+  width: 14%;
+}
+
+.delivery-table th:nth-child(6) {
+  width: 9%;
+}
+
+.delivery-table th:nth-child(7) {
+  width: 11%;
+}
+
+.delivery-table th:nth-child(8) {
+  width: 14%;
+}
+
+.delivery-number,
+.delivery-sales-order,
+.delivery-customer {
+  display: block;
+  color: #25324a;
+  font-weight: 750;
+}
+
+.delivery-subtext {
+  display: block;
+  margin-top: 3px;
+  color: #98a2b3;
+  font-size: 0.68rem;
+}
+
+.delivery-form-modal {
+  width: min(1080px, 100%);
+}
+
+.delivery-form-item-grid {
+  grid-template-columns:
+    repeat(3, minmax(110px, 0.75fr))
+    minmax(150px, 1fr);
+}
+
+.delivery-detail-dialog {
+  width: min(960px, 100%);
+}
+
+.delivery-detail-information > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.delivery-detail-information > div svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  color: #2563eb;
+}
+
+.delivery-detail-information > div span {
+  margin: 0;
+}
+
+.delivery-detail-table {
+  min-width: 620px;
+}
+
+.delivery-detail-table th:first-child {
+  width: 40%;
+}
+
+.delivery-detail-table th:nth-child(2),
+.delivery-detail-table th:nth-child(3),
+.delivery-detail-table th:nth-child(4) {
+  width: 20%;
+  text-align: right;
+}
+
+.delivery-detail-table td:nth-child(2),
+.delivery-detail-table td:nth-child(3),
+.delivery-detail-table td:nth-child(4) {
+  text-align: right;
+}
+
+.delivery-detail-table .is-stock {
+  color: #067647;
+}
+
+.delivery-detail-status-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  color: #175cd3;
+  background: #eff8ff;
+  border: 1px solid #b2ddff;
+  border-radius: 13px;
+}
+
+.delivery-detail-status-note > svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.delivery-detail-status-note > div {
+  display: grid;
+  gap: 3px;
+}
+
+.delivery-detail-status-note strong {
+  font-size: 0.8rem;
+}
+
+.delivery-detail-status-note span {
+  color: #344054;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.delivery-table th:last-child {
+  width: 270px;
+}
+
+.delivery-table .table-action-cell {
+  min-width: 270px;
+}
+
+.delivery-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.delivery-action-buttons > button {
+  white-space: nowrap;
+}
+
+@container (max-width: 1049px) {
+  .delivery-table .table-action-cell {
+    min-width: 0;
+  }
+
+  .delivery-action-buttons {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .delivery-action-buttons > button {
+    flex: 1 1 105px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 850px) {
+  .delivery-form-item-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .delivery-status {
+    padding-right: 7px;
+    padding-left: 7px;
+    font-size: 0.61rem;
+  }
+
+  .delivery-number,
+  .delivery-sales-order,
+  .delivery-customer,
+  .delivery-subtext {
+    text-align: right;
+  }
+
+  .delivery-form-item-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .delivery-detail-table {
+    min-width: 0;
+  }
+
+  .delivery-detail-table td:nth-child(2),
+  .delivery-detail-table td:nth-child(3),
+  .delivery-detail-table td:nth-child(4) {
+    text-align: right;
+  }
+
+  .delivery-detail-status-note {
+    padding: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .delivery-action-buttons {
+    display: grid;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .delivery-action-buttons
+    .purchase-order-detail-action {
+    grid-column: 1 / -1;
+  }
+
+  .delivery-action-buttons > button {
+    width: 100%;
+    min-width: 0;
+  }
+}
