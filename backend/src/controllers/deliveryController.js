@@ -1,21 +1,36 @@
 const pool = require("../config/database");
 
+const {
+  parseDateRange,
+} = require("../utils/dateRange");
+
 const getAllDeliveries = async (req, res) => {
   try {
     const {
       search = "",
-      status,
-      sales_order_id,
-      page = 1,
-      limit = 10,
+      status = "",
+      sales_order_id = "",
+      date_from = "",
+      date_to = "",
+      page = "1",
+      limit = "10",
     } = req.query;
 
-    const pageNumber = Math.max(Number(page) || 1, 1);
-    const limitNumber = Math.min(
-      Math.max(Number(limit) || 10, 1),
-      100
-    );
-    const offset = (pageNumber - 1) * limitNumber;
+    const parsedPage = Number(page);
+    const parsedLimit = Number(limit);
+
+    if (
+      !Number.isInteger(parsedPage) ||
+      !Number.isInteger(parsedLimit) ||
+      parsedPage < 1 ||
+      parsedLimit < 1 ||
+      parsedLimit > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid pagination parameters",
+      });
+    }
 
     const allowedStatuses = [
       "PENDING",
@@ -24,48 +39,112 @@ const getAllDeliveries = async (req, res) => {
       "CANCELLED",
     ];
 
-    if (status && !allowedStatuses.includes(status)) {
+    const normalizedStatus =
+      typeof status === "string"
+        ? status.trim().toUpperCase()
+        : "";
+
+    if (
+      normalizedStatus &&
+      !allowedStatuses.includes(normalizedStatus)
+    ) {
       return res.status(400).json({
         success: false,
         message: "Invalid delivery status",
       });
     }
 
+    const normalizedSearch =
+      typeof search === "string"
+        ? search.trim()
+        : "";
+
+    const normalizedSalesOrderId =
+      typeof sales_order_id === "string"
+        ? sales_order_id.trim()
+        : "";
+
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    if (
+      normalizedSalesOrderId &&
+      !uuidPattern.test(normalizedSalesOrderId)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid sales order ID",
+      });
+    }
+
+    const {
+      dateFrom,
+      dateTo,
+      error: dateRangeError,
+    } = parseDateRange(date_from, date_to);
+
+    if (dateRangeError) {
+      return res.status(400).json({
+        success: false,
+        message: dateRangeError,
+      });
+    }
+
     const conditions = [];
     const values = [];
 
-    if (search.trim()) {
-      values.push(`%${search.trim()}%`);
+    if (normalizedSearch) {
+      values.push(`%${normalizedSearch}%`);
 
       conditions.push(`
         (
           d.delivery_number ILIKE $${values.length}
           OR so.so_number ILIKE $${values.length}
+          OR c.customer_code ILIKE $${values.length}
           OR c.customer_name ILIKE $${values.length}
           OR COALESCE(d.recipient_name, '')
+            ILIKE $${values.length}
+          OR COALESCE(d.notes, '')
             ILIKE $${values.length}
         )
       `);
     }
 
-    if (status) {
-      values.push(status);
+    if (normalizedStatus) {
+      values.push(normalizedStatus);
+
       conditions.push(
-        `d.status::TEXT = $${values.length}`
+        `d.status = $${values.length}`,
       );
     }
 
-    if (sales_order_id) {
-      values.push(sales_order_id);
+    if (normalizedSalesOrderId) {
+      values.push(normalizedSalesOrderId);
+
       conditions.push(
-        `d.sales_order_id = $${values.length}`
+        `d.sales_order_id = $${values.length}`,
       );
     }
 
-    const whereClause =
-      conditions.length > 0
-        ? `WHERE ${conditions.join(" AND ")}`
-        : "";
+    if (dateFrom) {
+      values.push(dateFrom);
+
+      conditions.push(
+        `d.delivery_date >= $${values.length}::DATE`,
+      );
+    }
+
+    if (dateTo) {
+      values.push(dateTo);
+
+      conditions.push(
+        `d.delivery_date <= $${values.length}::DATE`,
+      );
+    }
+
+    const whereClause = conditions.length
+      ? `WHERE ${conditions.join(" AND ")}`
+      : "";
 
     const countResult = await pool.query(
       `
@@ -77,14 +156,27 @@ const getAllDeliveries = async (req, res) => {
         ON c.id = so.customer_id
       ${whereClause}
       `,
-      values
+      values,
     );
 
-    const queryValues = [
+    const total = countResult.rows[0].total;
+
+    const totalPages =
+      total === 0
+        ? 0
+        : Math.ceil(total / parsedLimit);
+
+    const offset =
+      (parsedPage - 1) * parsedLimit;
+
+    const listValues = [
       ...values,
-      limitNumber,
+      parsedLimit,
       offset,
     ];
+
+    const limitPosition = values.length + 1;
+    const offsetPosition = values.length + 2;
 
     const result = await pool.query(
       `
@@ -103,57 +195,58 @@ const getAllDeliveries = async (req, res) => {
         d.notes,
         d.created_by,
         d.created_at,
-
-        (
-          SELECT COUNT(*)::INTEGER
-          FROM app.delivery_items di
-          WHERE di.delivery_id = d.id
-        ) AS total_items,
-
-        (
-          SELECT COALESCE(
-            SUM(di.quantity_delivered),
-            0
-          )
-          FROM app.delivery_items di
-          WHERE di.delivery_id = d.id
-        ) AS total_quantity
-
+        COALESCE(summary.total_items, 0)
+          AS total_items,
+        COALESCE(summary.total_quantity, 0)
+          AS total_quantity
       FROM app.deliveries d
-
       JOIN app.sales_orders so
         ON so.id = d.sales_order_id
-
       JOIN app.customers c
         ON c.id = so.customer_id
-
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(di.id)::INTEGER
+            AS total_items,
+          COALESCE(
+            SUM(di.quantity_delivered),
+            0
+          ) AS total_quantity
+        FROM app.delivery_items di
+        WHERE di.delivery_id = d.id
+      ) summary ON TRUE
       ${whereClause}
-
       ORDER BY d.created_at DESC
-
-      LIMIT $${queryValues.length - 1}
-      OFFSET $${queryValues.length}
+      LIMIT $${limitPosition}
+      OFFSET $${offsetPosition}
       `,
-      queryValues
+      listValues,
     );
-
-    const totalData = countResult.rows[0].total;
 
     res.status(200).json({
       success: true,
-      message: "Deliveries retrieved successfully",
+      message:
+        "Deliveries retrieved successfully",
       data: result.rows,
       pagination: {
-        page: pageNumber,
-        limit: limitNumber,
-        total_data: totalData,
-        total_pages: Math.ceil(
-          totalData / limitNumber
-        ),
+        page: parsedPage,
+        limit: parsedLimit,
+        total,
+        total_pages: totalPages,
       },
     });
   } catch (error) {
-    console.error("Error fetching deliveries:", error);
+    console.error(
+      "Error fetching deliveries:",
+      error,
+    );
+
+    if (error.code === "22P02") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid sales order ID",
+      });
+    }
 
     res.status(500).json({
       success: false,

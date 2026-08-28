@@ -280,32 +280,55 @@ const getSalesOrderById = async (req, res) => {
         message: "Sales order not found",
       });
     }
-    const itemsResult = await pool.query(`
+        const itemsResult = await pool.query(
+      `
       SELECT
         soi.id,
         soi.product_id,
         p.sku,
         p.product_name,
         p.unit,
+        p.status AS product_status,
         p.current_stock,
         soi.quantity,
         soi.unit_price,
         soi.discount_amount,
+        COALESCE(
+          delivery_summary.reserved_quantity,
+          0
+        ) AS reserved_quantity,
+        GREATEST(
+          soi.quantity - COALESCE(
+            delivery_summary.reserved_quantity,
+            0
+          ),
+          0
+        ) AS remaining_quantity,
         (
           soi.quantity * soi.unit_price
           - soi.discount_amount
         ) AS subtotal
-
       FROM app.sales_order_items soi
-
       JOIN app.products p
         ON p.id = soi.product_id
-
+      LEFT JOIN LATERAL (
+        SELECT
+          COALESCE(
+            SUM(di.quantity_delivered),
+            0
+          ) AS reserved_quantity
+        FROM app.delivery_items di
+        JOIN app.deliveries d
+          ON d.id = di.delivery_id
+        WHERE
+          di.sales_order_item_id = soi.id
+          AND d.status <> 'CANCELLED'
+      ) delivery_summary ON TRUE
       WHERE soi.sales_order_id = $1
-
       ORDER BY p.product_name ASC
       `,
-      [id]);
+      [id],
+    );
     const totalAmount = itemsResult.rows.reduce(
       (total, item) => total + Number(item.subtotal), 0);
     res.status(200).json({
