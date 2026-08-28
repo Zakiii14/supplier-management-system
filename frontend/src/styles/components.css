@@ -1308,8 +1308,7 @@
   top: calc(100% + 7px);
   right: 0;
   left: 0;
-  max-height: min(230px, 40dvh);
-  overflow-y: auto;
+  overflow: hidden;
   padding: 6px;
   background: #ffffff;
   border: 1px solid #d5deea;
@@ -1317,6 +1316,114 @@
   box-shadow:
     0 16px 35px rgb(15 23 42 / 16%),
     0 5px 12px rgb(15 23 42 / 8%);
+}
+
+.form-select-search {
+  display: flex;
+  height: 42px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  padding: 0 10px;
+  background: #f8fafc;
+  border: 1px solid #d5deea;
+  border-radius: 9px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.form-select-search:focus-within {
+  background: #fff;
+  border-color: #2f6fed;
+  box-shadow: 0 0 0 3px rgb(47 111 237 / 10%);
+}
+
+.form-select-search > svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: #98a2b3;
+}
+
+.form-select .form-select-search input {
+  width: 100%;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  color: #172033;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  font: inherit;
+  font-size: 0.82rem;
+  appearance: none;
+}
+
+.form-select .form-select-search input:focus {
+  background: transparent;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.form-select .form-select-search input::placeholder {
+  color: #98a2b3;
+}
+
+.form-select-search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.form-select-search button {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: #667085;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+}
+
+.form-select-search button:hover:not(:disabled) {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.form-select-search button:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 25%);
+  outline-offset: 1px;
+}
+
+.form-select-search button:disabled,
+.form-select-search input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-select-search button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.form-select-options {
+  max-height: min(230px, 40dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.form-select-option:disabled {
+  pointer-events: none;
+  opacity: 0.55;
 }
 
 .form-select-option {
@@ -1371,7 +1478,7 @@
 }
 
 @media (max-width: 700px) {
-  .form-select-menu {
+  .form-select-options {
     max-height: min(210px, 34dvh);
   }
 
