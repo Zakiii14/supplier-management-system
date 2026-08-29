@@ -11,13 +11,14 @@ import DashboardPage from "./pages/DashboardPage";
 import DeliveriesPage from "./pages/DeliveriesPage";
 import GoodsReceiptsPage from "./pages/GoodsReceiptsPage";
 import InventoryPage from "./pages/InventoryPage";
+import InvoicesPage from "./pages/InvoicesPage";
 import LoginPage from "./pages/LoginPage";
 import ModulePlaceholderPage from "./pages/ModulePlaceholderPage";
+import PaymentsPage from "./pages/PaymentsPage";
 import ProductsPage from "./pages/ProductsPage";
 import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
 import SalesOrdersPage from "./pages/SalesOrdersPage";
 import SuppliersPage from "./pages/SuppliersPage";
-import InvoicesPage from "./pages/InvoicesPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { navigationGroups } from "./utils/navigation";
 
@@ -38,7 +39,8 @@ const App = () => {
         item.path !== "/customers" &&
         item.path !== "/sales-orders" &&
         item.path !== "/deliveries" &&
-        item.path !== "/invoices",
+        item.path !== "/invoices" &&
+        item.path !== "/payments",
     );
 
   const loginElement = isLoading ? (
@@ -118,6 +120,11 @@ const App = () => {
           <Route
             path="invoices"
             element={<InvoicesPage />}
+          />
+
+          <Route
+            path="payments"
+            element={<PaymentsPage />}
           />
 
           {moduleRoutes.map((item) => (

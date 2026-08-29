@@ -1,0 +1,640 @@
+.payment-method-badge {
+  display: inline-flex;
+  min-height: 27px;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 750;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.payment-method-badge.is-bank-transfer {
+  color: #175cd3;
+  background: #eff8ff;
+  border-color: #b2ddff;
+}
+
+.payment-method-badge.is-cash {
+  color: #067647;
+  background: #ecfdf3;
+  border-color: #abefc6;
+}
+
+.payment-method-badge.is-giro {
+  color: #6941c6;
+  background: #f9f5ff;
+  border-color: #d6bbfb;
+}
+
+.payment-method-badge.is-other {
+  color: #475467;
+  background: #f2f4f7;
+  border-color: #d0d5dd;
+}
+
+.payment-table th:nth-child(1) {
+  width: 15%;
+}
+
+.payment-table th:nth-child(2) {
+  width: 13%;
+}
+
+.payment-table th:nth-child(3) {
+  width: 16%;
+}
+
+.payment-table th:nth-child(4) {
+  width: 14%;
+}
+
+.payment-table th:nth-child(5),
+.payment-table th:nth-child(6),
+.payment-table th:nth-child(7) {
+  width: 12%;
+}
+
+.payment-table th:nth-child(8) {
+  width: 8%;
+}
+
+.payment-number,
+.payment-invoice,
+.payment-customer,
+.payment-date,
+.payment-amount {
+  display: block;
+  color: #25324a;
+  font-weight: 750;
+}
+
+.payment-amount {
+  color: #067647;
+  white-space: nowrap;
+}
+
+.payment-subtext {
+  display: block;
+  max-width: 190px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #98a2b3;
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-table th:last-child {
+  width: 110px;
+}
+
+.payment-table .table-action-cell {
+  min-width: 110px;
+}
+
+.payment-action-buttons {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.payment-action-buttons > button {
+  white-space: nowrap;
+}
+
+.payment-form-modal {
+  width: min(940px, 100%);
+}
+
+.payment-amount-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid #d5deea;
+  border-radius: 11px;
+  background: #fff;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.payment-amount-input:focus-within {
+  border-color: #2f6fed;
+  box-shadow: 0 0 0 3px rgb(47 111 237 / 12%);
+}
+
+.purchase-order-form-field
+  .payment-amount-input input {
+  height: 44px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.purchase-order-form-field
+  .payment-amount-input input:focus {
+  border: 0;
+  box-shadow: none;
+}
+
+.payment-amount-input button {
+  min-width: 104px;
+  padding: 0 13px;
+  color: #175cd3;
+  background: #eff8ff;
+  border: 0;
+  border-left: 1px solid #b2ddff;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.payment-amount-input button:hover:not(:disabled) {
+  color: #fff;
+  background: #2563eb;
+}
+
+.payment-amount-input button:disabled {
+  color: #98a2b3;
+  background: #f2f4f7;
+  border-left-color: #d5deea;
+  cursor: not-allowed;
+}
+
+.payment-form-invoice-summary {
+  display: grid;
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid #dfe7f1;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.payment-form-invoice-summary article {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 14px;
+  border-right: 1px solid #dfe7f1;
+}
+
+.payment-form-invoice-summary article:last-child {
+  border-right: 0;
+}
+
+.payment-form-invoice-summary span,
+.payment-form-due-date span,
+.payment-form-calculation span {
+  color: #667085;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.payment-form-invoice-summary strong {
+  overflow: hidden;
+  color: #25324a;
+  font-size: 0.8rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-form-invoice-summary small {
+  overflow: hidden;
+  color: #98a2b3;
+  font-size: 0.65rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-form-due-date {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 15px;
+  color: #175cd3;
+  background: #eff8ff;
+  border: 1px solid #b2ddff;
+  border-radius: 12px;
+}
+
+.payment-form-due-date svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}
+
+.payment-form-due-date div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.payment-form-due-date strong {
+  overflow: hidden;
+  color: #175cd3;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payment-form-calculation {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid #dfe7f1;
+  border-radius: 13px;
+  background: #dfe7f1;
+}
+
+.payment-form-calculation > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 14px;
+  background: #fff;
+}
+
+.payment-form-calculation strong {
+  color: #25324a;
+  font-size: 0.8rem;
+}
+
+.payment-form-calculation
+  .is-outstanding strong {
+  color: #b54708;
+}
+
+.payment-form-calculation
+  .is-payment strong {
+  color: #067647;
+}
+
+.payment-form-calculation .is-total {
+  padding-top: 14px;
+  padding-bottom: 14px;
+  background: #172033;
+}
+
+.payment-form-calculation .is-total span {
+  color: #cbd5e1;
+}
+
+.payment-form-calculation .is-total strong {
+  color: #fff;
+  font-size: 1rem;
+}
+
+.payment-detail-dialog {
+  width: min(980px, 100%);
+}
+
+.payment-detail-primary,
+.payment-detail-invoice-summary,
+.payment-detail-dates,
+.payment-detail-status-note {
+  height: auto;
+  min-height: auto;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+.payment-detail-primary {
+  display: flex;
+  overflow: visible;
+  overflow: clip;
+  border: 1px solid #dfe7f1;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.payment-detail-amount {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 42%;
+  align-items: center;
+  gap: 13px;
+  padding: 18px;
+  color: #067647;
+  background: #ecfdf3;
+  border-right: 1px solid #abefc6;
+}
+
+.payment-detail-amount > svg {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+}
+
+.payment-detail-amount > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.payment-detail-amount span {
+  color: #067647;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.payment-detail-amount strong {
+  color: #05603a;
+  font-size: 1.2rem;
+}
+
+.payment-detail-reference {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 58%;
+}
+
+.payment-detail-reference article {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  align-items: center;
+  gap: 11px;
+  padding: 16px;
+  border-right: 1px solid #dfe7f1;
+}
+
+.payment-detail-reference article:last-child {
+  border-right: 0;
+}
+
+.payment-detail-reference svg {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+  color: #2563eb;
+}
+
+.payment-detail-reference article > div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.payment-detail-reference span,
+.payment-detail-dates span,
+.payment-detail-invoice-summary span {
+  color: #667085;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.payment-detail-reference strong {
+  overflow-wrap: anywhere;
+  color: #25324a;
+  font-size: 0.8rem;
+}
+
+.payment-detail-invoice-summary {
+  display: flex;
+  overflow: visible;
+  overflow: clip;
+  border: 1px solid #dfe7f1;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.payment-detail-invoice-summary article {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 0;
+  gap: 5px;
+  padding: 15px;
+  border-right: 1px solid #dfe7f1;
+  box-sizing: border-box;
+}
+
+.payment-detail-invoice-summary article:last-child {
+  border-right: 0;
+}
+
+.payment-detail-invoice-summary strong {
+  color: #25324a;
+  font-size: 0.9rem;
+}
+
+.payment-detail-invoice-summary
+  .is-paid strong {
+  color: #067647;
+}
+
+.payment-detail-invoice-summary
+  .is-outstanding strong {
+  color: #b54708;
+}
+
+.payment-detail-dates {
+  display: flex;
+  overflow: visible;
+  overflow: clip;
+  border: 1px solid #dfe7f1;
+  border-radius: 13px;
+  background: #fff;
+}
+
+.payment-detail-dates article {
+  display: grid;
+  min-width: 0;
+  flex: 1 1 0;
+  gap: 5px;
+  padding: 13px 15px;
+  border-right: 1px solid #dfe7f1;
+}
+
+.payment-detail-dates article:last-child {
+  border-right: 0;
+}
+
+.payment-detail-dates strong {
+  color: #25324a;
+  font-size: 0.8rem;
+}
+
+.payment-detail-status-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px 16px;
+  overflow: visible;
+  border: 1px solid #b2ddff;
+  border-radius: 13px;
+  background: #eff8ff;
+}
+
+.payment-detail-status-note > svg {
+  width: 21px;
+  height: 21px;
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #175cd3;
+}
+
+.payment-detail-status-note > div {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.payment-detail-status-note
+  > div
+  > span {
+  color: #344054;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.payment-detail-status-note
+  .invoice-status {
+  width: max-content;
+}
+
+.payment-detail-status-note p {
+  margin: 0;
+  color: #475467;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+@container (max-width: 1049px) {
+  .payment-table .table-action-cell {
+    min-width: 0;
+  }
+
+  .payment-action-buttons {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .payment-action-buttons > button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 850px) {
+  .payment-form-invoice-summary {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .payment-form-invoice-summary
+    article:nth-child(2) {
+    border-right: 0;
+  }
+
+  .payment-form-invoice-summary
+    article:nth-child(-n + 2) {
+    border-bottom: 1px solid #dfe7f1;
+  }
+
+  .payment-detail-primary {
+    flex-direction: column;
+  }
+
+  .payment-detail-amount {
+    flex: 0 0 auto;
+    border-right: 0;
+    border-bottom: 1px solid #abefc6;
+  }
+
+  .payment-detail-reference {
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 700px) {
+  .payment-method-badge {
+    padding-right: 7px;
+    padding-left: 7px;
+    font-size: 0.61rem;
+  }
+
+  .payment-number,
+  .payment-invoice,
+  .payment-customer,
+  .payment-date,
+  .payment-amount,
+  .payment-subtext {
+    max-width: none;
+    text-align: right;
+  }
+
+  .payment-detail-invoice-summary {
+    flex-direction: column;
+  }
+
+  .payment-detail-invoice-summary article {
+    flex: 0 0 auto;
+    border-right: 0;
+    border-bottom: 1px solid #dfe7f1;
+  }
+
+  .payment-detail-invoice-summary
+    article:last-child {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .payment-form-invoice-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-form-invoice-summary article {
+    border-right: 0;
+    border-bottom: 1px solid #dfe7f1;
+  }
+
+  .payment-form-invoice-summary
+    article:last-child {
+    border-bottom: 0;
+  }
+
+  .payment-amount-input {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-amount-input button {
+    min-height: 38px;
+    border-top: 1px solid #b2ddff;
+    border-left: 0;
+  }
+
+  .payment-detail-reference,
+  .payment-detail-dates {
+    flex-direction: column;
+  }
+
+  .payment-detail-reference article,
+  .payment-detail-dates article {
+    flex: 0 0 auto;
+    border-right: 0;
+    border-bottom: 1px solid #dfe7f1;
+  }
+
+  .payment-detail-reference
+    article:last-child,
+  .payment-detail-dates article:last-child {
+    border-bottom: 0;
+  }
+
+  .payment-action-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .payment-action-buttons > button {
+    width: 100%;
+    min-width: 0;
+  }
+}
