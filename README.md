@@ -463,7 +463,7 @@ Finance
    └── Payments
 ```
 
----
+<!-- ---
 
 ## Project Notice
 
@@ -471,7 +471,7 @@ This repository is published as a **personal portfolio and learning project** to
 
 The source code is provided for portfolio demonstration purposes and is **not presented as a reusable commercial template**.
 
-This project is currently under active development and is not yet intended for production use.
+This project is currently under active development and is not yet intended for production use. -->
 
 ---
 
@@ -486,4 +486,4 @@ Full-Stack Web Development & UI/UX Design
 
 ---
 
-> **Supply Flow** — Building an integrated digital workflow from procurement to payment.
+> **Supply Flow** || Building an integrated digital workflow from procurement to payment.
