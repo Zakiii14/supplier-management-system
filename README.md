@@ -482,7 +482,7 @@ This project is currently under active development and is not yet intended for p
 Full-Stack Web Development & UI/UX Design
 
 * Portfolio: [zakiokta.my.id](https://zakiokta.my.id)
-* GitHub: [Zakiii14](https://github.com/Zakiii14)
+<!-- * GitHub: [Zakiii14](https://github.com/Zakiii14) -->
 
 ---
 
