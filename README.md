@@ -1,6 +1,6 @@
 # Supply Flow: Supplier Management System
 
-![Project Status](https://img.shields.io/badge/status-active%20development-f59e0b)
+<!-- ![Project Status](https://img.shields.io/badge/status-active%20development-f59e0b) -->
 ![Frontend](https://img.shields.io/badge/frontend-React-61DAFB?logo=react\&logoColor=white)
 ![Backend](https://img.shields.io/badge/backend-Node.js%20%7C%20Express-339933?logo=nodedotjs\&logoColor=white)
 ![Database](https://img.shields.io/badge/database-PostgreSQL-4169E1?logo=postgresql\&logoColor=white)
