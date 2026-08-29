@@ -17,6 +17,7 @@ import ProductsPage from "./pages/ProductsPage";
 import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
 import SalesOrdersPage from "./pages/SalesOrdersPage";
 import SuppliersPage from "./pages/SuppliersPage";
+import InvoicesPage from "./pages/InvoicesPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { navigationGroups } from "./utils/navigation";
 
@@ -36,7 +37,8 @@ const App = () => {
         item.path !== "/inventory" &&
         item.path !== "/customers" &&
         item.path !== "/sales-orders" &&
-        item.path !== "/deliveries",
+        item.path !== "/deliveries" &&
+        item.path !== "/invoices",
     );
 
   const loginElement = isLoading ? (
@@ -111,6 +113,11 @@ const App = () => {
           <Route
             path="deliveries"
             element={<DeliveriesPage />}
+          />
+
+          <Route
+            path="invoices"
+            element={<InvoicesPage />}
           />
 
           {moduleRoutes.map((item) => (
