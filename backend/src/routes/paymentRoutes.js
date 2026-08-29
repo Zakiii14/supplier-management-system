@@ -1,11 +1,12 @@
 const express = require("express");
 
 const authorizeRoles = require(
-  "../middleware/authorizeRoles"
+  "../middleware/authorizeRoles",
 );
 
 const {
   getAllPayments,
+  getPaymentEligibleInvoices,
   getPaymentById,
   createPayment,
 } = require("../controllers/paymentController");
@@ -17,9 +18,19 @@ router.get(
   authorizeRoles(
     "ADMIN",
     "FINANCE",
-    "MANAGER"
+    "MANAGER",
   ),
-  getAllPayments
+  getAllPayments,
+);
+
+router.get(
+  "/eligible-invoices",
+  authorizeRoles(
+    "ADMIN",
+    "FINANCE",
+    "MANAGER",
+  ),
+  getPaymentEligibleInvoices,
 );
 
 router.get(
@@ -27,15 +38,15 @@ router.get(
   authorizeRoles(
     "ADMIN",
     "FINANCE",
-    "MANAGER"
+    "MANAGER",
   ),
-  getPaymentById
+  getPaymentById,
 );
 
 router.post(
   "/",
   authorizeRoles("ADMIN", "FINANCE"),
-  createPayment
+  createPayment,
 );
 
 module.exports = router;
