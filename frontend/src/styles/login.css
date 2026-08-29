@@ -1,8 +1,7 @@
 .login-page {
   display: grid;
   grid-template-columns:
-    minmax(0, 1.08fr)
-    minmax(420px, 0.92fr);
+    minmax(0, 1.08fr) minmax(420px, 0.92fr);
   min-height: 100vh;
   background: #ffffff;
 }
@@ -17,11 +16,9 @@
   overflow: hidden;
   color: #ffffff;
   background:
-    radial-gradient(
-      circle at 15% 15%,
+    radial-gradient(circle at 15% 15%,
       rgb(59 130 246 / 35%),
-      transparent 34%
-    ),
+      transparent 34%),
     linear-gradient(145deg, #0f1e3a 0%, #102b55 55%, #123d76 100%);
 }
 
@@ -100,7 +97,7 @@
   letter-spacing: -0.055em;
 }
 
-.login-brand-content > p:last-child {
+.login-brand-content>p:last-child {
   max-width: 580px;
   margin: 28px 0 0;
   color: #cbd9ec;
@@ -160,7 +157,7 @@
   gap: 9px;
 }
 
-.login-field > span {
+.login-field>span {
   color: #344054;
   font-size: 0.9rem;
   font-weight: 650;
@@ -186,7 +183,7 @@
   box-shadow: 0 0 0 4px rgb(59 130 246 / 12%);
 }
 
-.login-input-wrapper > svg {
+.login-input-wrapper>svg {
   flex: 0 0 auto;
   width: 19px;
   height: 19px;
@@ -325,7 +322,7 @@
     font-size: 2.35rem;
   }
 
-  .login-brand-content > p:last-child {
+  .login-brand-content>p:last-child {
     margin-top: 20px;
     font-size: 0.94rem;
   }
@@ -349,11 +346,12 @@
 
 .login-eyebrow,
 .login-brand-content h1,
-.login-brand-content > p:last-child {
+.login-brand-content>p:last-child {
   overflow-wrap: anywhere;
 }
 
 @media (max-width: 900px) {
+
   .login-brand-panel,
   .login-form-panel {
     width: 100%;
@@ -367,7 +365,7 @@
     font-size: clamp(2rem, 7vw, 3rem);
   }
 
-  .login-brand-content > p:last-child {
+  .login-brand-content>p:last-child {
     margin-top: 18px;
   }
 }
@@ -392,11 +390,41 @@
     line-height: 1.1;
   }
 
-  .login-brand-content > p:last-child {
+  .login-brand-content>p:last-child {
     display: none;
   }
 
   .login-form-panel {
     padding: 40px 20px 48px;
+  }
+}
+
+@media (min-width: 901px) {
+  .login-page {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .login-brand-panel,
+  .login-form-panel {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .login-brand-panel {
+    padding:
+      clamp(32px, 6vh, 64px) clamp(36px, 6vw, 80px);
+    overflow: hidden;
+  }
+
+  .login-brand-content {
+    padding: clamp(24px, 5vh, 48px) 0;
+  }
+
+  .login-form-panel {
+    padding:
+      clamp(28px, 6vh, 64px) clamp(28px, 6vw, 72px);
+    overflow-y: auto;
   }
 }
