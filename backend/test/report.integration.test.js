@@ -31,6 +31,7 @@ const testData = {
   adminUsername: "report_admin",
   salesUsername: "report_sales",
   financeUsername: "report_finance",
+  warehouseUsername: "report_warehouse",
   supplierCode: "RPT-SUP",
   categoryCode: "RPT-CAT",
   productSku: "RPT-SKU",
@@ -183,6 +184,7 @@ const cleanupTestData = async () => {
       testData.adminUsername,
       testData.salesUsername,
       testData.financeUsername,
+      testData.warehouseUsername,
     ]],
   );
 };
@@ -197,45 +199,54 @@ before(async () => {
 
   const userResult = await pool.query(
     `
-    INSERT INTO app.users (
-      username,
-      full_name,
-      email,
-      password_hash,
-      role,
-      status
+  INSERT INTO app.users (
+    username,
+    full_name,
+    email,
+    password_hash,
+    role,
+    status
+  )
+  VALUES
+    (
+      $1,
+      'Report Administrator',
+      'report.admin@local.test',
+      $5,
+      'ADMIN',
+      'ACTIVE'
+    ),
+    (
+      $2,
+      'Report Sales',
+      'report.sales@local.test',
+      $5,
+      'SALES',
+      'ACTIVE'
+    ),
+    (
+      $3,
+      'Report Finance',
+      'report.finance@local.test',
+      $5,
+      'FINANCE',
+      'ACTIVE'
+    ),
+    (
+      $4,
+      'Report Warehouse',
+      'report.warehouse@local.test',
+      $5,
+      'WAREHOUSE',
+      'ACTIVE'
     )
-    VALUES
-      (
-        $1,
-        'Report Administrator',
-        'report.admin@local.test',
-        $4,
-        'ADMIN',
-        'ACTIVE'
-      ),
-      (
-        $2,
-        'Report Sales',
-        'report.sales@local.test',
-        $4,
-        'SALES',
-        'ACTIVE'
-      ),
-      (
-        $3,
-        'Report Finance',
-        'report.finance@local.test',
-        $4,
-        'FINANCE',
-        'ACTIVE'
-      )
-    RETURNING id, username
-    `,
+  RETURNING id, username
+  `,
     [
       testData.adminUsername,
       testData.salesUsername,
       testData.financeUsername,
+      testData.warehouseUsername,
       passwordHash,
     ],
   );
@@ -806,5 +817,104 @@ test(
       .set("Authorization", financeAuthorization);
 
     assert.equal(response.status, 200);
+    response = await request(app)
+      .get("/api/reports/options/suppliers")
+      .set(
+        "Authorization",
+        financeAuthorization,
+      );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.success, true);
+
+    const supplierOption =
+      response.body.data.find(
+        (option) =>
+          option.supplier_code ===
+          testData.supplierCode,
+      );
+
+    assert.ok(supplierOption);
+    assert.deepEqual(
+      Object.keys(supplierOption).sort(),
+      [
+        "id",
+        "supplier_code",
+        "supplier_name",
+      ].sort(),
+    );
+
+    response = await request(app)
+      .get("/api/reports/options/categories")
+      .set("Authorization", adminAuthorization);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.success, true);
+
+    const categoryOption =
+      response.body.data.find(
+        (option) =>
+          option.category_code ===
+          testData.categoryCode,
+      );
+
+    assert.ok(categoryOption);
+    assert.deepEqual(
+      Object.keys(categoryOption).sort(),
+      [
+        "id",
+        "category_code",
+        "category_name",
+      ].sort(),
+    );
+
+    const warehouseAuthorization =
+      await getAuthorization(
+        testData.warehouseUsername,
+      );
+
+    response = await request(app)
+      .get("/api/reports/options/customers")
+      .set(
+        "Authorization",
+        warehouseAuthorization,
+      );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.success, true);
+
+    const customerOption =
+      response.body.data.find(
+        (option) =>
+          option.customer_code ===
+          testData.customerCode,
+      );
+
+    assert.ok(customerOption);
+    assert.deepEqual(
+      Object.keys(customerOption).sort(),
+      [
+        "id",
+        "customer_code",
+        "customer_name",
+      ].sort(),
+    );
+
+    for (const optionPath of [
+      "suppliers",
+      "categories",
+    ]) {
+      response = await request(app)
+        .get(
+          `/api/reports/options/${optionPath}`,
+        )
+        .set(
+          "Authorization",
+          salesAuthorization,
+        );
+
+      assert.equal(response.status, 403);
+    }
   },
+
 );

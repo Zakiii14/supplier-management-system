@@ -25,7 +25,51 @@ const {
   "../controllers/financeReportController",
 );
 
+const {
+  getCategoryReportOptions,
+  getCustomerReportOptions,
+  getSupplierReportOptions,
+} = require(
+  "../controllers/reportOptionsController",
+);
+
 const router = express.Router();
+
+router.get(
+  "/options/suppliers",
+  authorizeRoles(
+    "ADMIN",
+    "PURCHASING",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER",
+  ),
+  getSupplierReportOptions,
+);
+
+router.get(
+  "/options/categories",
+  authorizeRoles(
+    "ADMIN",
+    "PURCHASING",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER",
+  ),
+  getCategoryReportOptions,
+);
+
+router.get(
+  "/options/customers",
+  authorizeRoles(
+    "ADMIN",
+    "SALES",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER",
+  ),
+  getCustomerReportOptions,
+);
 
 router.get(
   "/purchasing",
