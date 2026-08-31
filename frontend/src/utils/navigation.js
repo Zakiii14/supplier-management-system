@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Boxes,
   Building2,
   ClipboardCheck,
@@ -162,6 +163,17 @@ const navigationGroups = [
         path: "/payments",
         icon: WalletCards,
         roles: ["ADMIN", "FINANCE", "MANAGER"],
+      },
+    ],
+  },
+  {
+    label: "Analytics",
+    items: [
+      {
+        label: "Reports",
+        path: "/reports",
+        icon: BarChart3,
+        roles: ALL_ROLES,
       },
     ],
   },
