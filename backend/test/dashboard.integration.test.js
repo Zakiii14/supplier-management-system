@@ -338,8 +338,15 @@ before(async () => {
     VALUES (
       $1,
       $2,
-      CURRENT_DATE - 30,
-      CURRENT_DATE - 20,
+      (
+  DATE_TRUNC('month', CURRENT_DATE)
+  - INTERVAL '1 month'
+)::DATE,
+(
+  DATE_TRUNC('month', CURRENT_DATE)
+  - INTERVAL '1 month'
+  + INTERVAL '10 days'
+)::DATE,
       'CONFIRMED',
       $3,
       NOW() + INTERVAL '10 years'
@@ -350,6 +357,22 @@ before(async () => {
       testData.salesOrderNumber,
       customerId,
       adminId,
+    ],
+  );
+
+  await pool.query(
+    `
+  INSERT INTO app.sales_order_items (
+    sales_order_id,
+    product_id,
+    quantity,
+    unit_price
+  )
+  VALUES ($1, $2, 10, 15000)
+  `,
+    [
+      salesOrderResult.rows[0].id,
+      productId,
     ],
   );
 
@@ -373,8 +396,14 @@ before(async () => {
       $1,
       $2,
       $3,
-      DATE '1900-01-01',
-      DATE '1900-01-31',
+      (
+  DATE_TRUNC('month', CURRENT_DATE)
+  - INTERVAL '2 months'
+)::DATE,
+(
+  DATE_TRUNC('month', CURRENT_DATE)
+  - INTERVAL '1 month'
+)::DATE,
       150000,
       0,
       0,
@@ -447,6 +476,51 @@ const assertNonNegativeNumber = (value) => {
   );
 
   assert.equal(numericValue >= 0, true);
+};
+
+const assertTrendData = ({
+  data,
+  type,
+  months,
+  fields,
+}) => {
+  assert.equal(
+    Number.isNaN(
+      Date.parse(data.generated_at),
+    ),
+    false,
+  );
+
+  assert.equal(data.type, type);
+  assert.equal(data.months, months);
+  assert.equal(data.trend.length, months);
+
+  assert.deepEqual(
+    data.metrics.map((metric) => metric.field),
+    fields,
+  );
+
+  const periods = data.trend.map(
+    (item) => item.period,
+  );
+
+  assert.deepEqual(
+    periods,
+    [...periods].sort(),
+  );
+
+  for (const row of data.trend) {
+    assert.match(row.period, /^\d{4}-\d{2}$/);
+
+    assert.deepEqual(
+      Object.keys(row).sort(),
+      ["period", ...fields].sort(),
+    );
+
+    for (const field of fields) {
+      assertNonNegativeNumber(row[field]);
+    }
+  }
 };
 
 test(
@@ -693,6 +767,158 @@ test(
           financeActivityTypes.has(
             activity.activity_type,
           ),
+      ),
+      true,
+    );
+  },
+);
+
+test(
+  "dashboard trends return zero-filled periods, validation, and role-aware metrics",
+  async () => {
+    let response = await request(app).get(
+      "/api/dashboard/trends",
+    );
+
+    assert.equal(response.status, 401);
+
+    const adminAuthorization =
+      await getAuthorization(
+        testData.adminUsername,
+      );
+
+    response = await request(app)
+      .get("/api/dashboard/trends")
+      .query({ months: 3 })
+      .set(
+        "Authorization",
+        adminAuthorization,
+      );
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.success, false);
+    assert.equal(
+      response.body.message,
+      "months must be either 6 or 12",
+    );
+
+    response = await request(app)
+      .get("/api/dashboard/trends")
+      .set(
+        "Authorization",
+        adminAuthorization,
+      );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.success, true);
+    assert.equal(
+      response.body.message,
+      "Dashboard trends retrieved successfully",
+    );
+
+    const adminData = response.body.data;
+
+    assertTrendData({
+      data: adminData,
+      type: "business",
+      months: 6,
+      fields: [
+        "purchase_value",
+        "sales_value",
+      ],
+    });
+
+    assert.equal(
+      adminData.trend.some(
+        (item) =>
+          Number(item.purchase_value) >=
+          100000,
+      ),
+      true,
+    );
+
+    assert.equal(
+      adminData.trend.some(
+        (item) =>
+          Number(item.sales_value) >=
+          150000,
+      ),
+      true,
+    );
+
+    const salesAuthorization =
+      await getAuthorization(
+        testData.salesUsername,
+      );
+
+    response = await request(app)
+      .get("/api/dashboard/trends")
+      .query({ months: 12 })
+      .set(
+        "Authorization",
+        salesAuthorization,
+      );
+
+    assert.equal(response.status, 200);
+
+    const salesData = response.body.data;
+
+    assertTrendData({
+      data: salesData,
+      type: "sales",
+      months: 12,
+      fields: ["sales_value"],
+    });
+
+    assert.equal(
+      salesData.trend.some(
+        (item) =>
+          Number(item.sales_value) >=
+          150000,
+      ),
+      true,
+    );
+
+    const financeAuthorization =
+      await getAuthorization(
+        testData.financeUsername,
+      );
+
+    response = await request(app)
+      .get("/api/dashboard/trends")
+      .set(
+        "Authorization",
+        financeAuthorization,
+      );
+
+    assert.equal(response.status, 200);
+
+    const financeData = response.body.data;
+
+    assertTrendData({
+      data: financeData,
+      type: "finance",
+      months: 6,
+      fields: [
+        "invoice_value",
+        "payment_value",
+      ],
+    });
+
+    assert.equal(
+      financeData.trend.some(
+        (item) =>
+          Number(item.invoice_value) >=
+          150000,
+      ),
+      true,
+    );
+
+    assert.equal(
+      financeData.trend.some(
+        (item) =>
+          Number(item.payment_value) >=
+          25000,
       ),
       true,
     );
