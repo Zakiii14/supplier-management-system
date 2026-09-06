@@ -9,7 +9,21 @@ import {
   getCodeNumberSettingsRequest,
   updateCodeNumberSettingRequest,
 } from "../api/codeNumberSettings";
+import FormSelect from "../components/forms/FormSelect";
 import "../styles/code-number-settings.css";
+
+const SEPARATOR_OPTIONS = [
+  { value: "-", label: "Tanda hubung (-)" },
+  { value: "/", label: "Garis miring (/)" },
+  { value: ".", label: "Titik (.)" },
+  { value: "", label: "Tanpa pemisah" },
+];
+
+const RESET_RULE_OPTIONS = [
+  { value: "NEVER", label: "Tidak pernah" },
+  { value: "YEARLY", label: "Setiap tahun" },
+  { value: "MONTHLY", label: "Setiap bulan" },
+];
 
 const formatPreview = (setting) => {
   const now = new Date();
@@ -228,22 +242,17 @@ const CodeNumberSettingsPage = () => {
                   />
                 </label>
 
-                <label>
-                  <span>Pemisah</span>
-                  <select
-                    value={setting.separator}
-                    onChange={(event) =>
-                      updateDraft(setting.module_key, {
-                        separator: event.target.value,
-                      })
-                    }
-                  >
-                    <option value="-">Tanda hubung (-)</option>
-                    <option value="/">Garis miring (/)</option>
-                    <option value=".">Titik (.)</option>
-                    <option value="">Tanpa pemisah</option>
-                  </select>
-                </label>
+                <FormSelect
+                  label="Pemisah"
+                  value={setting.separator}
+                  options={SEPARATOR_OPTIONS}
+                  searchable={false}
+                  onChange={(separator) =>
+                    updateDraft(setting.module_key, {
+                      separator,
+                    })
+                  }
+                />
 
                 <label>
                   <span>Jumlah digit</span>
@@ -274,27 +283,22 @@ const CodeNumberSettingsPage = () => {
                   />
                 </label>
 
-                <label>
-                  <span>Reset nomor</span>
-                  <select
-                    value={setting.reset_rule}
-                    onChange={(event) => {
-                      const resetRule = event.target.value;
-                      updateDraft(setting.module_key, {
-                        reset_rule: resetRule,
-                        include_year:
-                          resetRule !== "NEVER" ||
-                          setting.include_year,
-                        include_month:
-                          resetRule === "MONTHLY",
-                      });
-                    }}
-                  >
-                    <option value="NEVER">Tidak pernah</option>
-                    <option value="YEARLY">Setiap tahun</option>
-                    <option value="MONTHLY">Setiap bulan</option>
-                  </select>
-                </label>
+                <FormSelect
+                  label="Reset nomor"
+                  value={setting.reset_rule}
+                  options={RESET_RULE_OPTIONS}
+                  searchable={false}
+                  onChange={(resetRule) => {
+                    updateDraft(setting.module_key, {
+                      reset_rule: resetRule,
+                      include_year:
+                        resetRule !== "NEVER" ||
+                        setting.include_year,
+                      include_month:
+                        resetRule === "MONTHLY",
+                    });
+                  }}
+                />
 
                 <div className="code-setting-tokens">
                   <span>Token tanggal</span>

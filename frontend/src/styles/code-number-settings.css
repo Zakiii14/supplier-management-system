@@ -182,19 +182,34 @@
 }
 
 .code-setting-form-grid > label,
+.code-setting-form-grid > .form-select,
+.code-setting-tokens {
+  min-width: 0;
+}
+
+.code-setting-form-grid > label,
 .code-setting-tokens {
   display: grid;
   gap: 6px;
 }
 
-.code-setting-form-grid span {
+.code-setting-form-grid > label > span,
+.code-setting-form-grid
+  > .form-select
+  > .form-select-label,
+.code-setting-tokens > span {
   color: #475569;
   font-size: 0.75rem;
   font-weight: 700;
 }
 
-.code-setting-form-grid input:not([type="checkbox"]),
-.code-setting-form-grid select {
+.code-setting-form-grid
+  > .form-select
+  > .form-select-label {
+  margin-bottom: 6px;
+}
+
+.code-setting-form-grid input:not([type="checkbox"]) {
   width: 100%;
   min-height: 42px;
   padding: 0 11px;
@@ -204,10 +219,24 @@
   outline: none;
 }
 
-.code-setting-form-grid input:focus,
-.code-setting-form-grid select:focus {
+.code-setting-form-grid input:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgb(59 130 246 / 10%);
+}
+
+.code-setting-form-grid .form-select-trigger {
+  height: 42px;
+  min-height: 42px;
+  padding: 0 11px;
+  border-color: #d8e0ea;
+  border-radius: 9px;
+  font-size: 0.82rem;
+}
+
+.code-setting-form-grid .form-select-menu {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .code-setting-tokens {
