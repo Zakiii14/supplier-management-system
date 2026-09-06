@@ -1,4 +1,7 @@
 const pool = require("../config/database");
+const {
+  resolveCodeNumber,
+} = require("../services/codeNumberService");
 
 const normalizeCategoryCode = (value) =>
   typeof value === "string"
@@ -174,21 +177,32 @@ const getCategoryById = async (req, res) => {
 };
 
 const createCategory = async (req, res) => {
+  const client = await pool.connect();
+  let transactionStarted = false;
+
   try {
     const { category_code, category_name } = req.body;
-    const normalizedCategoryCode =
-      normalizeCategoryCode(category_code);
     const normalizedCategoryName =
       normalizeCategoryName(category_name);
 
-    if (!normalizedCategoryCode || !normalizedCategoryName) {
+    if (!normalizedCategoryName) {
       return res.status(400).json({
         success: false,
-        message: "category_code and category_name are required",
+        message: "category_name is required",
       });
     }
 
-    const result = await pool.query(
+    await client.query("BEGIN");
+    transactionStarted = true;
+
+    const resolvedCategoryCode =
+      await resolveCodeNumber({
+        client,
+        moduleKey: "CATEGORY",
+        manualCode: category_code,
+      });
+
+    const result = await client.query(
       `
       INSERT INTO app.categories (
         category_code,
@@ -198,10 +212,13 @@ const createCategory = async (req, res) => {
       RETURNING *
       `,
       [
-        normalizedCategoryCode,
+        resolvedCategoryCode,
         normalizedCategoryName,
       ]
     );
+
+    await client.query("COMMIT");
+    transactionStarted = false;
 
     res.status(201).json({
       success: true,
@@ -209,6 +226,10 @@ const createCategory = async (req, res) => {
       data: result.rows[0],
     });
   } catch (error) {
+    if (transactionStarted) {
+      await client.query("ROLLBACK");
+    }
+
     if (error.code === "23505") {
       return res.status(409).json({
         success: false,
@@ -218,10 +239,12 @@ const createCategory = async (req, res) => {
 
     console.error("Error creating category:", error);
 
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       success: false,
-      message: "Failed to create category",
+      message: error.message || "Failed to create category",
     });
+  } finally {
+    client.release();
   }
 };
 

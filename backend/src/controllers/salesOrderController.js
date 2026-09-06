@@ -1,5 +1,8 @@
 const pool = require("../config/database");
 const {
+  resolveCodeNumber,
+} = require("../services/codeNumberService");
+const {
   parseDateRange,
 } = require("../utils/dateRange");
 
@@ -366,10 +369,10 @@ const createSalesOrder = async (req, res) => {
       items,
     } = req.body;
     const createdBy = req.user.id;
-    if (!so_number || !customer_id) {
+    if (!customer_id) {
       return res.status(400).json({
         success: false,
-        message: "so_number and customer_id are required",
+        message: "customer_id is required",
       });
     }
     if (!Array.isArray(items) || items.length === 0) {
@@ -387,6 +390,12 @@ const createSalesOrder = async (req, res) => {
       });
     }
     await client.query("BEGIN");
+    const resolvedSalesOrderNumber =
+      await resolveCodeNumber({
+        client,
+        moduleKey: "SALES_ORDER",
+        manualCode: so_number,
+      });
     const customerResult = await client.query(`
       SELECT id
       FROM app.customers
@@ -419,7 +428,7 @@ const createSalesOrder = async (req, res) => {
       RETURNING *
       `,
       [
-        so_number,
+        resolvedSalesOrderNumber,
         customer_id,
         order_date || null,
         requested_delivery_date || null,

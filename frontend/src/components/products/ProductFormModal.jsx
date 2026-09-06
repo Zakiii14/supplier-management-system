@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Save, X } from "lucide-react";
 import FormSelect from "../forms/FormSelect";
+import CodeNumberField from "../forms/CodeNumberField";
+import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
 
 const emptyValues = {
   sku: "",
@@ -48,6 +50,11 @@ const ProductFormModal = ({
   );
   const [validationError, setValidationError] =
     useState("");
+  const {
+    setting: codeNumberSetting,
+    isLoading: isNumberingLoading,
+    errorMessage: numberingError,
+  } = useCodeNumberSetting("PRODUCT", isOpen);
 
   useEffect(() => {
     if (!isOpen) {
@@ -102,13 +109,14 @@ const ProductFormModal = ({
     event.preventDefault();
 
     if (
-      !values.sku.trim() ||
+      (!codeNumberSetting?.is_automatic &&
+        !values.sku.trim()) ||
       !values.product_name.trim() ||
       !values.category_id ||
       !values.supplier_id
     ) {
       setValidationError(
-        "SKU, nama produk, kategori, dan supplier wajib diisi.",
+        "SKU manual, nama produk, kategori, dan supplier wajib diisi.",
       );
       return;
     }
@@ -187,18 +195,19 @@ const ProductFormModal = ({
           onSubmit={handleSubmit}
         >
           <div className="product-form-grid">
-            <label className="product-form-field">
-              <span>SKU</span>
-              <input
-                type="text"
-                name="sku"
-                value={values.sku}
-                placeholder="Contoh: SKU-D001"
-                autoComplete="off"
-                disabled={isSubmitting}
-                onChange={handleChange}
-              />
-            </label>
+            <CodeNumberField
+              label="SKU"
+              name="sku"
+              value={values.sku}
+              placeholder="Contoh: SKU-00001"
+              maxLength={50}
+              mode={mode}
+              setting={codeNumberSetting}
+              isLoading={isNumberingLoading}
+              errorMessage={numberingError}
+              disabled={isSubmitting}
+              onChange={handleChange}
+            />
 
             <label className="product-form-field">
               <span>Nama produk</span>
@@ -332,7 +341,7 @@ const ProductFormModal = ({
             <button
               type="submit"
               className="product-form-submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isNumberingLoading}
             >
               <Save size={18} />
               {isSubmitting

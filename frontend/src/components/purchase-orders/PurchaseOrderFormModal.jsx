@@ -9,6 +9,8 @@ import {
 import { formatCurrency } from "../../utils/formatters";
 import FormDatePicker from "../forms/FormDatePicker";
 import FormSelect from "../forms/FormSelect";
+import CodeNumberField from "../forms/CodeNumberField";
+import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
 
 let itemSequence = 0;
 
@@ -46,6 +48,11 @@ const PurchaseOrderFormModal = ({
     ]);
     const [validationError, setValidationError] =
         useState("");
+    const {
+        setting: codeNumberSetting,
+        isLoading: isNumberingLoading,
+        errorMessage: numberingError,
+    } = useCodeNumberSetting("PURCHASE_ORDER", isOpen);
 
     useEffect(() => {
         if (!isOpen) {
@@ -176,11 +183,12 @@ const PurchaseOrderFormModal = ({
         event.preventDefault();
 
         if (
-            !values.po_number.trim() ||
+            (!codeNumberSetting?.is_automatic &&
+                !values.po_number.trim()) ||
             !values.supplier_id
         ) {
             setValidationError(
-                "Nomor PO dan supplier wajib diisi.",
+                "Nomor PO manual dan supplier wajib diisi.",
             );
             return;
         }
@@ -296,18 +304,19 @@ const PurchaseOrderFormModal = ({
                             </div>
 
                             <div className="purchase-order-form-grid">
-                                <label className="purchase-order-form-field">
-                                    <span>Nomor PO</span>
-                                    <input
-                                        type="text"
-                                        name="po_number"
-                                        value={values.po_number}
-                                        placeholder="Contoh: PO-2026-0003"
-                                        autoComplete="off"
-                                        disabled={isSubmitting}
-                                        onChange={handleFieldChange}
-                                    />
-                                </label>
+                                <CodeNumberField
+                                    label="Nomor PO"
+                                    name="po_number"
+                                    value={values.po_number}
+                                    placeholder="Contoh: PO-2026-0003"
+                                    maxLength={40}
+                                    setting={codeNumberSetting}
+                                    isLoading={isNumberingLoading}
+                                    errorMessage={numberingError}
+                                    disabled={isSubmitting}
+                                    onChange={handleFieldChange}
+                                    className="purchase-order-form-field"
+                                />
 
                                 <div className="purchase-order-form-field">
                                     <FormSelect
@@ -542,6 +551,7 @@ const PurchaseOrderFormModal = ({
                             className="purchase-order-form-submit"
                             disabled={
                                 isSubmitting ||
+                                isNumberingLoading ||
                                 isLoadingProducts ||
                                 products.length === 0
                             }

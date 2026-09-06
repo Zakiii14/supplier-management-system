@@ -21,6 +21,7 @@ import SalesOrdersPage from "./pages/SalesOrdersPage";
 import SuppliersPage from "./pages/SuppliersPage";
 import UsersPage from "./pages/UsersPage";
 import ReportsPage from "./pages/ReportsPage";
+import CodeNumberSettingsPage from "./pages/CodeNumberSettingsPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { navigationGroups } from "./utils/navigation";
 
@@ -44,6 +45,7 @@ const App = () => {
         item.path !== "/invoices" &&
         item.path !== "/payments" &&
         item.path !== "/reports" &&
+        item.path !== "/code-number-settings" &&
         item.path !== "/users",
     );
 
@@ -139,6 +141,11 @@ const App = () => {
           <Route
             path="users"
             element={<UsersPage />}
+          />
+
+          <Route
+            path="code-number-settings"
+            element={<CodeNumberSettingsPage />}
           />
 
           {moduleRoutes.map((item) => (

@@ -12,6 +12,8 @@ import {
 import { formatNumber } from "../../utils/formatters";
 import FormDatePicker from "../forms/FormDatePicker";
 import FormSelect from "../forms/FormSelect";
+import CodeNumberField from "../forms/CodeNumberField";
+import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
 
 const getTodayValue = () =>
   new Date().toISOString().slice(0, 10);
@@ -73,6 +75,11 @@ const DeliveryFormModal = ({
   const [items, setItems] = useState([]);
   const [validationError, setValidationError] =
     useState("");
+  const {
+    setting: codeNumberSetting,
+    isLoading: isNumberingLoading,
+    errorMessage: numberingError,
+  } = useCodeNumberSetting("DELIVERY", isOpen);
 
 //   useEffect(() => {
 //     if (!isOpen) {
@@ -217,11 +224,12 @@ const DeliveryFormModal = ({
     event.preventDefault();
 
     if (
-      !values.delivery_number.trim() ||
+      (!codeNumberSetting?.is_automatic &&
+        !values.delivery_number.trim()) ||
       !values.sales_order_id
     ) {
       setValidationError(
-        "Nomor pengiriman dan sales order wajib diisi.",
+        "Nomor pengiriman manual dan sales order wajib diisi.",
       );
       return;
     }
@@ -354,19 +362,19 @@ const DeliveryFormModal = ({
               </div>
 
               <div className="goods-receipt-form-grid">
-                <label className="goods-receipt-form-field">
-                  <span>Nomor pengiriman</span>
-
-                  <input
-                    type="text"
-                    name="delivery_number"
-                    value={values.delivery_number}
-                    placeholder="Contoh: DEL-2026-0003"
-                    autoComplete="off"
-                    disabled={isSubmitting}
-                    onChange={handleFieldChange}
-                  />
-                </label>
+                <CodeNumberField
+                  label="Nomor pengiriman"
+                  name="delivery_number"
+                  value={values.delivery_number}
+                  placeholder="Contoh: DEL-2026-0003"
+                  maxLength={40}
+                  setting={codeNumberSetting}
+                  isLoading={isNumberingLoading}
+                  errorMessage={numberingError}
+                  disabled={isSubmitting}
+                  onChange={handleFieldChange}
+                  className="goods-receipt-form-field"
+                />
 
                 <div className="goods-receipt-form-field">
                   <FormSelect
@@ -657,6 +665,7 @@ const DeliveryFormModal = ({
               className="goods-receipt-form-submit"
               disabled={
                 isSubmitting ||
+                isNumberingLoading ||
                 isLoadingSalesOrder ||
                 items.length === 0
               }

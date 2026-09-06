@@ -1,4 +1,7 @@
 const pool = require("../config/database");
+const {
+  resolveCodeNumber,
+} = require("../services/codeNumberService");
 
 const {
   parseDateRange,
@@ -361,11 +364,10 @@ const createDelivery = async (req, res) => {
 
 const createdBy = req.user.id;
 
-    if (!delivery_number || !sales_order_id) {
+    if (!sales_order_id) {
       return res.status(400).json({
         success: false,
-        message:
-          "delivery_number and sales_order_id are required",
+        message: "sales_order_id is required",
       });
     }
 
@@ -393,6 +395,13 @@ const createdBy = req.user.id;
     }
 
     await client.query("BEGIN");
+
+    const resolvedDeliveryNumber =
+      await resolveCodeNumber({
+        client,
+        moduleKey: "DELIVERY",
+        manualCode: delivery_number,
+      });
 
     const orderResult = await client.query(
       `
@@ -450,7 +459,7 @@ const createdBy = req.user.id;
       RETURNING *
       `,
       [
-        delivery_number,
+        resolvedDeliveryNumber,
         sales_order_id,
         delivery_date || null,
         recipient_name || null,

@@ -176,6 +176,7 @@ Authorization is enforced by the backend based on the authenticated user's role.
 * Date-range filtering
 * Reusable pagination
 * Audit identity
+* Configurable automatic code numbering for master data and transactions
 * Inventory movement tracking
 * Remaining delivery quantity calculation
 * Responsive dashboard interface
@@ -367,6 +368,14 @@ Testing covers areas such as:
 * Payments
 
 A separate PostgreSQL database is used for automated testing to isolate test data from development data.
+
+---
+
+### Configurable Code Numbering
+
+Administrators can configure automatic numbering independently for suppliers, categories, products, purchase orders, goods receipts, customers, sales orders, deliveries, invoices, and payments.
+
+Each module supports a custom prefix, separator, digit length, optional year and month tokens, sequence reset rules, and a selectable manual or automatic mode. Number generation is handled inside database transactions so concurrent requests receive different identifiers, while codes on existing records remain unchanged.
 
 ---
 

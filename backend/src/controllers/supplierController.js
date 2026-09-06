@@ -1,4 +1,7 @@
 const pool = require("../config/database");
+const {
+	resolveCodeNumber,
+} = require("../services/codeNumberService");
 const isValidUUID = value => {
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 	return uuidRegex.test(value)
@@ -170,6 +173,9 @@ const getSupplierById = async (req, res) => {
 	}
 };
 const createSupplier = async (req, res) => {
+	const client = await pool.connect();
+	let transactionStarted = false;
+
 	try {
 		const {
 			supplier_code,
@@ -182,21 +188,38 @@ const createSupplier = async (req, res) => {
 			payment_terms_days,
 			notes
 		} = req.body;
-		const normalizedSupplierCode =
-			normalizeSupplierCode(supplier_code);
-		if (!normalizedSupplierCode || !supplier_name) {
+		if (!supplier_name) {
 			return res.status(400).json({
 				success: false,
-				message: "supplier_code and supplier_name are required"
+				message: "supplier_name is required"
 			})
 		}
-		const result = await pool.query(`\n      INSERT INTO app.suppliers (\n        supplier_code,\n        supplier_name,\n        contact_person,\n        phone,\n        email,\n        address,\n        city,\n        payment_terms_days,\n        notes\n      )\n      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n      RETURNING *\n      `, [normalizedSupplierCode, supplier_name, contact_person || null, phone || null, email || null, address || null, city || null, payment_terms_days ?? 0, notes || null]);
+
+		await client.query("BEGIN");
+		transactionStarted = true;
+
+		const resolvedSupplierCode =
+			await resolveCodeNumber({
+				client,
+				moduleKey: "SUPPLIER",
+				manualCode: supplier_code,
+			});
+
+		const result = await client.query(`\n      INSERT INTO app.suppliers (\n        supplier_code,\n        supplier_name,\n        contact_person,\n        phone,\n        email,\n        address,\n        city,\n        payment_terms_days,\n        notes\n      )\n      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n      RETURNING *\n      `, [resolvedSupplierCode, supplier_name, contact_person || null, phone || null, email || null, address || null, city || null, payment_terms_days ?? 0, notes || null]);
+
+		await client.query("COMMIT");
+		transactionStarted = false;
+
 		res.status(201).json({
 			success: true,
 			message: "Supplier created successfully",
 			data: result.rows[0]
 		})
 	} catch (error) {
+		if (transactionStarted) {
+			await client.query("ROLLBACK");
+		}
+
 		if (error.code === "23505") {
 			return res.status(409).json({
 				success: false,
@@ -206,10 +229,12 @@ const createSupplier = async (req, res) => {
 
 		console.error("Error creating supplier:", error);
 
-		res.status(500).json({
+		res.status(error.statusCode || 500).json({
 			success: false,
-			message: "Failed to create supplier"
+			message: error.message || "Failed to create supplier"
 		});
+	} finally {
+		client.release();
 	}
 };
 const updateSupplier = async (req, res) => {

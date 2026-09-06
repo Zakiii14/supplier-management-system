@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Tags, X } from "lucide-react";
+import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
+import CodeNumberField from "../forms/CodeNumberField";
 
 const CategoryFormModal = ({
   isOpen,
@@ -16,6 +18,11 @@ const CategoryFormModal = ({
   });
 
   const isEditing = mode === "edit";
+  const {
+    setting: codeNumberSetting,
+    isLoading: isNumberingLoading,
+    errorMessage: numberingError,
+  } = useCodeNumberSetting("CATEGORY", isOpen);
 
   useEffect(() => {
     if (!isOpen) {
@@ -79,7 +86,8 @@ const CategoryFormModal = ({
   };
 
   const isFormIncomplete =
-    !formData.category_code.trim() ||
+    (!codeNumberSetting?.is_automatic &&
+      !formData.category_code.trim()) ||
     !formData.category_name.trim();
 
   return (
@@ -149,29 +157,20 @@ const CategoryFormModal = ({
             )}
 
             <div className="category-form-grid">
-              <label className="category-form-field">
-                <span>
-                  Kode kategori
-                  <strong aria-hidden="true">*</strong>
-                </span>
-
-                <input
-                  type="text"
-                  name="category_code"
-                  value={formData.category_code}
-                  maxLength={50}
-                  autoComplete="off"
-                  placeholder="Contoh: CAT-001"
-                  disabled={isSubmitting}
-                  onChange={handleChange}
-                  required
-                />
-
-                <small>
-                  Kode otomatis disimpan menggunakan
-                  huruf kapital.
-                </small>
-              </label>
+              <CodeNumberField
+                label="Kode kategori"
+                name="category_code"
+                value={formData.category_code}
+                placeholder="Contoh: CAT-0001"
+                maxLength={30}
+                mode={mode}
+                setting={codeNumberSetting}
+                isLoading={isNumberingLoading}
+                errorMessage={numberingError}
+                disabled={isSubmitting}
+                onChange={handleChange}
+                className="category-form-field"
+              />
 
               <label className="category-form-field">
                 <span>
@@ -208,7 +207,9 @@ const CategoryFormModal = ({
               type="submit"
               className="category-form-submit"
               disabled={
-                isSubmitting || isFormIncomplete
+                isSubmitting ||
+                isNumberingLoading ||
+                isFormIncomplete
               }
             >
               {isSubmitting

@@ -2,6 +2,9 @@ const pool = require("../config/database");
 const {
   parseDateRange,
 } = require("../utils/dateRange");
+const {
+  resolveCodeNumber,
+} = require("../services/codeNumberService");
 
 const createGoodsReceipt = async (req, res) => {
   const client = await pool.connect();
@@ -19,11 +22,10 @@ const createGoodsReceipt = async (req, res) => {
     // =========================
     // BASIC VALIDATION
     // =========================
-    if (!receipt_number || !purchase_order_id) {
+    if (!purchase_order_id) {
       return res.status(400).json({
         success: false,
-        message:
-          "receipt_number and purchase_order_id are required",
+        message: "purchase_order_id is required",
       });
     }
 
@@ -49,6 +51,13 @@ const createGoodsReceipt = async (req, res) => {
     }
 
     await client.query("BEGIN");
+
+    const resolvedReceiptNumber =
+      await resolveCodeNumber({
+        client,
+        moduleKey: "GOODS_RECEIPT",
+        manualCode: receipt_number,
+      });
 
     // =========================
     // CHECK PURCHASE ORDER
@@ -97,7 +106,7 @@ const createGoodsReceipt = async (req, res) => {
       RETURNING *
       `,
       [
-        receipt_number,
+        resolvedReceiptNumber,
         purchase_order_id,
         receivedBy,
         notes || null,
@@ -268,7 +277,7 @@ const createGoodsReceipt = async (req, res) => {
             poItem.product_id,
             stockQuantity,
             goodsReceipt.id,
-            `Goods receipt ${receipt_number}`,
+            `Goods receipt ${resolvedReceiptNumber}`,
             receivedBy,
           ]
         );

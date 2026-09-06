@@ -21,6 +21,9 @@ const dashboardRoutes = require("./routes/dashboardRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const codeNumberSettingRoutes = require(
+  "./routes/codeNumberSettingRoutes"
+);
 
 const authenticate = require("./middleware/authMiddleware");
 
@@ -82,6 +85,11 @@ app.use("/api/deliveries", authenticate, deliveryRoutes);
 app.use("/api/invoices", authenticate, invoiceRoutes);
 app.use("/api/payments", authenticate, paymentRoutes);
 app.use("/api/users", authenticate, userRoutes);
+app.use(
+  "/api/code-number-settings",
+  authenticate,
+  codeNumberSettingRoutes
+);
 app.use("/api/auth", authRoutes);
 
 app.use((req, res) => {

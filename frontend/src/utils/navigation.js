@@ -4,6 +4,7 @@ import {
   Building2,
   ClipboardCheck,
   LayoutDashboard,
+  Hash,
   PackageOpen,
   ReceiptText,
   ShoppingCart,
@@ -180,6 +181,12 @@ const navigationGroups = [
   {
     label: "Administration",
     items: [
+      {
+        label: "Pengaturan Penomoran",
+        path: "/code-number-settings",
+        icon: Hash,
+        roles: ["ADMIN"],
+      },
       {
         label: "User Management",
         path: "/users",

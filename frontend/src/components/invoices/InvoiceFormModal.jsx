@@ -16,6 +16,8 @@ import {
 } from "../../utils/formatters";
 import FormDatePicker from "../forms/FormDatePicker";
 import FormSelect from "../forms/FormSelect";
+import CodeNumberField from "../forms/CodeNumberField";
+import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
 
 const getTodayValue = () =>
   new Date().toISOString().slice(0, 10);
@@ -66,6 +68,11 @@ const InvoiceFormModal = ({
 
   const [validationError, setValidationError] =
     useState("");
+  const {
+    setting: codeNumberSetting,
+    isLoading: isNumberingLoading,
+    errorMessage: numberingError,
+  } = useCodeNumberSetting("INVOICE", isOpen);
 
   useEffect(() => {
     if (!isOpen) {
@@ -176,11 +183,12 @@ const InvoiceFormModal = ({
     event.preventDefault();
 
     if (
-      !values.invoice_number.trim() ||
+      (!codeNumberSetting?.is_automatic &&
+        !values.invoice_number.trim()) ||
       !values.sales_order_id
     ) {
       setValidationError(
-        "Nomor invoice dan sales order wajib diisi.",
+        "Nomor invoice manual dan sales order wajib diisi.",
       );
       return;
     }
@@ -276,19 +284,19 @@ const InvoiceFormModal = ({
               </div>
 
               <div className="purchase-order-form-grid">
-                <label className="purchase-order-form-field">
-                  <span>Nomor invoice</span>
-
-                  <input
-                    type="text"
-                    name="invoice_number"
-                    value={values.invoice_number}
-                    placeholder="Contoh: INV-2026-0003"
-                    autoComplete="off"
-                    disabled={isSubmitting}
-                    onChange={handleFieldChange}
-                  />
-                </label>
+                <CodeNumberField
+                  label="Nomor invoice"
+                  name="invoice_number"
+                  value={values.invoice_number}
+                  placeholder="Contoh: INV-2026-0003"
+                  maxLength={40}
+                  setting={codeNumberSetting}
+                  isLoading={isNumberingLoading}
+                  errorMessage={numberingError}
+                  disabled={isSubmitting}
+                  onChange={handleFieldChange}
+                  className="purchase-order-form-field"
+                />
 
                 <div className="purchase-order-form-field">
                   <FormSelect
@@ -513,6 +521,7 @@ const InvoiceFormModal = ({
               className="purchase-order-form-submit"
               disabled={
                 isSubmitting ||
+                isNumberingLoading ||
                 !selectedSalesOrder
               }
             >

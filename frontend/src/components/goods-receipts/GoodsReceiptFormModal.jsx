@@ -11,6 +11,8 @@ import {
 } from "react";
 import { formatNumber } from "../../utils/formatters";
 import FormSelect from "../forms/FormSelect";
+import CodeNumberField from "../forms/CodeNumberField";
+import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
 
 const createInitialValues = () => ({
   receipt_number: "",
@@ -69,6 +71,11 @@ const GoodsReceiptFormModal = ({
   const [items, setItems] = useState([]);
   const [validationError, setValidationError] =
     useState("");
+  const {
+    setting: codeNumberSetting,
+    isLoading: isNumberingLoading,
+    errorMessage: numberingError,
+  } = useCodeNumberSetting("GOODS_RECEIPT", isOpen);
 
   useEffect(() => {
     if (!isOpen) {
@@ -191,11 +198,12 @@ const GoodsReceiptFormModal = ({
     event.preventDefault();
 
     if (
-      !values.receipt_number.trim() ||
+      (!codeNumberSetting?.is_automatic &&
+        !values.receipt_number.trim()) ||
       !values.purchase_order_id
     ) {
       setValidationError(
-        "Nomor penerimaan dan purchase order wajib diisi.",
+        "Nomor penerimaan manual dan purchase order wajib diisi.",
       );
       return;
     }
@@ -318,19 +326,19 @@ const GoodsReceiptFormModal = ({
               </div>
 
               <div className="goods-receipt-form-grid">
-                <label className="goods-receipt-form-field">
-                  <span>Nomor penerimaan</span>
-
-                  <input
-                    type="text"
-                    name="receipt_number"
-                    value={values.receipt_number}
-                    placeholder="Contoh: GR-2026-0003"
-                    autoComplete="off"
-                    disabled={isSubmitting}
-                    onChange={handleFieldChange}
-                  />
-                </label>
+                <CodeNumberField
+                  label="Nomor penerimaan"
+                  name="receipt_number"
+                  value={values.receipt_number}
+                  placeholder="Contoh: GR-2026-0003"
+                  maxLength={40}
+                  setting={codeNumberSetting}
+                  isLoading={isNumberingLoading}
+                  errorMessage={numberingError}
+                  disabled={isSubmitting}
+                  onChange={handleFieldChange}
+                  className="goods-receipt-form-field"
+                />
 
                 <div className="goods-receipt-form-field">
                   <FormSelect
@@ -595,6 +603,7 @@ const GoodsReceiptFormModal = ({
               className="goods-receipt-form-submit"
               disabled={
                 isSubmitting ||
+                isNumberingLoading ||
                 isLoadingPurchaseOrder ||
                 items.length === 0
               }

@@ -1,4 +1,7 @@
 const pool = require("../config/database");
+const {
+  resolveCodeNumber,
+} = require("../services/codeNumberService");
 
 const normalizeSku = (value) =>
   typeof value === "string"
@@ -267,6 +270,9 @@ const getProductById = async (req, res) => {
 };
 
 const createProduct = async (req, res) => {
+  const client = await pool.connect();
+  let transactionStarted = false;
+
   try {
     const {
       sku,
@@ -280,10 +286,7 @@ const createProduct = async (req, res) => {
       description,
     } = req.body;
 
-    const normalizedSku = normalizeSku(sku);
-
     if (
-      !normalizedSku ||
       !product_name ||
       !category_id ||
       !supplier_id
@@ -291,12 +294,12 @@ const createProduct = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "sku, product_name, category_id, and supplier_id are required",
+          "product_name, category_id, and supplier_id are required",
       });
     }
 
     // Cek category
-    const categoryResult = await pool.query(
+    const categoryResult = await client.query(
       `
       SELECT id
       FROM app.categories
@@ -314,7 +317,7 @@ const createProduct = async (req, res) => {
     }
 
     // Cek supplier
-    const supplierResult = await pool.query(
+    const supplierResult = await client.query(
       `
       SELECT id
       FROM app.suppliers
@@ -331,7 +334,16 @@ const createProduct = async (req, res) => {
       });
     }
 
-    const result = await pool.query(
+    await client.query("BEGIN");
+    transactionStarted = true;
+
+    const resolvedSku = await resolveCodeNumber({
+      client,
+      moduleKey: "PRODUCT",
+      manualCode: sku,
+    });
+
+    const result = await client.query(
       `
   INSERT INTO app.products (
     sku,
@@ -352,7 +364,7 @@ const createProduct = async (req, res) => {
   RETURNING *
   `,
       [
-        normalizedSku,
+        resolvedSku,
         product_name,
         category_id,
         supplier_id,
@@ -364,12 +376,19 @@ const createProduct = async (req, res) => {
       ]
     );
 
+    await client.query("COMMIT");
+    transactionStarted = false;
+
     res.status(201).json({
       success: true,
       message: "Product created successfully",
       data: result.rows[0],
     });
   } catch (error) {
+    if (transactionStarted) {
+      await client.query("ROLLBACK");
+    }
+
     if (error.code === "23505") {
       return res.status(409).json({
         success: false,
@@ -379,10 +398,12 @@ const createProduct = async (req, res) => {
 
     console.error("Error creating product:", error);
 
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       success: false,
-      message: "Failed to create product",
+      message: error.message || "Failed to create product",
     });
+  } finally {
+    client.release();
   }
 };
 

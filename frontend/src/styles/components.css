@@ -115,6 +115,52 @@
   }
 }
 
+/* Automatic code-number field */
+.code-number-field {
+  align-self: start;
+}
+
+.code-number-preview {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+}
+
+.code-number-preview > svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+}
+
+.code-number-preview div {
+  display: grid;
+  gap: 2px;
+}
+
+.code-number-preview strong {
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+}
+
+.code-number-preview small {
+  color: #64748b;
+  font-size: 0.72rem;
+}
+
+.code-number-preview.is-loading svg {
+  animation: session-spin 0.8s linear infinite;
+}
+
+.code-number-warning {
+  color: #b54708 !important;
+}
+
 .search-control {
   display: flex;
   flex: 1 1 420px;

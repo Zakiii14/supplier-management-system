@@ -1,4 +1,7 @@
 const pool = require("../config/database");
+const {
+  resolveCodeNumber,
+} = require("../services/codeNumberService");
 
 const getAllCustomers = async (req, res) => {
   try {
@@ -167,6 +170,9 @@ const getCustomerById = async (req, res) => {
 };
 
 const createCustomer = async (req, res) => {
+  const client = await pool.connect();
+  let transactionStarted = false;
+
   try {
     const {
       customer_code,
@@ -181,11 +187,10 @@ const createCustomer = async (req, res) => {
       notes,
     } = req.body;
 
-    if (!customer_code || !customer_name) {
+    if (!customer_name) {
       return res.status(400).json({
         success: false,
-        message:
-          "customer_code and customer_name are required",
+        message: "customer_name is required",
       });
     }
 
@@ -211,7 +216,17 @@ const createCustomer = async (req, res) => {
       });
     }
 
-    const result = await pool.query(
+    await client.query("BEGIN");
+    transactionStarted = true;
+
+    const resolvedCustomerCode =
+      await resolveCodeNumber({
+        client,
+        moduleKey: "CUSTOMER",
+        manualCode: customer_code,
+      });
+
+    const result = await client.query(
       `
       INSERT INTO app.customers (
         customer_code,
@@ -233,7 +248,7 @@ const createCustomer = async (req, res) => {
       RETURNING *
       `,
       [
-        customer_code,
+        resolvedCustomerCode,
         customer_name,
         contact_person || null,
         phone || null,
@@ -246,12 +261,19 @@ const createCustomer = async (req, res) => {
       ]
     );
 
+    await client.query("COMMIT");
+    transactionStarted = false;
+
     res.status(201).json({
       success: true,
       message: "Customer created successfully",
       data: result.rows[0],
     });
   } catch (error) {
+    if (transactionStarted) {
+      await client.query("ROLLBACK");
+    }
+
     console.error("Error creating customer:", error);
 
     if (error.code === "23505") {
@@ -261,10 +283,12 @@ const createCustomer = async (req, res) => {
       });
     }
 
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       success: false,
-      message: "Failed to create customer",
+      message: error.message || "Failed to create customer",
     });
+  } finally {
+    client.release();
   }
 };
 

@@ -1,4 +1,7 @@
 const pool = require("../config/database");
+const {
+	resolveCodeNumber,
+} = require("../services/codeNumberService");
 
 const {
 	parseDateRange,
@@ -548,7 +551,6 @@ const createPayment = async (req, res) => {
 				: "";
 
 		if (
-			!normalizedPaymentNumber ||
 			!normalizedInvoiceId ||
 			amount === undefined ||
 			amount === null ||
@@ -557,7 +559,7 @@ const createPayment = async (req, res) => {
 			return res.status(400).json({
 				success: false,
 				message:
-					"payment_number, invoice_id, amount, and method are required",
+					"invoice_id, amount, and method are required",
 			});
 		}
 
@@ -602,13 +604,20 @@ const createPayment = async (req, res) => {
 		await client.query("BEGIN");
 		transactionStarted = true;
 
+		const resolvedPaymentNumber =
+			await resolveCodeNumber({
+				client,
+				moduleKey: "PAYMENT",
+				manualCode: normalizedPaymentNumber,
+			});
+
 		const duplicateResult = await client.query(
 			`
       SELECT id
       FROM app.payments
       WHERE UPPER(payment_number) = $1
       `,
-			[normalizedPaymentNumber],
+			[resolvedPaymentNumber],
 		);
 
 		if (duplicateResult.rows.length > 0) {
@@ -714,7 +723,7 @@ const createPayment = async (req, res) => {
       RETURNING *
       `,
 			[
-				normalizedPaymentNumber,
+				resolvedPaymentNumber,
 				normalizedInvoiceId,
 				normalizedPaymentDate || null,
 				numericAmount,

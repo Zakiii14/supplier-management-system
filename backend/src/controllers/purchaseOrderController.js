@@ -1,5 +1,8 @@
 const pool = require("../config/database");
 const {
+	resolveCodeNumber,
+} = require("../services/codeNumberService");
+const {
   parseDateRange,
 } = require("../utils/dateRange");
 
@@ -300,10 +303,10 @@ const createPurchaseOrder = async (req, res) => {
 			items,
 		} = req.body;
 		const createdBy = req.user.id;
-		if (!po_number || !supplier_id) {
+		if (!supplier_id) {
 			return res.status(400).json({
 				success: false,
-				message: "po_number and supplier_id are required",
+				message: "supplier_id is required",
 			});
 		}
 		if (!Array.isArray(items) || items.length === 0) {
@@ -326,6 +329,12 @@ const createPurchaseOrder = async (req, res) => {
 			});
 		}
 		await client.query("BEGIN");
+		const resolvedPurchaseOrderNumber =
+			await resolveCodeNumber({
+				client,
+				moduleKey: "PURCHASE_ORDER",
+				manualCode: po_number,
+			});
 		const poResult = await client.query(`
       INSERT INTO app.purchase_orders (
   po_number,
@@ -348,7 +357,7 @@ VALUES (
       RETURNING *
       `,
 			[
-				po_number,
+				resolvedPurchaseOrderNumber,
 				supplier_id,
 				order_date || null,
 				expected_date || null,

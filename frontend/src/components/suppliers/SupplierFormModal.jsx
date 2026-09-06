@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Save, X } from "lucide-react";
+import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
+import CodeNumberField from "../forms/CodeNumberField";
 
 const emptyValues = {
   supplier_code: "",
@@ -47,6 +49,11 @@ const SupplierFormModal = ({
 
   const [validationError, setValidationError] =
     useState("");
+  const {
+    setting: codeNumberSetting,
+    isLoading: isNumberingLoading,
+    errorMessage: numberingError,
+  } = useCodeNumberSetting("SUPPLIER", isOpen);
 
   useEffect(() => {
     if (!isOpen) {
@@ -106,11 +113,12 @@ const SupplierFormModal = ({
     event.preventDefault();
 
     if (
-      !values.supplier_code.trim() ||
+      (!codeNumberSetting?.is_automatic &&
+        !values.supplier_code.trim()) ||
       !values.supplier_name.trim()
     ) {
       setValidationError(
-        "Kode dan nama supplier wajib diisi.",
+        "Kode manual dan nama supplier wajib diisi.",
       );
       return;
     }
@@ -197,18 +205,19 @@ const SupplierFormModal = ({
           onSubmit={handleSubmit}
         >
           <div className="product-form-grid">
-            <label className="product-form-field">
-              <span>Kode supplier</span>
-              <input
-                type="text"
-                name="supplier_code"
-                value={values.supplier_code}
-                placeholder="Contoh: SUP-001"
-                autoComplete="off"
-                disabled={isSubmitting}
-                onChange={handleChange}
-              />
-            </label>
+            <CodeNumberField
+              label="Kode supplier"
+              name="supplier_code"
+              value={values.supplier_code}
+              placeholder="Contoh: SUP-0001"
+              maxLength={30}
+              mode={mode}
+              setting={codeNumberSetting}
+              isLoading={isNumberingLoading}
+              errorMessage={numberingError}
+              disabled={isSubmitting}
+              onChange={handleChange}
+            />
 
             <label className="product-form-field">
               <span>Nama supplier</span>
@@ -337,7 +346,7 @@ const SupplierFormModal = ({
             <button
               type="submit"
               className="product-form-submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isNumberingLoading}
             >
               <Save aria-hidden="true" />
 

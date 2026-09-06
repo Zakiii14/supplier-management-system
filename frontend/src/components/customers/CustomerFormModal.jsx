@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Save, X } from "lucide-react";
+import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
+import CodeNumberField from "../forms/CodeNumberField";
 
 const emptyValues = {
   customer_code: "",
@@ -49,6 +51,11 @@ const CustomerFormModal = ({
 
   const [validationError, setValidationError] =
     useState("");
+  const {
+    setting: codeNumberSetting,
+    isLoading: isNumberingLoading,
+    errorMessage: numberingError,
+  } = useCodeNumberSetting("CUSTOMER", isOpen);
 
   useEffect(() => {
     if (!isOpen) {
@@ -108,11 +115,12 @@ const CustomerFormModal = ({
     event.preventDefault();
 
     if (
-      !values.customer_code.trim() ||
+      (!codeNumberSetting?.is_automatic &&
+        !values.customer_code.trim()) ||
       !values.customer_name.trim()
     ) {
       setValidationError(
-        "Kode dan nama customer wajib diisi.",
+        "Kode manual dan nama customer wajib diisi.",
       );
       return;
     }
@@ -215,18 +223,19 @@ const CustomerFormModal = ({
           onSubmit={handleSubmit}
         >
           <div className="product-form-grid">
-            <label className="product-form-field">
-              <span>Kode customer</span>
-              <input
-                type="text"
-                name="customer_code"
-                value={values.customer_code}
-                placeholder="Contoh: CUS-001"
-                autoComplete="off"
-                disabled={isSubmitting}
-                onChange={handleChange}
-              />
-            </label>
+            <CodeNumberField
+              label="Kode customer"
+              name="customer_code"
+              value={values.customer_code}
+              placeholder="Contoh: CUS-0001"
+              maxLength={30}
+              mode={mode}
+              setting={codeNumberSetting}
+              isLoading={isNumberingLoading}
+              errorMessage={numberingError}
+              disabled={isSubmitting}
+              onChange={handleChange}
+            />
 
             <label className="product-form-field">
               <span>Nama customer</span>
@@ -369,7 +378,7 @@ const CustomerFormModal = ({
             <button
               type="submit"
               className="product-form-submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isNumberingLoading}
             >
               <Save aria-hidden="true" />
 

@@ -1,4 +1,7 @@
 const pool = require("../config/database");
+const {
+  resolveCodeNumber,
+} = require("../services/codeNumberService");
 
 const {
   parseDateRange,
@@ -531,11 +534,10 @@ const createInvoice = async (req, res) => {
       notes,
     } = req.body;
 
-    if (!invoice_number || !sales_order_id) {
+    if (!sales_order_id) {
       return res.status(400).json({
         success: false,
-        message:
-          "invoice_number and sales_order_id are required",
+        message: "sales_order_id is required",
       });
     }
 
@@ -551,6 +553,13 @@ const createInvoice = async (req, res) => {
     }
 
     await client.query("BEGIN");
+
+    const resolvedInvoiceNumber =
+      await resolveCodeNumber({
+        client,
+        moduleKey: "INVOICE",
+        manualCode: invoice_number,
+      });
 
     const orderResult = await client.query(
       `
@@ -667,7 +676,7 @@ const createInvoice = async (req, res) => {
       RETURNING *
       `,
       [
-        invoice_number,
+        resolvedInvoiceNumber,
         sales_order_id,
         salesOrder.customer_id,
         invoice_date || null,
