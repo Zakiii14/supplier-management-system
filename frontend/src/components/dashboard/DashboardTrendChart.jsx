@@ -273,7 +273,7 @@ const DashboardTrendChart = ({
                   }}
                 />
                 {metric.label}
-                {index === 1 && " (garis putus-putus)"}
+                {index === 1 }
               </span>
             ))}
           </div>
