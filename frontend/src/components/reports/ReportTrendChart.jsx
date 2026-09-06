@@ -273,7 +273,12 @@ const ReportTrendChart = ({
       )}
 
 
-      <div className="report-chart-scroll">
+      <div
+        className="report-chart-scroll"
+        role="region"
+        aria-label="Grafik bulanan, geser ke samping untuk melihat periode lainnya"
+        tabIndex={0}
+      >
         <div
           className={`report-trend-chart ${activeMetric === ALL_METRICS
             ? "is-all"
@@ -408,12 +413,20 @@ const ReportTrendChart = ({
           <h4>Rincian data per periode</h4>
 
           <p>
-            Angka pasti dari seluruh informasi
-            yang ditampilkan pada tren.
+            Menampilkan {trend.length} periode
+            sesuai filter laporan. Jika tabel
+            melebihi area yang tersedia, gulir
+            di dalam tabel untuk melihat
+            periode lainnya.
           </p>
         </div>
 
-        <div className="report-trend-details-scroll">
+        <div
+          className="report-trend-details-scroll"
+          role="region"
+          aria-label="Rincian laporan per periode"
+          tabIndex={0}
+        >
           <table>
             <thead>
               <tr>

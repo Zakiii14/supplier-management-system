@@ -36,6 +36,11 @@ import {
 import {
   formatNumber,
 } from "../utils/formatters";
+import {
+  DEFAULT_REPORT_RANGE,
+  REPORT_RANGE_OPTIONS,
+  getReportDateRange,
+} from "../utils/reportDateRange";
 
 const PAGE_LIMIT = 10;
 
@@ -147,10 +152,15 @@ const ReportsPage = () => {
   const [status, setStatus] = useState("");
   const [entityId, setEntityId] =
     useState("");
-  const [dateFrom, setDateFrom] =
-    useState("");
-  const [dateTo, setDateTo] =
-    useState("");
+  const [dateRange, setDateRange] = useState(
+    () => getReportDateRange(),
+  );
+
+  const {
+    preset: rangePreset,
+    dateFrom,
+    dateTo,
+  } = dateRange;
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] =
     useState(0);
@@ -212,9 +222,9 @@ const ReportsPage = () => {
 
           setEntityOptionsError(
             error.response?.data?.message ||
-              `Pilihan ${entityLabel.toLocaleLowerCase(
-                "id-ID",
-              )} gagal dimuat.`,
+            `Pilihan ${entityLabel.toLocaleLowerCase(
+              "id-ID",
+            )} gagal dimuat.`,
           );
         }
       } finally {
@@ -255,8 +265,8 @@ const ReportsPage = () => {
           }),
           ...(entityId &&
             entityParam && {
-              [entityParam]: entityId,
-            }),
+            [entityParam]: entityId,
+          }),
           ...(dateFrom && {
             date_from: dateFrom,
           }),
@@ -287,7 +297,7 @@ const ReportsPage = () => {
 
           setErrorMessage(
             error.response?.data?.message ||
-              "Data laporan gagal dimuat. Silakan coba kembali.",
+            "Data laporan gagal dimuat. Silakan coba kembali.",
           );
         }
       } finally {
@@ -315,12 +325,8 @@ const ReportsPage = () => {
     status,
   ]);
 
-  const handleReportChange = (
-    nextReportType,
-  ) => {
-    if (
-      nextReportType === activeReportType
-    ) {
+  const handleReportChange = (nextReportType) => {
+    if (nextReportType === activeReportType) {
       return;
     }
 
@@ -329,8 +335,7 @@ const ReportsPage = () => {
     setAppliedSearch("");
     setStatus("");
     setEntityId("");
-    setDateFrom("");
-    setDateTo("");
+    setDateRange(getReportDateRange());
     setPage(1);
     setReportData(EMPTY_REPORT_DATA);
     setErrorMessage("");
@@ -343,32 +348,54 @@ const ReportsPage = () => {
     setAppliedSearch(searchInput.trim());
   };
 
-  const handleStatusChange = (
-    nextStatus,
-  ) => {
+  const handleStatusChange = (nextStatus) => {
     setPage(1);
     setStatus(nextStatus);
   };
 
-  const handleEntityChange = (
-    nextEntityId,
-  ) => {
+  const handleEntityChange = (nextEntityId) => {
     setPage(1);
     setEntityId(nextEntityId);
   };
 
-  const handleDateFromChange = (
-    nextDateFrom,
-  ) => {
+  const handleRangeChange = (nextPreset) => {
     setPage(1);
-    setDateFrom(nextDateFrom);
+
+    if (nextPreset === "custom") {
+      setDateRange((current) => ({
+        ...current,
+        preset: "custom",
+      }));
+      return;
+    }
+
+    setDateRange(getReportDateRange(nextPreset));
   };
 
-  const handleDateToChange = (
-    nextDateTo,
-  ) => {
+  const handleDateFromChange = (nextDateFrom) => {
     setPage(1);
-    setDateTo(nextDateTo);
+
+    setDateRange((current) => ({
+      ...current,
+      preset: "custom",
+      dateFrom: nextDateFrom,
+      dateTo:
+        nextDateFrom &&
+          current.dateTo &&
+          nextDateFrom > current.dateTo
+          ? ""
+          : current.dateTo,
+    }));
+  };
+
+  const handleDateToChange = (nextDateTo) => {
+    setPage(1);
+
+    setDateRange((current) => ({
+      ...current,
+      preset: "custom",
+      dateTo: nextDateTo,
+    }));
   };
 
   const handleResetFilters = () => {
@@ -376,8 +403,7 @@ const ReportsPage = () => {
     setAppliedSearch("");
     setStatus("");
     setEntityId("");
-    setDateFrom("");
-    setDateTo("");
+    setDateRange(getReportDateRange());
     setPage(1);
   };
 
@@ -385,8 +411,7 @@ const ReportsPage = () => {
     Boolean(appliedSearch) ||
     Boolean(status) ||
     Boolean(entityId) ||
-    Boolean(dateFrom) ||
-    Boolean(dateTo);
+    rangePreset !== DEFAULT_REPORT_RANGE;
 
   const statusOptions = [
     {
@@ -555,8 +580,8 @@ const ReportsPage = () => {
               isEntityOptionsLoading
                 ? "Memuat pilihan..."
                 : `Semua ${entityLabel.toLocaleLowerCase(
-                    "id-ID",
-                  )}`
+                  "id-ID",
+                )}`
             }
             searchPlaceholder={`Cari ${entityLabel.toLocaleLowerCase(
               "id-ID",
@@ -579,15 +604,51 @@ const ReportsPage = () => {
             </button>
           )}
 
-          <DateRangeFilter
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            disabled={isLoading}
-            onDateFromChange={
-              handleDateFromChange
-            }
-            onDateToChange={handleDateToChange}
-          />
+          <div className="report-period-controls">
+            <div className="report-period-preset">
+              <FormSelect
+                label="Rentang laporan"
+                value={rangePreset}
+                options={REPORT_RANGE_OPTIONS}
+                searchable={false}
+                disabled={isLoading}
+                onChange={handleRangeChange}
+              />
+            </div>
+
+            <DateRangeFilter
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              disabled={isLoading}
+              onDateFromChange={
+                handleDateFromChange
+              }
+              onDateToChange={
+                handleDateToChange
+              }
+            />
+
+            <p className="report-period-help">
+              {rangePreset === "all"
+                ? "Menampilkan seluruh riwayat tanpa batas tanggal."
+                : rangePreset === "custom"
+                  ? "Tanggal yang diisi digunakan untuk membatasi periode laporan."
+                  : "Rentang dihitung dari awal bulan atau tahun sampai hari ini, termasuk bulan berjalan."}
+              {" "}
+              Mengubah tanggal secara manual akan
+              memilih rentang khusus.
+            </p>
+
+            {activeReportType === "inventory" && (
+              <p className="report-period-help">
+                Pada laporan persediaan, rentang
+                tanggal berlaku untuk pergerakan
+                stok masuk dan keluar. Saldo stok
+                dan nilai persediaan menunjukkan
+                kondisi saat ini.
+              </p>
+            )}
+          </div>
         </form>
 
         {entityOptionsError && (

@@ -1709,27 +1709,6 @@
   font-size: 0.9rem;
 }
 
-.dashboard-trend-detail-heading label {
-  display: grid;
-  min-width: 150px;
-  gap: 6px;
-  color: #475467;
-  font-size: 0.73rem;
-  font-weight: 700;
-}
-
-.dashboard-trend-detail-heading select {
-  width: 100%;
-  min-height: 40px;
-  padding: 8px 12px;
-  color: #344054;
-  font: inherit;
-  background: #ffffff;
-  border: 1px solid #d0d5dd;
-  border-radius: 9px;
-  cursor: pointer;
-}
-
 .dashboard-trend-values {
   display: grid;
   grid-template-columns:
@@ -1817,5 +1796,91 @@
 
   .dashboard-trend-heading h2 {
     font-size: 1.05rem;
+  }
+}
+
+.dashboard-trend-range {
+  flex-wrap: wrap;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-trend-range button {
+  min-width: 0;
+  white-space: normal;
+}
+
+.dashboard-trend-month-filter {
+  position: relative;
+  width: 240px;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.dashboard-trend-month-filter .form-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.dashboard-trend-month-filter
+  .form-select-trigger {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.dashboard-trend-month-filter
+  .form-select-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-trend-month-filter
+  .form-select-trigger > svg {
+  flex: 0 0 auto;
+}
+
+.dashboard-trend-month-filter
+  .form-select-menu {
+  left: 0;
+  right: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-trend-month-filter
+  .form-select-options {
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.dashboard-trend-month-filter
+  .form-select-option {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.dashboard-trend-month-filter
+  .form-select-option > span {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-trend-month-filter
+  .form-select-option > svg {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 700px) {
+  .dashboard-trend-month-filter {
+    width: 100%;
   }
 }

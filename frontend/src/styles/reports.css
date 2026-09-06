@@ -650,9 +650,17 @@
 }
 
 .report-trend-details-scroll {
-  overflow-x: auto;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 320px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   border: 1px solid #e4eaf2;
   border-radius: 11px;
+  box-sizing: border-box;
 }
 
 .report-trend-details table {
@@ -955,5 +963,83 @@
 
   .report-trend-metrics button {
     justify-content: flex-start;
+  }
+}
+
+/* Pilihan periode laporan */
+
+.report-filters > .report-period-controls {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns:
+    minmax(200px, 0.8fr) minmax(0, 2fr);
+  min-width: 0;
+  align-items: end;
+  gap: 12px 18px;
+}
+
+.report-period-preset {
+  min-width: 0;
+}
+
+.report-filters
+  .report-period-controls
+  > .date-range-filter {
+  grid-column: auto;
+  min-width: 0;
+}
+
+.report-period-help {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #667085;
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+/* Batasi ukuran kontainer tren */
+
+.reports-page .report-trend-section,
+.reports-page .report-trend-details {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.report-chart-scroll {
+  min-width: 0;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+}
+
+/* Header rincian tetap terlihat saat tabel digulir */
+
+.report-trend-details table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.report-trend-details thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  box-shadow: 0 1px 0 #e4eaf2;
+}
+
+.report-chart-scroll:focus-visible,
+.report-trend-details-scroll:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+@media (max-width: 820px) {
+  .report-filters > .report-period-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-filters
+    .report-period-controls
+    > .date-range-filter {
+    grid-column: 1 / -1;
   }
 }

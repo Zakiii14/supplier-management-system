@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { getDashboardTrendsRequest } from "../../api/dashboard";
+import FormSelect from "../forms/FormSelect";
 
 const COLORS = ["#2563eb", "#059669"];
 
@@ -44,7 +45,6 @@ const DashboardTrendChart = ({
   reloadKey = 0,
 }) => {
   const titleId = useId();
-  const periodId = useId();
 
   const [months, setMonths] = useState(6);
   const [retryKey, setRetryKey] = useState(0);
@@ -129,13 +129,13 @@ const DashboardTrendChart = ({
     rows.length <= 1
       ? (left + right) / 2
       : left +
-        (index / (rows.length - 1)) *
-          (right - left);
+      (index / (rows.length - 1)) *
+      (right - left);
 
   const getY = (value) =>
     bottom -
     ((toNumber(value) - minimum) / axisRange) *
-      (bottom - top);
+    (bottom - top);
 
   const ticks = Array.from(
     { length: 5 },
@@ -220,7 +220,7 @@ const DashboardTrendChart = ({
               aria-pressed={months === value}
               onClick={() => setMonths(value)}
             >
-              {value} bulan
+              {value} bulan terakhir
             </button>
           ))}
         </div>
@@ -415,31 +415,27 @@ const DashboardTrendChart = ({
               <div>
                 <h3>Rincian bulan terpilih</h3>
                 <p>
-                  Arahkan penunjuk ke grafik atau pilih
-                  bulan untuk melihat angka lengkap.
+                  Pilihan bulan mengikuti rentang
+                  grafik. Arahkan penunjuk ke grafik
+                  atau pilih bulan untuk melihat
+                  angka lengkap.
                 </p>
               </div>
 
-              <label htmlFor={periodId}>
-                <span>Bulan</span>
-
-                <select
-                  id={periodId}
+              <div className="dashboard-trend-month-filter">
+                <FormSelect
+                  label="Bulan dalam rentang grafik"
                   value={activeRow?.period ?? ""}
-                  onChange={(event) =>
-                    setSelectedPeriod(event.target.value)
-                  }
-                >
-                  {rows.map((row) => (
-                    <option
-                      key={row.period}
-                      value={row.period}
-                    >
-                      {formatPeriod(row.period)}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  options={rows.map((row) => ({
+                    value: row.period,
+                    label: formatPeriod(row.period),
+                  }))}
+                  placeholder="Pilih bulan"
+                  searchable={false}
+                  disabled={isLoading}
+                  onChange={setSelectedPeriod}
+                />
+              </div>
             </div>
 
             <dl
