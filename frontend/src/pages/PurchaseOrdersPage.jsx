@@ -15,6 +15,10 @@ import {
   useState,
 } from "react";
 import {
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import {
   createPurchaseOrderRequest,
   getPurchaseOrderByIdRequest,
   getPurchaseOrdersRequest,
@@ -25,8 +29,14 @@ import StatusFilter from "../components/filters/StatusFilter";
 import PurchaseOrderDetailDialog from "../components/purchase-orders/PurchaseOrderDetailDialog";
 import PurchaseOrderStatusDialog from "../components/purchase-orders/PurchaseOrderStatusDialog";
 import "../styles/purchase-orders.css";
-import { getActiveProductsBySupplierRequest } from "../api/products";
-import { getActiveSuppliersRequest } from "../api/suppliers";
+import {
+  getActiveProductsBySupplierRequest,
+  getProductByIdRequest,
+} from "../api/products";
+import {
+  getActiveSuppliersRequest,
+  getSupplierByIdRequest,
+} from "../api/suppliers";
 import PurchaseOrderFormModal from "../components/purchase-orders/PurchaseOrderFormModal";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
@@ -92,6 +102,8 @@ const statusPresentation = {
 const PurchaseOrdersPage = () => {
   const filtersRef = useStickyDataFilters();
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const productRequestIdRef = useRef(0);
 
   const canManagePurchaseOrders = [
@@ -132,6 +144,8 @@ const PurchaseOrdersPage = () => {
     useState([]);
   const [formProducts, setFormProducts] =
     useState([]);
+  const [initialProduct, setInitialProduct] =
+    useState(null);
   const [isPreparingForm, setIsPreparingForm] =
     useState(false);
   const [isLoadingProducts, setIsLoadingProducts] =
@@ -225,6 +239,112 @@ const PurchaseOrdersPage = () => {
     reloadKey,
   ]);
 
+  const prefillProductId =
+    location.state?.purchaseOrderPrefill?.productId;
+  const prefillSupplierId =
+    location.state?.purchaseOrderPrefill?.supplierId;
+
+  useEffect(() => {
+    if (
+      !canManagePurchaseOrders ||
+      !prefillProductId ||
+      !prefillSupplierId
+    ) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    const preparePrefilledForm = async () => {
+      try {
+        setIsPreparingForm(true);
+        setActionError("");
+        setFormError("");
+        setFormProducts([]);
+        setInitialProduct(null);
+
+        const [
+          supplierData,
+          productData,
+          selectedSupplier,
+          selectedProduct,
+        ] =
+          await Promise.all([
+            getActiveSuppliersRequest(),
+            getActiveProductsBySupplierRequest(
+              prefillSupplierId,
+            ),
+            getSupplierByIdRequest(prefillSupplierId),
+            getProductByIdRequest(prefillProductId),
+          ]);
+
+        if (isCancelled) {
+          return;
+        }
+
+        if (selectedSupplier.status !== "ACTIVE") {
+          throw new Error(
+            "Supplier produk tidak aktif atau tidak tersedia.",
+          );
+        }
+
+        if (
+          selectedProduct.status !== "ACTIVE" ||
+          selectedProduct.supplier_id !==
+            prefillSupplierId
+        ) {
+          throw new Error(
+            "Produk tidak aktif atau tidak tersedia untuk purchase order.",
+          );
+        }
+
+        const availableSuppliers = supplierData.some(
+          (supplier) => supplier.id === selectedSupplier.id,
+        )
+          ? supplierData
+          : [...supplierData, selectedSupplier];
+        const availableProducts = productData.some(
+          (product) => product.id === selectedProduct.id,
+        )
+          ? productData
+          : [...productData, selectedProduct];
+
+        setSuppliers(availableSuppliers);
+        setFormProducts(availableProducts);
+        setInitialProduct(selectedProduct);
+        setIsFormOpen(true);
+      } catch (error) {
+        if (!isCancelled) {
+          setActionError(
+            error.response?.data?.message ||
+              error.message ||
+              "Form purchase order gagal disiapkan.",
+          );
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsPreparingForm(false);
+          navigate(location.pathname, {
+            replace: true,
+            state: null,
+          });
+        }
+      }
+    };
+
+    preparePrefilledForm();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    canManagePurchaseOrders,
+    location.pathname,
+    navigate,
+    prefillProductId,
+    prefillSupplierId,
+  ]);
+
   const handleSearch = (event) => {
     event.preventDefault();
     setPage(1);
@@ -265,6 +385,7 @@ const PurchaseOrdersPage = () => {
       setActionError("");
       setFormError("");
       setFormProducts([]);
+      setInitialProduct(null);
 
       const supplierData =
         await getActiveSuppliersRequest();
@@ -328,6 +449,7 @@ const PurchaseOrdersPage = () => {
     setIsFormOpen(false);
     setSuppliers([]);
     setFormProducts([]);
+    setInitialProduct(null);
     setIsLoadingProducts(false);
     setFormError("");
   };
@@ -342,6 +464,7 @@ const PurchaseOrdersPage = () => {
       setIsFormOpen(false);
       setSuppliers([]);
       setFormProducts([]);
+      setInitialProduct(null);
       setPage(1);
       setReloadKey((current) => current + 1);
     } catch (error) {
@@ -775,9 +898,14 @@ const PurchaseOrdersPage = () => {
       </section>
       {isFormOpen && (
         <PurchaseOrderFormModal
+          key={initialProduct?.id ?? "create"}
           isOpen
           suppliers={suppliers}
           products={formProducts}
+          initialSupplierId={
+            initialProduct?.supplier_id ?? ""
+          }
+          initialProduct={initialProduct}
           isLoadingProducts={isLoadingProducts}
           isSubmitting={isSubmitting}
           requestError={formError}

@@ -7,12 +7,14 @@ import {
   PowerOff,
   RefreshCw,
   Search,
+  ShoppingCart,
   X,
 } from "lucide-react";
 import {
   useEffect,
   useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   createProductRequest,
   getProductsRequest,
@@ -38,6 +40,7 @@ const PAGE_LIMIT = 10;
 
 const ProductsPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const canManageProducts = [
     "ADMIN",
@@ -287,6 +290,24 @@ const ProductsPage = () => {
     setStatusProduct(product);
     setStatusError("");
     setIsStatusDialogOpen(true);
+  };
+
+  const handleCreatePurchaseOrder = (product) => {
+    if (
+      !canManageProducts ||
+      product.status !== "ACTIVE"
+    ) {
+      return;
+    }
+
+    navigate("/purchase-orders", {
+      state: {
+        purchaseOrderPrefill: {
+          productId: product.id,
+          supplierId: product.supplier_id,
+        },
+      },
+    });
   };
 
   const handleCloseStatusDialog = () => {
@@ -584,6 +605,27 @@ const ProductsPage = () => {
                         data-label="Aksi"
                       >
                         <div className="table-action-buttons">
+                          <button
+                            type="button"
+                            className="table-edit-action product-po-action"
+                            disabled={
+                              product.status !== "ACTIVE" ||
+                              isPreparingForm ||
+                              isUpdatingStatus
+                            }
+                            title={
+                              product.status === "ACTIVE"
+                                ? `Buat PO untuk ${product.product_name}`
+                                : "Aktifkan produk sebelum membuat PO"
+                            }
+                            onClick={() =>
+                              handleCreatePurchaseOrder(product)
+                            }
+                          >
+                            <ShoppingCart aria-hidden="true" />
+                            Buat PO
+                          </button>
+
                           <button
                             type="button"
                             className="table-edit-action"

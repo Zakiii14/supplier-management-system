@@ -307,9 +307,8 @@ const InvoiceFormModal = ({
                     options={salesOrders.map(
                       (salesOrder) => ({
                         value: salesOrder.id,
-                        label:
-                          `${salesOrder.so_number} — ` +
-                          `${salesOrder.customer_name}`,
+                        code: salesOrder.so_number,
+                        label: salesOrder.customer_name,
                       }),
                     )}
                     onChange={

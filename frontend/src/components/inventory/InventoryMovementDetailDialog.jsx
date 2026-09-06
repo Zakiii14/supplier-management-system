@@ -44,6 +44,11 @@ const outboundMovementTypes = new Set([
   "RETURN_OUT",
 ]);
 
+const referenceTypeLabels = {
+  DELIVERY: "Delivery",
+  GOODS_RECEIPT: "Goods receipt",
+};
+
 const dateTimeFormatter = new Intl.DateTimeFormat(
   "id-ID",
   {
@@ -227,8 +232,9 @@ const InventoryMovementDetailDialog = ({
                     "Sistem"}
                 </strong>
                 <small>
-                  {movement.created_by ||
-                    "Proses otomatis"}
+                  {movement.created_by
+                    ? "Pengguna sistem"
+                    : "Proses otomatis"}
                 </small>
               </div>
             </article>
@@ -251,20 +257,24 @@ const InventoryMovementDetailDialog = ({
               <div>
                 <span>Jenis referensi</span>
                 <strong>
-                  {movement.reference_type || "-"}
+                  {referenceTypeLabels[
+                    movement.reference_type
+                  ] || movement.reference_type || "-"}
                 </strong>
               </div>
 
               <div>
-                <span>ID referensi</span>
+                <span>Nomor referensi</span>
                 <strong>
-                  {movement.reference_id || "-"}
+                  {movement.reference_number || "-"}
                 </strong>
               </div>
 
               <div>
-                <span>ID pergerakan</span>
-                <strong>{movement.id}</strong>
+                <span>Kode pergerakan</span>
+                <strong>
+                  {movement.movement_number || "-"}
+                </strong>
               </div>
             </div>
           </section>

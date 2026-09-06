@@ -345,9 +345,8 @@ const PaymentFormModal = ({
                     options={invoices.map(
                       (invoice) => ({
                         value: invoice.id,
-                        label:
-                          `${invoice.invoice_number} — ` +
-                          `${invoice.customer_name}`,
+                        code: invoice.invoice_number,
+                        label: invoice.customer_name,
                         searchText: [
                           invoice.invoice_number,
                           invoice.so_number,

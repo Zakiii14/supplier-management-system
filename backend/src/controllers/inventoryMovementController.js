@@ -47,6 +47,15 @@ const getAllInventoryMovements = async (req, res) => {
           OR p.product_name ILIKE $${values.length}
           OR COALESCE(im.reference_type::TEXT, '')
             ILIKE $${values.length}
+          OR COALESCE(
+            d.delivery_number,
+            gr.receipt_number,
+            ''
+          ) ILIKE $${values.length}
+          OR CONCAT(
+            'MOV-',
+            UPPER(LEFT(MD5(im.id::TEXT), 8))
+          ) ILIKE $${values.length}
           OR COALESCE(im.notes, '')
             ILIKE $${values.length}
           OR COALESCE(u.full_name, '')
@@ -109,6 +118,12 @@ const getAllInventoryMovements = async (req, res) => {
 
       LEFT JOIN app.users u
         ON u.id = im.created_by
+      LEFT JOIN app.deliveries d
+        ON im.reference_type = 'DELIVERY'
+        AND d.id = im.reference_id
+      LEFT JOIN app.goods_receipts gr
+        ON im.reference_type = 'GOODS_RECEIPT'
+        AND gr.id = im.reference_id
 
       ${whereClause}
       `,
@@ -125,6 +140,10 @@ const getAllInventoryMovements = async (req, res) => {
       `
       SELECT
         im.id,
+        CONCAT(
+          'MOV-',
+          UPPER(LEFT(MD5(im.id::TEXT), 8))
+        ) AS movement_number,
         im.product_id,
         p.sku,
         p.product_name,
@@ -132,7 +151,10 @@ const getAllInventoryMovements = async (req, res) => {
         im.movement_type,
         im.quantity,
         im.reference_type,
-        im.reference_id,
+        COALESCE(
+          d.delivery_number,
+          gr.receipt_number
+        ) AS reference_number,
         im.notes,
         im.created_by,
         u.full_name AS created_by_name,
@@ -144,6 +166,12 @@ const getAllInventoryMovements = async (req, res) => {
         ON p.id = im.product_id
       LEFT JOIN app.users u
         ON u.id = im.created_by
+      LEFT JOIN app.deliveries d
+        ON im.reference_type = 'DELIVERY'
+        AND d.id = im.reference_id
+      LEFT JOIN app.goods_receipts gr
+        ON im.reference_type = 'GOODS_RECEIPT'
+        AND gr.id = im.reference_id
 
       ${whereClause}
 
@@ -194,6 +222,10 @@ const getInventoryMovementById = async (req, res) => {
       `
       SELECT
         im.id,
+        CONCAT(
+          'MOV-',
+          UPPER(LEFT(MD5(im.id::TEXT), 8))
+        ) AS movement_number,
         im.product_id,
         p.sku,
         p.product_name,
@@ -201,7 +233,10 @@ const getInventoryMovementById = async (req, res) => {
         im.movement_type,
         im.quantity,
         im.reference_type,
-        im.reference_id,
+        COALESCE(
+          d.delivery_number,
+          gr.receipt_number
+        ) AS reference_number,
         im.notes,
         im.created_by,
         u.full_name AS created_by_name,
@@ -213,6 +248,12 @@ const getInventoryMovementById = async (req, res) => {
         ON p.id = im.product_id
       LEFT JOIN app.users u
         ON u.id = im.created_by
+      LEFT JOIN app.deliveries d
+        ON im.reference_type = 'DELIVERY'
+        AND d.id = im.reference_id
+      LEFT JOIN app.goods_receipts gr
+        ON im.reference_type = 'GOODS_RECEIPT'
+        AND gr.id = im.reference_id
 
       WHERE im.id = $1
       `,

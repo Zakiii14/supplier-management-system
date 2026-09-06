@@ -338,9 +338,6 @@ test(
       "RECEIVED"
     );
 
-    const goodsReceiptId =
-      response.body.data.id;
-
     response = await request(app)
       .get(`/api/products/${productId}`)
       .set("Authorization", authorization);
@@ -525,14 +522,15 @@ test(
     const purchaseMovement =
       response.body.data.find(
         (movement) =>
-          movement.reference_id ===
-          goodsReceiptId
+          movement.reference_number ===
+          testData.receiptNumber
       );
 
     const salesMovement =
       response.body.data.find(
         (movement) =>
-          movement.reference_id === deliveryId
+          movement.reference_number ===
+          testData.deliveryNumber
       );
 
     assert.ok(purchaseMovement);

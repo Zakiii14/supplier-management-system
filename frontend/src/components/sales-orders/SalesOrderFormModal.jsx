@@ -382,7 +382,8 @@ const SalesOrderFormModal = ({
                     options={customers.map(
                       (customer) => ({
                         value: customer.id,
-                        label: `${customer.customer_code} — ${customer.customer_name}`,
+                        code: customer.customer_code,
+                        label: customer.customer_name,
                       }),
                     )}
                     onChange={(customerId) => {
@@ -513,8 +514,8 @@ const SalesOrderFormModal = ({
                             options={products.map(
                               (product) => ({
                                 value: product.id,
+                                code: product.sku,
                                 label:
-                                  `${product.sku} — ` +
                                   `${product.product_name} ` +
                                   `(Stok: ${product.current_stock} ${product.unit})`,
                               }),

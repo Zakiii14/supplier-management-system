@@ -44,6 +44,8 @@ const testData = {
   supplierCode: `INV-SUP-${suffix}`,
   categoryCode: `INV-CAT-${suffix}`,
   sku: `INV-SKU-${suffix}`,
+  poNumber: `INV-PO-${suffix}`,
+  receiptNumber: `INV-GR-${suffix}`,
 };
 
 const password =
@@ -209,6 +211,44 @@ before(async () => {
 
   productId = productResult.rows[0].id;
 
+  const purchaseOrderResult = await pool.query(
+    `
+    INSERT INTO app.purchase_orders (
+      po_number,
+      supplier_id,
+      order_date,
+      created_by
+    )
+    VALUES ($1, $2, $3, $4)
+    RETURNING id
+    `,
+    [
+      testData.poNumber,
+      supplierResult.rows[0].id,
+      movementDate,
+      adminId,
+    ],
+  );
+
+  const goodsReceiptResult = await pool.query(
+    `
+    INSERT INTO app.goods_receipts (
+      receipt_number,
+      purchase_order_id,
+      received_date,
+      received_by
+    )
+    VALUES ($1, $2, $3, $4)
+    RETURNING id
+    `,
+    [
+      testData.receiptNumber,
+      purchaseOrderResult.rows[0].id,
+      movementDate,
+      adminId,
+    ],
+  );
+
   const purchaseMovementResult =
     await pool.query(
       `
@@ -226,16 +266,17 @@ before(async () => {
         $1,
         'PURCHASE_RECEIPT',
         12,
-        'INVENTORY_TEST',
-        gen_random_uuid(),
-        $2::DATE + INTERVAL '1 second',
-        $3,
-        $4
+        'GOODS_RECEIPT',
+        $2,
+        $3::DATE + INTERVAL '1 second',
+        $4,
+        $5
       )
       RETURNING id
       `,
       [
         productId,
+        goodsReceiptResult.rows[0].id,
         movementDate,
         `Inventory purchase ${suffix}`,
         adminId,
@@ -290,6 +331,22 @@ after(async () => {
       )
       `,
       [testData.sku],
+    );
+
+    await pool.query(
+      `
+      DELETE FROM app.goods_receipts
+      WHERE receipt_number = $1
+      `,
+      [testData.receiptNumber],
+    );
+
+    await pool.query(
+      `
+      DELETE FROM app.purchase_orders
+      WHERE po_number = $1
+      `,
+      [testData.poNumber],
     );
 
     await pool.query(
@@ -412,6 +469,40 @@ test(
       response.body.data[0].created_by,
       adminId,
     );
+    assert.equal(
+      response.body.data[0].reference_number,
+      testData.receiptNumber,
+    );
+    assert.match(
+      response.body.data[0].movement_number,
+      /^MOV-[A-F0-9]{8}$/,
+    );
+    assert.equal(
+      Object.hasOwn(
+        response.body.data[0],
+        "reference_id",
+      ),
+      false,
+    );
+
+    response = await request(app)
+      .get("/api/inventory-movements")
+      .query({
+        search: testData.receiptNumber,
+        page: 1,
+        limit: 10,
+      })
+      .set(
+        "Authorization",
+        adminAuthorization,
+      );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.length, 1);
+    assert.equal(
+      response.body.data[0].reference_number,
+      testData.receiptNumber,
+    );
 
     response = await request(app)
       .get("/api/inventory-movements")
@@ -519,7 +610,22 @@ test(
     );
     assert.equal(
       response.body.data.reference_type,
-      "INVENTORY_TEST",
+      "GOODS_RECEIPT",
+    );
+    assert.equal(
+      response.body.data.reference_number,
+      testData.receiptNumber,
+    );
+    assert.match(
+      response.body.data.movement_number,
+      /^MOV-[A-F0-9]{8}$/,
+    );
+    assert.equal(
+      Object.hasOwn(
+        response.body.data,
+        "reference_id",
+      ),
+      false,
     );
 
     response = await request(app)

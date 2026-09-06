@@ -230,6 +230,7 @@ const ProductFormModal = ({
                 disabled={isSubmitting}
                 options={categories.map((category) => ({
                   value: category.id,
+                  code: category.category_code,
                   label: category.category_name,
                 }))}
                 onChange={(value) =>
@@ -246,6 +247,7 @@ const ProductFormModal = ({
                 disabled={isSubmitting}
                 options={suppliers.map((supplier) => ({
                   value: supplier.id,
+                  code: supplier.supplier_code,
                   label: supplier.supplier_name,
                 }))}
                 onChange={(value) =>

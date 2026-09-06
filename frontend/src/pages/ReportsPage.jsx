@@ -13,22 +13,28 @@ import {
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { getPurchaseOrderByIdRequest } from "../api/purchaseOrders";
 import {
   getReportOptionsRequest,
   getReportRequest,
 } from "../api/reports";
+import { getSalesOrderByIdRequest } from "../api/salesOrders";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import FormSelect from "../components/forms/FormSelect";
+import PurchaseOrderDetailDialog from "../components/purchase-orders/PurchaseOrderDetailDialog";
 import ReportSummaryCards from "../components/reports/ReportSummaryCards";
 import ReportTable from "../components/reports/ReportTable";
 import ReportTrendChart from "../components/reports/ReportTrendChart";
+import SalesOrderDetailDialog from "../components/sales-orders/SalesOrderDetailDialog";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 import useStickyDataFilters from "../hooks/useStickyDataFilters";
 import "../styles/purchase-orders.css";
 import "../styles/reports.css";
+import "../styles/sales-orders.css";
 import {
   getAvailableReports,
   REPORT_CONFIG,
@@ -92,11 +98,11 @@ const mapReportOptions = (
     ...items.map((item) => {
       const code = item[fieldConfig.code];
       const name = item[fieldConfig.name];
-      const label = `${code} — ${name}`;
 
       return {
         value: item.id,
-        label,
+        code,
+        label: name,
         searchText: `${code} ${name}`,
       };
     }),
@@ -105,6 +111,7 @@ const mapReportOptions = (
 
 const ReportsPage = () => {
   const filtersRef = useStickyDataFilters();
+  const detailRequestIdRef = useRef(0);
   const { user } = useAuth();
 
   const availableReports = useMemo(
@@ -180,6 +187,17 @@ const ReportsPage = () => {
     useState(true);
   const [errorMessage, setErrorMessage] =
     useState("");
+  const [reportDetail, setReportDetail] =
+    useState(null);
+  const [loadingDetailId, setLoadingDetailId] =
+    useState("");
+  const [detailError, setDetailError] =
+    useState("");
+
+  const canViewTransactionDetails = [
+    "purchasing",
+    "sales",
+  ].includes(activeReportType);
 
   useEffect(() => {
     if (!entityType) {
@@ -340,6 +358,72 @@ const ReportsPage = () => {
     setReportData(EMPTY_REPORT_DATA);
     setErrorMessage("");
     setEntityOptionsError("");
+    detailRequestIdRef.current += 1;
+    setReportDetail(null);
+    setLoadingDetailId("");
+    setDetailError("");
+  };
+
+  const handleOpenReportDetail = async (row) => {
+    if (!canViewTransactionDetails || !row?.id) {
+      return;
+    }
+
+    const detailType = activeReportType;
+    const requestId =
+      detailRequestIdRef.current + 1;
+
+    detailRequestIdRef.current = requestId;
+
+    try {
+      setLoadingDetailId(row.id);
+      setDetailError("");
+
+      const detail =
+        detailType === "purchasing"
+          ? await getPurchaseOrderByIdRequest(
+            row.id,
+          )
+          : await getSalesOrderByIdRequest(
+            row.id,
+          );
+
+      if (
+        detailRequestIdRef.current !== requestId
+      ) {
+        return;
+      }
+
+      setReportDetail({
+        type: detailType,
+        data: detail,
+      });
+    } catch (error) {
+      if (
+        detailRequestIdRef.current !== requestId
+      ) {
+        return;
+      }
+
+      setDetailError(
+        error.response?.data?.message ||
+        `Rincian laporan ${
+          detailType === "purchasing"
+            ? "pembelian"
+            : "penjualan"
+        } gagal dimuat.`,
+      );
+    } finally {
+      if (
+        detailRequestIdRef.current === requestId
+      ) {
+        setLoadingDetailId("");
+      }
+    }
+  };
+
+  const handleCloseReportDetail = () => {
+    setReportDetail(null);
   };
 
   const handleSearch = (event) => {
@@ -716,9 +800,33 @@ const ReportsPage = () => {
           </p>
         </div>
 
+        {detailError && (
+          <div
+            className="data-error"
+            role="alert"
+          >
+            <AlertTriangle aria-hidden="true" />
+
+            <div>
+              <strong>
+                Rincian transaksi tidak dapat
+                ditampilkan
+              </strong>
+
+              <span>{detailError}</span>
+            </div>
+          </div>
+        )}
+
         <ReportTable
           rows={reportData.rows}
           isLoading={isLoading}
+          loadingDetailId={loadingDetailId}
+          onViewDetails={
+            canViewTransactionDetails
+              ? handleOpenReportDetail
+              : undefined
+          }
         />
 
         <PaginationBar
@@ -728,6 +836,22 @@ const ReportsPage = () => {
           onPageChange={setPage}
         />
       </section>
+
+      {reportDetail?.type === "purchasing" && (
+        <PurchaseOrderDetailDialog
+          isOpen
+          purchaseOrder={reportDetail.data}
+          onClose={handleCloseReportDetail}
+        />
+      )}
+
+      {reportDetail?.type === "sales" && (
+        <SalesOrderDetailDialog
+          isOpen
+          salesOrder={reportDetail.data}
+          onClose={handleCloseReportDetail}
+        />
+      )}
     </div>
   );
 };

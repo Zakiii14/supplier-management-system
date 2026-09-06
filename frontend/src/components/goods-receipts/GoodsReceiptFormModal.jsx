@@ -354,9 +354,8 @@ const GoodsReceiptFormModal = ({
                     options={purchaseOrders.map(
                       (purchaseOrder) => ({
                         value: purchaseOrder.id,
-                        label:
-                          `${purchaseOrder.po_number} — ` +
-                          `${purchaseOrder.supplier_name}`,
+                        code: purchaseOrder.po_number,
+                        label: purchaseOrder.supplier_name,
                       }),
                     )}
                     onChange={

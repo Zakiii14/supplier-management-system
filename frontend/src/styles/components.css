@@ -1349,11 +1349,8 @@
 }
 
 .form-select-menu {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% + 7px);
-  right: 0;
-  left: 0;
+  position: fixed;
+  z-index: 1600;
   overflow: hidden;
   padding: 6px;
   background: #ffffff;
@@ -1392,7 +1389,7 @@
   color: #98a2b3;
 }
 
-.form-select .form-select-search input {
+.form-select-menu .form-select-search input {
   width: 100%;
   height: auto;
   min-width: 0;
@@ -1409,14 +1406,14 @@
   appearance: none;
 }
 
-.form-select .form-select-search input:focus {
+.form-select-menu .form-select-search input:focus {
   background: transparent;
   border: 0;
   outline: none;
   box-shadow: none;
 }
 
-.form-select .form-select-search input::placeholder {
+.form-select-menu .form-select-search input::placeholder {
   color: #98a2b3;
 }
 
@@ -1460,7 +1457,10 @@
 }
 
 .form-select-options {
-  max-height: min(230px, 40dvh);
+  max-height: var(
+    --form-select-options-max-height,
+    min(230px, 40dvh)
+  );
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
@@ -1510,6 +1510,46 @@
   white-space: nowrap;
 }
 
+.form-select-option-content {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.form-select-option-code {
+  display: inline-flex;
+  min-height: 23px;
+  flex: 0 0 auto;
+  align-items: center;
+  padding: 2px 7px;
+  color: #ffffff;
+  background: var(--sf-accent, #365f9d);
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.015em;
+}
+
+.form-select-option-name {
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-select-trigger .form-select-option-content {
+  gap: 8px;
+}
+
+.form-select-trigger .form-select-option-code {
+  min-height: 22px;
+  padding: 2px 6px;
+  font-size: 0.66rem;
+}
+
 .form-select-option svg {
   width: 16px;
   height: 16px;
@@ -1525,7 +1565,10 @@
 
 @media (max-width: 700px) {
   .form-select-options {
-    max-height: min(210px, 34dvh);
+    max-height: var(
+      --form-select-options-max-height,
+      min(210px, 34dvh)
+    );
   }
 
   .form-select-option {

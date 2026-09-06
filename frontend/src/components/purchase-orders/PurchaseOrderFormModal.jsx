@@ -14,16 +14,16 @@ import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
 
 let itemSequence = 0;
 
-const createEmptyItem = () => ({
+const createEmptyItem = (product = null) => ({
     key: `purchase-order-item-${itemSequence += 1}`,
-    product_id: "",
+    product_id: product?.id ?? "",
     quantity: "1",
-    unit_price: "",
+    unit_price: product?.purchase_price ?? "",
 });
 
-const createInitialValues = () => ({
+const createInitialValues = (supplierId = "") => ({
     po_number: "",
-    supplier_id: "",
+    supplier_id: supplierId,
     order_date: "",
     expected_date: "",
     notes: "",
@@ -33,6 +33,8 @@ const PurchaseOrderFormModal = ({
     isOpen,
     suppliers = [],
     products = [],
+    initialSupplierId = "",
+    initialProduct = null,
     isLoadingProducts = false,
     isSubmitting = false,
     requestError = "",
@@ -41,10 +43,10 @@ const PurchaseOrderFormModal = ({
     onSubmit,
 }) => {
     const [values, setValues] = useState(
-        createInitialValues,
+        () => createInitialValues(initialSupplierId),
     );
     const [items, setItems] = useState(() => [
-        createEmptyItem(),
+        createEmptyItem(initialProduct),
     ]);
     const [validationError, setValidationError] =
         useState("");
@@ -326,7 +328,8 @@ const PurchaseOrderFormModal = ({
                                         disabled={isSubmitting}
                                         options={suppliers.map((supplier) => ({
                                             value: supplier.id,
-                                            label: `${supplier.supplier_code} — ${supplier.supplier_name}`,
+                                            code: supplier.supplier_code,
+                                            label: supplier.supplier_name,
                                         }))}
                                         onChange={handleSupplierChange}
                                     />
@@ -460,7 +463,8 @@ const PurchaseOrderFormModal = ({
                                                         }
                                                         options={products.map((product) => ({
                                                             value: product.id,
-                                                            label: `${product.sku} — ${product.product_name}`,
+                                                            code: product.sku,
+                                                            label: product.product_name,
                                                         }))}
                                                         onChange={(productId) =>
                                                             handleProductChange(

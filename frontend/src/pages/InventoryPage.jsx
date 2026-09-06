@@ -85,6 +85,11 @@ const outboundMovementTypes = new Set([
     "RETURN_OUT",
 ]);
 
+const referenceTypeLabels = {
+    DELIVERY: "Delivery",
+    GOODS_RECEIPT: "Goods receipt",
+};
+
 const dateTimeFormatter = new Intl.DateTimeFormat(
     "id-ID",
     {
@@ -518,22 +523,22 @@ const InventoryPage = () => {
 
                                                 <td data-label="Referensi">
                                                     <strong className="inventory-reference">
-                                                        {movement.reference_type ||
+                                                        {referenceTypeLabels[
+                                                            movement.reference_type
+                                                        ] ||
+                                                            movement.reference_type ||
                                                             "-"}
                                                     </strong>
 
                                                     <span
                                                         className="inventory-subtext"
                                                         title={
-                                                            movement.reference_id ||
+                                                            movement.reference_number ||
                                                             ""
                                                         }
                                                     >
-                                                        {movement.reference_id
-                                                            ? movement.reference_id
-                                                                .slice(0, 8)
-                                                                .toUpperCase()
-                                                            : "-"}
+                                                        {movement.reference_number ||
+                                                            "-"}
                                                     </span>
                                                 </td>
 
