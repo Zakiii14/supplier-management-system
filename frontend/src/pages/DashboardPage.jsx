@@ -34,6 +34,7 @@ import {
   formatNumber,
 } from "../utils/formatters";
 import { navigationGroups } from "../utils/navigation";
+import DashboardTrendChart from "../components/dashboard/DashboardTrendChart";
 
 const sectionPresentation = {
   inventory: {
@@ -547,6 +548,11 @@ const DashboardPage = () => {
               )}
             </div>
           </section>
+
+          <DashboardTrendChart
+            key={`${user.id || user.username}:${user.role}`}
+            reloadKey={reloadKey}
+          />
 
           <div className="dashboard-information-grid">
             <section className="dashboard-panel dashboard-alerts-panel">

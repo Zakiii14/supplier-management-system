@@ -1567,3 +1567,255 @@
     animation: none;
   }
 }
+
+.dashboard-trend {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.dashboard-trend-heading,
+.dashboard-trend-detail-heading {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.dashboard-trend-heading > div,
+.dashboard-trend-detail-heading > div {
+  min-width: 0;
+}
+
+.dashboard-trend-eyebrow {
+  margin: 0 0 6px;
+  color: #2563eb;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dashboard-trend-heading h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1.22rem;
+  line-height: 1.4;
+}
+
+.dashboard-trend-description,
+.dashboard-trend-hint,
+.dashboard-trend-detail-heading p {
+  margin: 7px 0 0;
+  color: #667085;
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.dashboard-trend-range {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+  padding: 4px;
+  background: #f2f4f7;
+  border: 1px solid #e4e7ec;
+  border-radius: 11px;
+}
+
+.dashboard-trend-range button {
+  min-height: 36px;
+  padding: 8px 14px;
+  color: #667085;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.dashboard-trend-range button[aria-pressed="true"] {
+  color: #175cd3;
+  background: #ffffff;
+  box-shadow: 0 2px 5px rgb(16 24 40 / 8%);
+}
+
+.dashboard-trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-top: 24px;
+}
+
+.dashboard-trend-legend > span,
+.dashboard-trend-values dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #475467;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.dashboard-trend-legend i,
+.dashboard-trend-values i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  border-radius: 3px;
+}
+
+.dashboard-trend-hint {
+  margin-top: 12px;
+}
+
+.dashboard-trend-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border-radius: 8px;
+}
+
+.dashboard-trend-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: none;
+}
+
+.dashboard-trend-axis {
+  fill: #667085;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dashboard-trend-detail {
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #e8edf3;
+}
+
+.dashboard-trend-detail-heading h3 {
+  margin: 0;
+  color: #25324a;
+  font-size: 0.9rem;
+}
+
+.dashboard-trend-detail-heading label {
+  display: grid;
+  min-width: 150px;
+  gap: 6px;
+  color: #475467;
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.dashboard-trend-detail-heading select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  color: #344054;
+  font: inherit;
+  background: #ffffff;
+  border: 1px solid #d0d5dd;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.dashboard-trend-values {
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 12px;
+  margin: 16px 0 0;
+}
+
+.dashboard-trend-values > div {
+  min-width: 0;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e8edf3;
+  border-radius: 11px;
+}
+
+.dashboard-trend-values dt {
+  line-height: 1.5;
+}
+
+.dashboard-trend-values dd {
+  margin: 8px 0 0;
+  color: #172033;
+  font-size: 1.2rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-trend-state {
+  display: grid;
+  min-height: 220px;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  margin: 0;
+  color: #667085;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.dashboard-trend-state p {
+  margin: 0;
+}
+
+.dashboard-trend-retry {
+  min-height: 38px;
+  padding: 8px 16px;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 700;
+  background: #2563eb;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.dashboard-trend-zero {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  color: #475467;
+  font-size: 0.78rem;
+  background: #f8fafc;
+  border-radius: 9px;
+}
+
+.dashboard-trend button:focus-visible,
+.dashboard-trend select:focus-visible,
+.dashboard-trend-scroll:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
+
+@media (max-width: 700px) {
+  .dashboard-trend-heading,
+  .dashboard-trend-detail-heading {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .dashboard-trend-range button {
+    flex: 1;
+  }
+
+  .dashboard-trend-heading h2 {
+    font-size: 1.05rem;
+  }
+}

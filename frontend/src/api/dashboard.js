@@ -8,4 +8,22 @@ const getDashboardSummaryRequest = async () => {
   return response.data.data;
 };
 
-export { getDashboardSummaryRequest };
+const getDashboardTrendsRequest = async (
+  months = 6,
+  signal,
+) => {
+  const response = await apiClient.get(
+    "/dashboard/trends",
+    {
+      params: { months },
+      signal,
+    },
+  );
+
+  return response.data.data;
+};
+
+export {
+  getDashboardSummaryRequest,
+  getDashboardTrendsRequest,
+};
