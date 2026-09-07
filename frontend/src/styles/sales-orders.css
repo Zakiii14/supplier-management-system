@@ -13,33 +13,33 @@
 }
 
 .sales-order-status.is-draft {
-  color: #475467;
-  background: #f2f4f7;
-  border-color: #d0d5dd;
+  color: var(--sf-text-muted);
+  background: var(--sf-surface-muted);
+  border-color: var(--sf-border-strong);
 }
 
 .sales-order-status.is-confirmed {
-  color: #175cd3;
-  background: #eff8ff;
-  border-color: #b2ddff;
+  color: var(--sf-accent);
+  background: var(--sf-accent-soft);
+  border-color: var(--sf-border);
 }
 
 .sales-order-status.is-partially-delivered {
-  color: #b54708;
-  background: #fffaeb;
-  border-color: #fedf89;
+  color: var(--sf-status-warning-text);
+  background: var(--sf-status-warning-bg);
+  border-color: transparent;
 }
 
 .sales-order-status.is-delivered {
-  color: #067647;
-  background: #ecfdf3;
-  border-color: #abefc6;
+  color: var(--sf-status-success-text);
+  background: var(--sf-status-success-bg);
+  border-color: transparent;
 }
 
 .sales-order-status.is-cancelled {
-  color: #b42318;
-  background: #fef3f2;
-  border-color: #fecdca;
+  color: var(--sf-status-danger-text);
+  background: var(--sf-status-danger-bg);
+  border-color: transparent;
 }
 
 .sales-order-form-item-grid {

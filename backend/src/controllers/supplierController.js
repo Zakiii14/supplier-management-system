@@ -10,6 +10,31 @@ const normalizeSupplierCode = value =>
 	typeof value === "string"
 		? value.trim().toUpperCase()
 		: "";
+const PAYMENT_SCHEMES = ["DIRECT", "TERM", "DOWN_PAYMENT", "COD"];
+const normalizePaymentPreferences = body => {
+	const scheme = typeof body.payment_scheme === "string" && body.payment_scheme.trim()
+		? body.payment_scheme.trim().toUpperCase()
+		: null;
+	const terms = Number(body.payment_terms_days ?? 0);
+	const downPayment = body.down_payment_percent === null ||
+		body.down_payment_percent === undefined ||
+		body.down_payment_percent === ""
+		? null
+		: Number(body.down_payment_percent);
+
+	if (scheme && !PAYMENT_SCHEMES.includes(scheme)) {
+		return { error: "Invalid supplier payment scheme" };
+	}
+	if (!Number.isInteger(terms) || terms < 0 || terms > 365) {
+		return { error: "Payment terms must be 0-365 days" };
+	}
+	if (downPayment !== null &&
+		(!Number.isFinite(downPayment) || downPayment < 0 || downPayment > 100)) {
+		return { error: "Down payment must be 0-100 percent" };
+	}
+
+	return { scheme, terms, downPayment };
+};
 const getAllSuppliers = async (req, res) => {
 	try {
 		const {
@@ -106,6 +131,8 @@ const getAllSuppliers = async (req, res) => {
         email,
         city,
         payment_terms_days,
+        payment_scheme,
+        down_payment_percent,
         status,
         created_at,
         updated_at
@@ -152,7 +179,7 @@ const getSupplierById = async (req, res) => {
 				message: "Invalid supplier ID"
 			})
 		}
-		const result = await pool.query(`\n      SELECT\n        id,\n        supplier_code,\n        supplier_name,\n        contact_person,\n        phone,\n        email,\n        address,\n        city,\n        payment_terms_days,\n        status,\n        notes,\n        created_at,\n        updated_at\n      FROM app.suppliers\n      WHERE id = $1\n      `, [id]);
+		const result = await pool.query(`\n      SELECT\n        id,\n        supplier_code,\n        supplier_name,\n        contact_person,\n        phone,\n        email,\n        address,\n        city,\n        payment_terms_days,\n        payment_scheme,\n        down_payment_percent,\n        status,\n        notes,\n        created_at,\n        updated_at\n      FROM app.suppliers\n      WHERE id = $1\n      `, [id]);
 		if (result.rows.length === 0) {
 			return res.status(404).json({
 				success: false,
@@ -186,6 +213,8 @@ const createSupplier = async (req, res) => {
 			address,
 			city,
 			payment_terms_days,
+			payment_scheme,
+			down_payment_percent,
 			notes
 		} = req.body;
 		if (!supplier_name) {
@@ -193,6 +222,17 @@ const createSupplier = async (req, res) => {
 				success: false,
 				message: "supplier_name is required"
 			})
+		}
+		const paymentPreferences = normalizePaymentPreferences({
+			payment_scheme,
+			payment_terms_days,
+			down_payment_percent,
+		});
+		if (paymentPreferences.error) {
+			return res.status(400).json({
+				success: false,
+				message: paymentPreferences.error,
+			});
 		}
 
 		await client.query("BEGIN");
@@ -205,7 +245,7 @@ const createSupplier = async (req, res) => {
 				manualCode: supplier_code,
 			});
 
-		const result = await client.query(`\n      INSERT INTO app.suppliers (\n        supplier_code,\n        supplier_name,\n        contact_person,\n        phone,\n        email,\n        address,\n        city,\n        payment_terms_days,\n        notes\n      )\n      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)\n      RETURNING *\n      `, [resolvedSupplierCode, supplier_name, contact_person || null, phone || null, email || null, address || null, city || null, payment_terms_days ?? 0, notes || null]);
+		const result = await client.query(`\n      INSERT INTO app.suppliers (\n        supplier_code,\n        supplier_name,\n        contact_person,\n        phone,\n        email,\n        address,\n        city,\n        payment_terms_days,\n        payment_scheme,\n        down_payment_percent,\n        notes\n      )\n      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)\n      RETURNING *\n      `, [resolvedSupplierCode, supplier_name, contact_person || null, phone || null, email || null, address || null, city || null, paymentPreferences.terms, paymentPreferences.scheme, paymentPreferences.downPayment, notes || null]);
 
 		await client.query("COMMIT");
 		transactionStarted = false;
@@ -251,6 +291,8 @@ const updateSupplier = async (req, res) => {
 			address,
 			city,
 			payment_terms_days,
+			payment_scheme,
+			down_payment_percent,
 			notes
 		} = req.body;
 		const normalizedSupplierCode =
@@ -261,13 +303,24 @@ const updateSupplier = async (req, res) => {
 				message: "supplier_code and supplier_name are required"
 			})
 		}
+		const paymentPreferences = normalizePaymentPreferences({
+			payment_scheme,
+			payment_terms_days,
+			down_payment_percent,
+		});
+		if (paymentPreferences.error) {
+			return res.status(400).json({
+				success: false,
+				message: paymentPreferences.error,
+			});
+		}
 		if (!isValidUUID(id)) {
 			return res.status(400).json({
 				success: false,
 				message: "Invalid supplier ID",
 			});
 		}
-		const result = await pool.query(`\n      UPDATE app.suppliers\n      SET\n        supplier_code = $1,\n        supplier_name = $2,\n        contact_person = $3,\n        phone = $4,\n        email = $5,\n        address = $6,\n        city = $7,\n        payment_terms_days = $8,\n        notes = $9\n      WHERE id = $10\n      RETURNING *\n      `, [normalizedSupplierCode, supplier_name, contact_person || null, phone || null, email || null, address || null, city || null, payment_terms_days ?? 0, notes || null, id]);
+		const result = await pool.query(`\n      UPDATE app.suppliers\n      SET\n        supplier_code = $1,\n        supplier_name = $2,\n        contact_person = $3,\n        phone = $4,\n        email = $5,\n        address = $6,\n        city = $7,\n        payment_terms_days = $8,\n        payment_scheme = $9,\n        down_payment_percent = $10,\n        notes = $11\n      WHERE id = $12\n      RETURNING *\n      `, [normalizedSupplierCode, supplier_name, contact_person || null, phone || null, email || null, address || null, city || null, paymentPreferences.terms, paymentPreferences.scheme, paymentPreferences.downPayment, notes || null, id]);
 		if (result.rows.length === 0) {
 			return res.status(404).json({
 				success: false,

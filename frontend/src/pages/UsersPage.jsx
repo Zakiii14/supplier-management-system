@@ -22,12 +22,15 @@ import {
     resetUserPasswordRequest,
     updateUserRequest,
     updateUserStatusRequest,
+    uploadUserAvatarRequest,
+    deleteUserAvatarRequest,
 } from "../api/users";
 import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
 import StatusFilter from "../components/filters/StatusFilter";
 import PaginationBar from "../components/tables/PaginationBar";
 import UserDetailDialog from "../components/users/UserDetailDialog";
 import UserFormModal from "../components/users/UserFormModal";
+import UserAvatar from "../components/users/UserAvatar";
 import UserPasswordDialog from "../components/users/UserPasswordDialog";
 import useAuth from "../hooks/useAuth";
 import "../styles/products.css";
@@ -114,7 +117,7 @@ const rolePresentation = {
 };
 
 const UsersPage = () => {
-    const { user: currentUser } = useAuth();
+    const { user: currentUser, refreshUser } = useAuth();
 
     const [users, setUsers] = useState([]);
 
@@ -298,20 +301,28 @@ const UsersPage = () => {
         setFormError("");
     };
 
-    const handleSaveUser = async (payload) => {
+    const handleSaveUser = async (payload, avatarChanges = {}) => {
         try {
             setIsSubmitting(true);
             setFormError("");
 
+            let savedUser;
             if (selectedUser) {
-                await updateUserRequest(
+                savedUser = await updateUserRequest(
                     selectedUser.id,
                     payload,
                 );
             } else {
-                await createUserRequest(payload);
+                savedUser = await createUserRequest(payload);
                 setPage(1);
             }
+
+            if (avatarChanges.avatarFile) {
+                await uploadUserAvatarRequest(savedUser.id, avatarChanges.avatarFile);
+            } else if (avatarChanges.removeAvatar && selectedUser?.has_avatar) {
+                await deleteUserAvatarRequest(savedUser.id);
+            }
+            if (savedUser.id === currentUser?.id) await refreshUser();
 
             setIsUserFormOpen(false);
             setSelectedUser(null);
@@ -667,12 +678,7 @@ const UsersPage = () => {
                                         <tr key={user.id}>
                                             <td data-label="Pengguna">
                                                 <div className="user-identity-cell">
-                                                    <div className="user-table-avatar">
-                                                        {user.full_name
-                                                            ?.trim()
-                                                            .charAt(0)
-                                                            .toUpperCase() || "U"}
-                                                    </div>
+                                                    <UserAvatar user={user} className="user-table-avatar" />
 
                                                     <div>
                                                         <strong>

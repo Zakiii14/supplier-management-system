@@ -12,6 +12,7 @@ import {
   formatCurrency,
   formatDate,
 } from "../../utils/formatters";
+import { PaymentProofManager } from "./PaymentProofField";
 
 const paymentMethodPresentation = {
   CASH: {
@@ -68,6 +69,11 @@ const invoiceStatusPresentation = {
 const PaymentDetailDialog = ({
   isOpen,
   payment,
+  canManageProofs = false,
+  onAddProofs,
+  onReplaceProof,
+  onDeleteProof,
+  onOpenProof,
   onClose,
 }) => {
   useEffect(() => {
@@ -357,6 +363,15 @@ const PaymentDetailDialog = ({
                 "Tidak ada catatan pembayaran."}
             </p>
           </section>
+
+          <PaymentProofManager
+            proofs={payment.proofs || []}
+            canManage={canManageProofs}
+            onAdd={onAddProofs}
+            onReplace={onReplaceProof}
+            onDelete={onDeleteProof}
+            onOpen={onOpenProof}
+          />
 
           <section className="payment-detail-status-note">
             <ReceiptText aria-hidden="true" />

@@ -187,7 +187,7 @@ test(
       .set("Authorization", adminAuthorization);
 
     assert.equal(response.status, 200);
-    assert.equal(response.body.data.length, 10);
+    assert.equal(response.body.data.length, 11);
 
     response = await request(app)
       .post("/api/suppliers")

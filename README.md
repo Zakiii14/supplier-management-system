@@ -373,9 +373,19 @@ A separate PostgreSQL database is used for automated testing to isolate test dat
 
 ### Configurable Code Numbering
 
-Administrators can configure automatic numbering independently for suppliers, categories, products, purchase orders, goods receipts, customers, sales orders, deliveries, invoices, and payments.
+Administrators can configure automatic numbering independently for suppliers, categories, products, purchase orders, goods receipts, customers, sales orders, deliveries, invoices, customer payments, and supplier payments.
 
 Each module supports a custom prefix, separator, digit length, optional year and month tokens, sequence reset rules, and a selectable manual or automatic mode. Number generation is handled inside database transactions so concurrent requests receive different identifiers, while codes on existing records remain unchanged.
+
+---
+
+### Payment Tracking & Evidence
+
+Purchase orders retain a snapshot of their payment scheme and support partial or full supplier payments without changing the goods-receipt status. Customer and supplier payments can store up to three private PDF or image proofs, with authenticated in-app preview, replacement, and deletion when an incorrect file is uploaded.
+
+Administrators can configure the default purchase-payment scheme and decide whether bank-transfer or giro evidence is required. Uploaded files are stored outside the public frontend directory; the database only keeps controlled metadata and file references.
+
+Finance reporting separates customer receivables from supplier payables. Supplier finance reports summarize purchase value, outgoing payments, remaining balances, estimated overdue amounts, monthly trends, and detailed payment evidence counts, with PDF and Excel exports.
 
 ---
 

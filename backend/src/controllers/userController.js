@@ -151,6 +151,8 @@ const getAllUsers = async (req, res) => {
         u.email,
         u.role,
         u.status,
+        (u.avatar_storage_name IS NOT NULL) AS has_avatar,
+        u.avatar_updated_at,
         u.created_at,
         u.updated_at
       FROM app.users u
@@ -205,6 +207,8 @@ const getUserById = async (req, res) => {
         email,
         role,
         status,
+        (avatar_storage_name IS NOT NULL) AS has_avatar,
+        avatar_updated_at,
         created_at,
         updated_at
       FROM app.users
@@ -340,6 +344,8 @@ const createUser = async (req, res) => {
         email,
         role,
         status,
+        (avatar_storage_name IS NOT NULL) AS has_avatar,
+        avatar_updated_at,
         created_at,
         updated_at
       `,
@@ -536,6 +542,8 @@ const updateUser = async (req, res) => {
         email,
         role,
         status,
+        (avatar_storage_name IS NOT NULL) AS has_avatar,
+        avatar_updated_at,
         created_at,
         updated_at
       `,

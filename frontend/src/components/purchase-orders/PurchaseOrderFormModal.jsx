@@ -14,6 +14,13 @@ import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
 
 let itemSequence = 0;
 
+const paymentSchemeOptions = [
+    { value: "DIRECT", label: "Pembayaran langsung" },
+    { value: "TERM", label: "Termin pembayaran" },
+    { value: "DOWN_PAYMENT", label: "DP dan pelunasan" },
+    { value: "COD", label: "Bayar saat barang diterima (COD)" },
+];
+
 const createEmptyItem = (product = null) => ({
     key: `purchase-order-item-${itemSequence += 1}`,
     product_id: product?.id ?? "",
@@ -21,11 +28,19 @@ const createEmptyItem = (product = null) => ({
     unit_price: product?.purchase_price ?? "",
 });
 
-const createInitialValues = (supplierId = "") => ({
+const createInitialValues = (supplierId = "", supplier = null, settings = {}) => ({
     po_number: "",
     supplier_id: supplierId,
     order_date: "",
     expected_date: "",
+    payment_scheme:
+        supplier?.payment_scheme || settings.default_purchase_scheme || "TERM",
+    payment_terms_days:
+        supplier?.payment_terms_days || settings.default_purchase_term_days || 0,
+    down_payment_percent:
+        supplier?.down_payment_percent ??
+        settings.default_down_payment_percent ??
+        30,
     notes: "",
 });
 
@@ -35,6 +50,7 @@ const PurchaseOrderFormModal = ({
     products = [],
     initialSupplierId = "",
     initialProduct = null,
+    paymentSettings = {},
     isLoadingProducts = false,
     isSubmitting = false,
     requestError = "",
@@ -43,7 +59,11 @@ const PurchaseOrderFormModal = ({
     onSubmit,
 }) => {
     const [values, setValues] = useState(
-        () => createInitialValues(initialSupplierId),
+        () => createInitialValues(
+            initialSupplierId,
+            suppliers.find((supplier) => supplier.id === initialSupplierId),
+            paymentSettings,
+        ),
     );
     const [items, setItems] = useState(() => [
         createEmptyItem(initialProduct),
@@ -110,9 +130,22 @@ const PurchaseOrderFormModal = ({
     };
 
     const handleSupplierChange = (supplierId) => {
+        const supplier = suppliers.find((item) => item.id === supplierId);
         setValues((currentValues) => ({
             ...currentValues,
             supplier_id: supplierId,
+            payment_scheme:
+                supplier?.payment_scheme ||
+                paymentSettings.default_purchase_scheme ||
+                "TERM",
+            payment_terms_days:
+                supplier?.payment_terms_days ||
+                paymentSettings.default_purchase_term_days ||
+                0,
+            down_payment_percent:
+                supplier?.down_payment_percent ??
+                paymentSettings.default_down_payment_percent ??
+                30,
         }));
         setItems([createEmptyItem()]);
         setValidationError("");
@@ -206,6 +239,26 @@ const PurchaseOrderFormModal = ({
             return;
         }
 
+        if (
+            values.payment_scheme === "TERM" &&
+            (!Number.isInteger(Number(values.payment_terms_days)) ||
+                Number(values.payment_terms_days) < 0 ||
+                Number(values.payment_terms_days) > 365)
+        ) {
+            setValidationError("Termin pembayaran harus berada di antara 0-365 hari.");
+            return;
+        }
+
+        if (
+            values.payment_scheme === "DOWN_PAYMENT" &&
+            (!Number.isFinite(Number(values.down_payment_percent)) ||
+                Number(values.down_payment_percent) < 0 ||
+                Number(values.down_payment_percent) > 100)
+        ) {
+            setValidationError("Uang muka harus berada di antara 0-100%.");
+            return;
+        }
+
         const hasIncompleteItem = items.some(
             (item) =>
                 !item.product_id ||
@@ -241,6 +294,9 @@ const PurchaseOrderFormModal = ({
             supplier_id: values.supplier_id,
             order_date: values.order_date || null,
             expected_date: values.expected_date || null,
+            payment_scheme: values.payment_scheme,
+            payment_terms_days: Number(values.payment_terms_days || 0),
+            down_payment_percent: Number(values.down_payment_percent || 0),
             notes: values.notes.trim() || null,
             items: items.map((item) => ({
                 product_id: item.product_id,
@@ -334,6 +390,54 @@ const PurchaseOrderFormModal = ({
                                         onChange={handleSupplierChange}
                                     />
                                 </div>
+
+                                <div className="purchase-order-form-field">
+                                    <FormSelect
+                                        label="Skema pembayaran"
+                                        value={values.payment_scheme}
+                                        options={paymentSchemeOptions}
+                                        searchable={false}
+                                        disabled={isSubmitting}
+                                        onChange={(paymentScheme) =>
+                                            setValues((current) => ({
+                                                ...current,
+                                                payment_scheme: paymentScheme,
+                                            }))
+                                        }
+                                    />
+                                </div>
+
+                                {values.payment_scheme === "TERM" && (
+                                    <label className="purchase-order-form-field">
+                                        <span>Termin pembayaran (hari)</span>
+                                        <input
+                                            type="number"
+                                            name="payment_terms_days"
+                                            min="0"
+                                            max="365"
+                                            step="1"
+                                            value={values.payment_terms_days}
+                                            disabled={isSubmitting}
+                                            onChange={handleFieldChange}
+                                        />
+                                    </label>
+                                )}
+
+                                {values.payment_scheme === "DOWN_PAYMENT" && (
+                                    <label className="purchase-order-form-field">
+                                        <span>Uang muka (%)</span>
+                                        <input
+                                            type="number"
+                                            name="down_payment_percent"
+                                            min="0"
+                                            max="100"
+                                            step="0.01"
+                                            value={values.down_payment_percent}
+                                            disabled={isSubmitting}
+                                            onChange={handleFieldChange}
+                                        />
+                                    </label>
+                                )}
 
                                 <div className="purchase-order-form-field">
                                     <FormDatePicker

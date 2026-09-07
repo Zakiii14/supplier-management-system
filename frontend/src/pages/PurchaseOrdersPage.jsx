@@ -19,16 +19,23 @@ import {
   useNavigate,
 } from "react-router-dom";
 import {
+  addSupplierPaymentProofsRequest,
+  createSupplierPaymentRequest,
   createPurchaseOrderRequest,
+  deleteSupplierPaymentProofRequest,
   getPurchaseOrderByIdRequest,
   getPurchaseOrdersRequest,
+  openSupplierPaymentProofRequest,
+  replaceSupplierPaymentProofRequest,
   updatePurchaseOrderStatusRequest,
 } from "../api/purchaseOrders";
+import { getPaymentSettingsRequest } from "../api/paymentSettings";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import StatusFilter from "../components/filters/StatusFilter";
 import PurchaseOrderDetailDialog from "../components/purchase-orders/PurchaseOrderDetailDialog";
 import PurchaseOrderStatusDialog from "../components/purchase-orders/PurchaseOrderStatusDialog";
 import "../styles/purchase-orders.css";
+import "../styles/payments.css";
 import {
   getActiveProductsBySupplierRequest,
   getProductByIdRequest,
@@ -110,6 +117,9 @@ const PurchaseOrdersPage = () => {
     "ADMIN",
     "PURCHASING",
   ].includes(user?.role);
+  const canManageSupplierPayments = ["ADMIN", "FINANCE"].includes(
+    user?.role,
+  );
   const [purchaseOrders, setPurchaseOrders] =
     useState([]);
   const [pagination, setPagination] = useState({
@@ -156,6 +166,7 @@ const PurchaseOrdersPage = () => {
     useState("");
   const [actionError, setActionError] =
     useState("");
+  const [paymentSettings, setPaymentSettings] = useState({});
   const [
     statusPurchaseOrder,
     setStatusPurchaseOrder,
@@ -268,6 +279,7 @@ const PurchaseOrdersPage = () => {
           productData,
           selectedSupplier,
           selectedProduct,
+          settingsData,
         ] =
           await Promise.all([
             getActiveSuppliersRequest(),
@@ -276,6 +288,7 @@ const PurchaseOrdersPage = () => {
             ),
             getSupplierByIdRequest(prefillSupplierId),
             getProductByIdRequest(prefillProductId),
+            getPaymentSettingsRequest(),
           ]);
 
         if (isCancelled) {
@@ -312,6 +325,7 @@ const PurchaseOrdersPage = () => {
         setSuppliers(availableSuppliers);
         setFormProducts(availableProducts);
         setInitialProduct(selectedProduct);
+        setPaymentSettings(settingsData);
         setIsFormOpen(true);
       } catch (error) {
         if (!isCancelled) {
@@ -387,10 +401,13 @@ const PurchaseOrdersPage = () => {
       setFormProducts([]);
       setInitialProduct(null);
 
-      const supplierData =
-        await getActiveSuppliersRequest();
+      const [supplierData, settingsData] = await Promise.all([
+        getActiveSuppliersRequest(),
+        getPaymentSettingsRequest(),
+      ]);
 
       setSuppliers(supplierData);
+      setPaymentSettings(settingsData);
       setIsFormOpen(true);
     } catch (error) {
       setActionError(
@@ -482,12 +499,13 @@ const PurchaseOrdersPage = () => {
       setLoadingDetailId(purchaseOrderId);
       setDetailError("");
 
-      const detail =
-        await getPurchaseOrderByIdRequest(
-          purchaseOrderId,
-        );
+      const [detail, settingsData] = await Promise.all([
+        getPurchaseOrderByIdRequest(purchaseOrderId),
+        getPaymentSettingsRequest(),
+      ]);
 
       setSelectedPurchaseOrder(detail);
+      setPaymentSettings(settingsData);
       setIsDetailOpen(true);
     } catch (error) {
       setDetailError(
@@ -502,6 +520,57 @@ const PurchaseOrdersPage = () => {
   const handleCloseDetail = () => {
     setIsDetailOpen(false);
     setSelectedPurchaseOrder(null);
+  };
+
+  const refreshSelectedPurchaseOrder = async () => {
+    const detail = await getPurchaseOrderByIdRequest(
+      selectedPurchaseOrder.id,
+    );
+    setSelectedPurchaseOrder(detail);
+    setReloadKey((current) => current + 1);
+    return detail;
+  };
+
+  const handleCreateSupplierPayment = async (payload) => {
+    await createSupplierPaymentRequest(selectedPurchaseOrder.id, payload);
+    await refreshSelectedPurchaseOrder();
+  };
+
+  const updateSupplierPaymentProofs = (paymentId, proofs) => {
+    setSelectedPurchaseOrder((current) => ({
+      ...current,
+      supplier_payments: current.supplier_payments.map((payment) =>
+        payment.id === paymentId ? { ...payment, proofs } : payment,
+      ),
+    }));
+  };
+
+  const handleAddSupplierProofs = async (paymentId, files) => {
+    const proofs = await addSupplierPaymentProofsRequest(
+      selectedPurchaseOrder.id,
+      paymentId,
+      files,
+    );
+    updateSupplierPaymentProofs(paymentId, proofs);
+  };
+
+  const handleReplaceSupplierProof = async (paymentId, proofId, file) => {
+    const proofs = await replaceSupplierPaymentProofRequest(
+      selectedPurchaseOrder.id,
+      paymentId,
+      proofId,
+      file,
+    );
+    updateSupplierPaymentProofs(paymentId, proofs);
+  };
+
+  const handleDeleteSupplierProof = async (paymentId, proofId) => {
+    const proofs = await deleteSupplierPaymentProofRequest(
+      selectedPurchaseOrder.id,
+      paymentId,
+      proofId,
+    );
+    updateSupplierPaymentProofs(paymentId, proofs);
   };
 
   const handleOpenStatusDialog = (
@@ -906,6 +975,7 @@ const PurchaseOrdersPage = () => {
             initialProduct?.supplier_id ?? ""
           }
           initialProduct={initialProduct}
+          paymentSettings={paymentSettings}
           isLoadingProducts={isLoadingProducts}
           isSubmitting={isSubmitting}
           requestError={formError}
@@ -918,6 +988,21 @@ const PurchaseOrdersPage = () => {
         <PurchaseOrderDetailDialog
           isOpen
           purchaseOrder={selectedPurchaseOrder}
+          canManageSupplierPayments={canManageSupplierPayments}
+          requireTransferProof={Boolean(
+            paymentSettings.require_purchase_transfer_proof,
+          )}
+          onCreateSupplierPayment={handleCreateSupplierPayment}
+          onAddSupplierProofs={handleAddSupplierProofs}
+          onReplaceSupplierProof={handleReplaceSupplierProof}
+          onDeleteSupplierProof={handleDeleteSupplierProof}
+          onOpenSupplierProof={(paymentId, proofId) =>
+            openSupplierPaymentProofRequest(
+              selectedPurchaseOrder.id,
+              paymentId,
+              proofId,
+            )
+          }
           onClose={handleCloseDetail}
         />
       )}

@@ -6,8 +6,21 @@ const {
   parseDateRange,
 } = require("../utils/dateRange");
 
+const PAYMENT_SCHEMES = [
+  "DIRECT",
+  "TERM",
+  "DOWN_PAYMENT",
+  "COD",
+];
+
 const getAllPurchaseOrders = async (req, res) => {
   try {
+    const canViewSupplierPayments = [
+      "ADMIN",
+      "PURCHASING",
+      "FINANCE",
+      "MANAGER",
+    ].includes(req.user.role);
     const {
       search = "",
       status = "",
@@ -156,6 +169,9 @@ const getAllPurchaseOrders = async (req, res) => {
         po.expected_date,
         po.status,
         po.notes,
+        po.payment_scheme,
+        po.payment_terms_days,
+        po.down_payment_percent,
         po.created_by,
         po.created_at,
         po.updated_at,
@@ -165,7 +181,22 @@ const getAllPurchaseOrders = async (req, res) => {
         COALESCE(summary.total_amount, 0)
           AS total_amount,
         COALESCE(summary.total_items, 0)
-          AS total_items
+          AS total_items,
+        COALESCE(payment_summary.paid_amount, 0)
+          AS paid_amount,
+        GREATEST(
+          COALESCE(summary.total_amount, 0) -
+          COALESCE(payment_summary.paid_amount, 0),
+          0
+        ) AS outstanding_amount,
+        CASE
+          WHEN COALESCE(payment_summary.payment_count, 0) = 0
+            THEN 'NOT_RECORDED'
+          WHEN COALESCE(payment_summary.paid_amount, 0) >=
+            COALESCE(summary.total_amount, 0)
+            THEN 'PAID'
+          ELSE 'PARTIAL'
+        END AS payment_status
       FROM app.purchase_orders po
       JOIN app.suppliers s
         ON s.id = po.supplier_id
@@ -182,6 +213,13 @@ const getAllPurchaseOrders = async (req, res) => {
         FROM app.purchase_order_items poi
         WHERE poi.purchase_order_id = po.id
       ) summary ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT
+          COALESCE(SUM(sp.amount), 0) AS paid_amount,
+          COUNT(sp.id)::INTEGER AS payment_count
+        FROM app.supplier_payments sp
+        WHERE sp.purchase_order_id = po.id
+      ) payment_summary ON TRUE
       ${whereClause}
       ORDER BY po.created_at DESC
       LIMIT $${limitPosition}
@@ -194,7 +232,16 @@ const getAllPurchaseOrders = async (req, res) => {
       success: true,
       message:
         "Purchase orders retrieved successfully",
-      data: result.rows,
+      data: result.rows.map((row) =>
+        canViewSupplierPayments
+          ? row
+          : {
+              ...row,
+              paid_amount: undefined,
+              outstanding_amount: undefined,
+              payment_status: undefined,
+            },
+      ),
       pagination: {
         page: parsedPage,
         limit: parsedLimit,
@@ -217,6 +264,12 @@ const getAllPurchaseOrders = async (req, res) => {
 };
 const getPurchaseOrderById = async (req, res) => {
 	try {
+		const canViewSupplierPayments = [
+			"ADMIN",
+			"PURCHASING",
+			"FINANCE",
+			"MANAGER",
+		].includes(req.user.role);
 		const {
 			id
 		} = req.params;
@@ -228,6 +281,9 @@ const getPurchaseOrderById = async (req, res) => {
         po.expected_date,
         po.status,
         po.notes,
+		po.payment_scheme,
+		po.payment_terms_days,
+		po.down_payment_percent,
 		po.created_by,
         po.created_at,
         po.updated_at,
@@ -274,6 +330,65 @@ const getPurchaseOrderById = async (req, res) => {
 			[id]);
 		const totalAmount = itemsResult.rows.reduce(
 			(total, item) => total + Number(item.subtotal), 0);
+		const paymentsResult = canViewSupplierPayments
+			? await pool.query(`
+      SELECT
+        sp.id,
+        sp.payment_number,
+        sp.payment_date,
+        sp.amount,
+        sp.method,
+        sp.reference_number,
+        sp.supplier_invoice_number,
+        sp.notes,
+        sp.paid_by,
+        u.full_name AS paid_by_name,
+        sp.created_at,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', pp.id,
+              'original_name', pp.original_name,
+              'mime_type', pp.mime_type,
+              'size_bytes', pp.size_bytes,
+              'checksum_sha256', pp.checksum_sha256,
+              'uploaded_by', pp.uploaded_by,
+              'uploaded_by_name', proof_user.full_name,
+              'created_at', pp.created_at,
+              'updated_at', pp.updated_at
+            ) ORDER BY pp.created_at
+          ) FILTER (WHERE pp.id IS NOT NULL),
+          '[]'::json
+        ) AS proofs
+      FROM app.supplier_payments sp
+      LEFT JOIN app.users u ON u.id = sp.paid_by
+      LEFT JOIN app.payment_proofs pp
+        ON pp.supplier_payment_id = sp.id
+      LEFT JOIN app.users proof_user
+        ON proof_user.id = pp.uploaded_by
+      WHERE sp.purchase_order_id = $1
+      GROUP BY sp.id, u.full_name
+      ORDER BY sp.payment_date DESC, sp.created_at DESC
+		      `, [id])
+			: { rows: [] };
+		const supplierInvoicesResult = canViewSupplierPayments
+			? await pool.query(`
+				SELECT si.id,si.invoice_number,si.invoice_date,si.due_date,si.total_amount,
+					(si.total_amount-COALESCE(SUM(sp.amount),0)) AS outstanding_amount
+				FROM app.supplier_invoices si
+				LEFT JOIN app.supplier_payments sp ON sp.supplier_invoice_id=si.id
+				WHERE si.purchase_order_id=$1
+				GROUP BY si.id ORDER BY si.invoice_date DESC`,[id])
+			: { rows: [] };
+		const paidAmount = paymentsResult.rows.reduce(
+			(total, payment) => total + Number(payment.amount),
+			0,
+		);
+		const paymentStatus = paymentsResult.rows.length === 0
+			? "NOT_RECORDED"
+			: paidAmount >= totalAmount
+				? "PAID"
+				: "PARTIAL";
 		res.status(200).json({
 			success: true,
 			message: "Purchase order retrieved successfully",
@@ -281,6 +396,16 @@ const getPurchaseOrderById = async (req, res) => {
 				...poResult.rows[0],
 				items: itemsResult.rows,
 				total_amount: totalAmount,
+				...(canViewSupplierPayments
+					? {
+							paid_amount: paidAmount,
+							outstanding_amount: Math.max(totalAmount - paidAmount, 0),
+							payment_status: paymentStatus,
+							supplier_payments: paymentsResult.rows,
+							supplier_invoices: supplierInvoicesResult.rows,
+						}
+					: {}),
+				can_view_supplier_payments: canViewSupplierPayments,
 			},
 		});
 	} catch (error) {
@@ -301,6 +426,9 @@ const createPurchaseOrder = async (req, res) => {
 			expected_date,
 			notes,
 			items,
+			payment_scheme,
+			payment_terms_days,
+			down_payment_percent,
 		} = req.body;
 		const createdBy = req.user.id;
 		if (!supplier_id) {
@@ -316,16 +444,62 @@ const createPurchaseOrder = async (req, res) => {
 			});
 		}
 		const supplierResult = await client.query(`
-      SELECT id
-      FROM app.suppliers
-      WHERE id = $1
-      AND status = 'ACTIVE'
+      SELECT
+        s.id,
+        s.payment_scheme,
+        s.payment_terms_days,
+        s.down_payment_percent,
+        ps.default_purchase_scheme,
+        ps.default_purchase_term_days,
+        ps.default_down_payment_percent
+      FROM app.suppliers s
+      CROSS JOIN app.payment_settings ps
+      WHERE s.id = $1
+		AND ps.id = 1
+      AND s.status = 'ACTIVE'
       `,
 			[supplier_id]);
 		if (supplierResult.rows.length === 0) {
 			return res.status(400).json({
 				success: false,
 				message: "Supplier not found or inactive",
+			});
+		}
+		const supplier = supplierResult.rows[0];
+		const normalizedPaymentScheme =
+			typeof payment_scheme === "string" && payment_scheme.trim()
+				? payment_scheme.trim().toUpperCase()
+				: supplier.payment_scheme || supplier.default_purchase_scheme;
+		const resolvedPaymentTerms =
+			payment_terms_days !== undefined && payment_terms_days !== null && payment_terms_days !== ""
+				? Number(payment_terms_days)
+				: Number(supplier.payment_terms_days) ||
+					Number(supplier.default_purchase_term_days) || 0;
+		const resolvedDownPayment =
+			down_payment_percent !== undefined && down_payment_percent !== null && down_payment_percent !== ""
+				? Number(down_payment_percent)
+				: supplier.down_payment_percent !== null
+					? Number(supplier.down_payment_percent)
+					: Number(supplier.default_down_payment_percent) || 0;
+
+		if (!PAYMENT_SCHEMES.includes(normalizedPaymentScheme)) {
+			return res.status(400).json({
+				success: false,
+				message: "Invalid purchase payment scheme",
+			});
+		}
+
+		if (!Number.isInteger(resolvedPaymentTerms) || resolvedPaymentTerms < 0 || resolvedPaymentTerms > 365) {
+			return res.status(400).json({
+				success: false,
+				message: "Payment terms must be 0-365 days",
+			});
+		}
+
+		if (!Number.isFinite(resolvedDownPayment) || resolvedDownPayment < 0 || resolvedDownPayment > 100) {
+			return res.status(400).json({
+				success: false,
+				message: "Down payment must be 0-100 percent",
 			});
 		}
 		await client.query("BEGIN");
@@ -342,6 +516,9 @@ const createPurchaseOrder = async (req, res) => {
   order_date,
   expected_date,
   status,
+  payment_scheme,
+  payment_terms_days,
+  down_payment_percent,
   notes,
   created_by
 )
@@ -352,7 +529,10 @@ VALUES (
   $4,
   'DRAFT',
   $5,
-  $6
+  $6,
+  $7,
+  $8,
+  $9
 )
       RETURNING *
       `,
@@ -361,6 +541,9 @@ VALUES (
 				supplier_id,
 				order_date || null,
 				expected_date || null,
+				normalizedPaymentScheme,
+				resolvedPaymentTerms,
+				resolvedDownPayment,
 				notes || null,
 				createdBy,
 			]);

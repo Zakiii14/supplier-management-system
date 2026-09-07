@@ -40,7 +40,7 @@
 .inventory-reference,
 .inventory-user {
   display: block;
-  color: #25324a;
+  color: var(--sf-text-strong);
   font-size: 0.78rem;
   font-weight: 750;
 }
@@ -55,14 +55,14 @@
   display: block;
   overflow: hidden;
   margin-top: 4px;
-  color: #98a2b3;
+  color: var(--sf-text-soft);
   font-size: 0.68rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .inventory-date {
-  color: #475467;
+  color: var(--sf-text-muted);
   font-size: 0.75rem;
   line-height: 1.45;
 }
@@ -79,21 +79,21 @@
 }
 
 .inventory-movement-badge.is-inbound {
-  color: #067647;
-  background: #ecfdf3;
-  border: 1px solid #abefc6;
+  color: var(--sf-status-success-text);
+  background: var(--sf-status-success-bg);
+  border: 1px solid transparent;
 }
 
 .inventory-movement-badge.is-outbound {
-  color: #b42318;
-  background: #fef3f2;
-  border: 1px solid #fecdca;
+  color: var(--sf-status-danger-text);
+  background: var(--sf-status-danger-bg);
+  border: 1px solid transparent;
 }
 
 .inventory-movement-badge.is-return {
-  color: #175cd3;
-  background: #eff8ff;
-  border: 1px solid #b2ddff;
+  color: var(--sf-accent);
+  background: var(--sf-accent-soft);
+  border: 1px solid var(--sf-border);
 }
 
 .inventory-quantity {
@@ -105,11 +105,11 @@
 }
 
 .inventory-quantity.is-inbound {
-  color: #067647;
+  color: var(--sf-status-success-text);
 }
 
 .inventory-quantity.is-outbound {
-  color: #b42318;
+  color: var(--sf-status-danger-text);
 }
 
 .inventory-reference {
@@ -177,9 +177,9 @@
   max-height: calc(100dvh - 48px);
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #dbe4f0;
+  border: 1px solid var(--sf-border);
   border-radius: 20px;
-  background: #fff;
+  background: var(--sf-surface);
   box-shadow: 0 28px 75px rgb(15 23 42 / 30%);
 }
 
@@ -190,7 +190,7 @@
   justify-content: space-between;
   gap: 20px;
   padding: 20px 24px;
-  border-bottom: 1px solid #e7edf5;
+  border-bottom: 1px solid var(--sf-border);
 }
 
 .inventory-detail-header > div:first-child {
@@ -199,7 +199,7 @@
 
 .inventory-detail-header > div:first-child > span {
   display: block;
-  color: #2563eb;
+  color: var(--sf-accent);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -208,7 +208,7 @@
 
 .inventory-detail-header h2 {
   margin: 5px 0 0;
-  color: #172033;
+  color: var(--sf-text-strong);
   font-size: 1.3rem;
 }
 
@@ -227,16 +227,16 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  color: #667085;
-  background: #f8fafc;
-  border: 1px solid #dbe4f0;
+  color: var(--sf-text-muted);
+  background: var(--sf-surface-muted);
+  border: 1px solid var(--sf-border);
   border-radius: 11px;
   cursor: pointer;
 }
 
 .inventory-detail-close:hover {
-  color: #172033;
-  background: #eef2f7;
+  color: var(--sf-text-strong);
+  background: var(--sf-surface-muted);
 }
 
 .inventory-detail-close:focus-visible {
@@ -271,16 +271,16 @@
   align-items: flex-start;
   gap: 12px;
   padding: 14px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--sf-border);
   border-radius: 14px;
-  background: #fff;
+  background: var(--sf-surface);
 }
 
 .inventory-detail-summary article > svg {
   width: 20px;
   height: 20px;
   flex: 0 0 auto;
-  color: #2563eb;
+  color: var(--sf-accent);
 }
 
 .inventory-detail-summary article > div {
@@ -290,7 +290,7 @@
 .inventory-detail-summary article > div > span,
 .inventory-detail-reference-grid span {
   display: block;
-  color: #98a2b3;
+  color: var(--sf-text-soft);
   font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -300,7 +300,7 @@
 .inventory-detail-summary strong {
   display: block;
   margin-top: 5px;
-  color: #25324a;
+  color: var(--sf-text-strong);
   font-size: 0.82rem;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -309,30 +309,30 @@
 .inventory-detail-summary small {
   display: block;
   margin-top: 3px;
-  color: #98a2b3;
+  color: var(--sf-text-soft);
   font-size: 0.68rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
 .inventory-detail-summary article.is-inbound {
-  border-color: #abefc6;
-  background: #ecfdf3;
+  border-color: transparent;
+  background: var(--sf-status-success-bg);
 }
 
 .inventory-detail-summary article.is-inbound > svg,
 .inventory-detail-summary article.is-inbound strong {
-  color: #067647;
+  color: var(--sf-status-success-text);
 }
 
 .inventory-detail-summary article.is-outbound {
-  border-color: #fecdca;
-  background: #fef3f2;
+  border-color: transparent;
+  background: var(--sf-status-danger-bg);
 }
 
 .inventory-detail-summary article.is-outbound > svg,
 .inventory-detail-summary article.is-outbound strong {
-  color: #b42318;
+  color: var(--sf-status-danger-text);
 }
 
 .inventory-detail-reference,
@@ -340,9 +340,9 @@
   display: grid;
   gap: 14px;
   padding: 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--sf-border);
   border-radius: 14px;
-  background: #fff;
+  background: var(--sf-surface);
 }
 
 .inventory-detail-section-heading {
@@ -357,14 +357,14 @@
 }
 
 .inventory-detail-section-heading strong {
-  color: #25324a;
+  color: var(--sf-text-strong);
   font-size: 0.88rem;
 }
 
 .inventory-detail-section-heading span {
   display: block;
   margin-top: 4px;
-  color: #667085;
+  color: var(--sf-text-muted);
   font-size: 0.75rem;
   line-height: 1.45;
 }
@@ -373,7 +373,7 @@
   width: 21px;
   height: 21px;
   flex: 0 0 auto;
-  color: #2563eb;
+  color: var(--sf-accent);
 }
 
 .inventory-detail-reference-grid {
@@ -388,15 +388,15 @@
 .inventory-detail-reference-grid > div {
   min-width: 0;
   padding: 12px 13px;
-  border: 1px solid #dfe7f1;
+  border: 1px solid var(--sf-border);
   border-radius: 11px;
-  background: #f8fafc;
+  background: var(--sf-surface-muted);
 }
 
 .inventory-detail-reference-grid strong {
   display: block;
   margin-top: 6px;
-  color: #25324a;
+  color: var(--sf-text-strong);
   font-size: 0.75rem;
   line-height: 1.5;
   overflow-wrap: anywhere;
@@ -405,7 +405,7 @@
 
 .inventory-detail-notes p {
   margin: 0;
-  color: #475467;
+  color: var(--sf-text-muted);
   font-size: 0.8rem;
   line-height: 1.65;
   white-space: pre-wrap;
@@ -417,7 +417,7 @@
   flex: 0 0 auto;
   justify-content: flex-end;
   padding: 15px 24px;
-  border-top: 1px solid #e7edf5;
+  border-top: 1px solid var(--sf-border);
 }
 
 .inventory-detail-footer button {

@@ -1,8 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Check,
+  ChevronDown,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
   PackageCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sun,
   X,
 } from "lucide-react";
 import {
@@ -12,6 +19,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
+import UserAvatar from "../users/UserAvatar";
 import { navigationGroups } from "../../utils/navigation";
 import "../../styles/dashboard.css";
 
@@ -24,12 +32,99 @@ const ROLE_LABELS = {
   MANAGER: "Manager",
 };
 
+const THEME_OPTIONS = [
+  { value: "light", label: "Terang", icon: Sun },
+  { value: "dark", label: "Gelap", icon: Moon },
+  { value: "system", label: "Ikuti sistem", icon: Monitor },
+];
+
+const readStoredValue = (key, fallback) => {
+  try {
+    return window.localStorage.getItem(key) || fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] =
     useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] =
+    useState(
+      () =>
+        readStoredValue("supplyflow-sidebar", "expanded") ===
+        "collapsed",
+    );
+  const [themePreference, setThemePreference] = useState(
+    () => readStoredValue("supplyflow-theme", "system"),
+  );
+  const [isUserMenuOpen, setIsUserMenuOpen] =
+    useState(false);
+  const userMenuRef = useRef(null);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    );
+
+    const applyTheme = () => {
+      const resolvedTheme =
+        themePreference === "system"
+          ? mediaQuery.matches
+            ? "dark"
+            : "light"
+          : themePreference;
+
+      document.documentElement.dataset.theme = resolvedTheme;
+      document.documentElement.style.colorScheme = resolvedTheme;
+    };
+
+    applyTheme();
+    mediaQuery.addEventListener("change", applyTheme);
+
+    try {
+      window.localStorage.setItem(
+        "supplyflow-theme",
+        themePreference,
+      );
+    } catch {
+      // The preference still works for the current session.
+    }
+
+    return () =>
+      mediaQuery.removeEventListener("change", applyTheme);
+  }, [themePreference]);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target)
+      ) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener(
+        "pointerdown",
+        handlePointerDown,
+      );
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
 
   const visibleGroups = navigationGroups
     .map((group) => ({
@@ -47,14 +142,6 @@ const DashboardLayout = () => {
   const displayName =
     user.full_name || user.username || "User";
 
-  const initials = displayName
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part.charAt(0))
-    .join("")
-    .toUpperCase();
-
   const handleLogout = () => {
     logout();
     navigate("/login", { replace: true });
@@ -64,8 +151,29 @@ const DashboardLayout = () => {
     setIsSidebarOpen(false);
   };
 
+  const toggleDesktopSidebar = () => {
+    setIsSidebarCollapsed((current) => {
+      const nextValue = !current;
+
+      try {
+        window.localStorage.setItem(
+          "supplyflow-sidebar",
+          nextValue ? "collapsed" : "expanded",
+        );
+      } catch {
+        // The state still works for the current session.
+      }
+
+      return nextValue;
+    });
+  };
+
   return (
-    <div className="dashboard-shell">
+    <div
+      className={`dashboard-shell ${
+        isSidebarCollapsed ? "is-sidebar-collapsed" : ""
+      }`}
+    >
       <button
         type="button"
         className={`sidebar-overlay ${
@@ -89,6 +197,28 @@ const DashboardLayout = () => {
             <strong>SupplyFlow</strong>
             <span>Management System</span>
           </div>
+
+          <button
+            type="button"
+            className="sidebar-collapse-button"
+            onClick={toggleDesktopSidebar}
+            aria-label={
+              isSidebarCollapsed
+                ? "Perluas sidebar"
+                : "Minimalkan sidebar"
+            }
+            title={
+              isSidebarCollapsed
+                ? "Perluas sidebar"
+                : "Minimalkan sidebar"
+            }
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen aria-hidden="true" />
+            ) : (
+              <PanelLeftClose aria-hidden="true" />
+            )}
+          </button>
 
           <button
             type="button"
@@ -125,6 +255,11 @@ const DashboardLayout = () => {
                       to={item.path}
                       end={item.path === "/"}
                       onClick={closeSidebar}
+                      title={
+                        isSidebarCollapsed
+                          ? item.label
+                          : undefined
+                      }
                       className={({ isActive }) =>
                         `sidebar-link ${
                           isActive ? "is-active" : ""
@@ -142,6 +277,9 @@ const DashboardLayout = () => {
         </nav>
 
         <div className="sidebar-footer">
+          <p className="sidebar-copyright" title={`© ${new Date().getFullYear()} Zakilabs`}>
+            <span>© {new Date().getFullYear()} Zakilabs</span>
+          </p>
           <button
             type="button"
             className="sidebar-logout"
@@ -173,17 +311,91 @@ const DashboardLayout = () => {
             </div>
           </div>
 
-          <div className="dashboard-user">
-            <span className="dashboard-user-avatar">
-              {initials}
-            </span>
+          <div className="dashboard-user-menu" ref={userMenuRef}>
+            <button
+              type="button"
+              className="dashboard-user"
+              onClick={() =>
+                setIsUserMenuOpen((current) => !current)
+              }
+              aria-expanded={isUserMenuOpen}
+              aria-haspopup="menu"
+            >
+              <UserAvatar user={user} className="dashboard-user-avatar" />
 
-            <div>
-              <strong>{displayName}</strong>
-              <span>
-                {ROLE_LABELS[user.role] || user.role}
+              <span className="dashboard-user-copy">
+                <strong>{displayName}</strong>
+                <span>
+                  {ROLE_LABELS[user.role] || user.role}
+                </span>
               </span>
-            </div>
+
+              <ChevronDown
+                className="dashboard-user-chevron"
+                aria-hidden="true"
+              />
+            </button>
+
+            {isUserMenuOpen && (
+              <div
+                className="dashboard-user-dropdown"
+                role="menu"
+              >
+                <div className="dashboard-user-dropdown-identity">
+                  <UserAvatar user={user} className="dashboard-user-avatar" />
+                  <div>
+                    <strong>{displayName}</strong>
+                    <span>
+                      {ROLE_LABELS[user.role] || user.role}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="dashboard-theme-section">
+                  <span>Tampilan</span>
+                  <div className="dashboard-theme-options">
+                    {THEME_OPTIONS.map((option) => {
+                      const Icon = option.icon;
+
+                      return (
+                        <button
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={
+                            themePreference === option.value
+                          }
+                          className={
+                            themePreference === option.value
+                              ? "is-selected"
+                              : ""
+                          }
+                          key={option.value}
+                          onClick={() =>
+                            setThemePreference(option.value)
+                          }
+                        >
+                          <Icon aria-hidden="true" />
+                          <span>{option.label}</span>
+                          {themePreference === option.value && (
+                            <Check aria-hidden="true" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="dashboard-dropdown-logout"
+                  role="menuitem"
+                  onClick={handleLogout}
+                >
+                  <LogOut aria-hidden="true" />
+                  <span>Keluar dari akun</span>
+                </button>
+              </div>
+            )}
           </div>
         </header>
 

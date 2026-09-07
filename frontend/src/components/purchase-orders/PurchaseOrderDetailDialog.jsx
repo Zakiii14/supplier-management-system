@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   CalendarDays,
   PackageCheck,
+  Plus,
   Truck,
+  WalletCards,
   X,
 } from "lucide-react";
 import {
@@ -10,6 +12,28 @@ import {
   formatDate,
   formatNumber,
 } from "../../utils/formatters";
+import { PaymentProofManager } from "../payments/PaymentProofField";
+import SupplierPaymentFormModal from "./SupplierPaymentFormModal";
+
+const paymentSchemeLabels = {
+  DIRECT: "Pembayaran langsung",
+  TERM: "Termin",
+  DOWN_PAYMENT: "DP dan pelunasan",
+  COD: "COD",
+};
+
+const paymentStatusLabels = {
+  NOT_RECORDED: "Belum dicatat",
+  PARTIAL: "Dibayar sebagian",
+  PAID: "Lunas",
+};
+
+const paymentMethodLabels = {
+  BANK_TRANSFER: "Transfer bank",
+  CASH: "Tunai",
+  GIRO: "Giro",
+  OTHER: "Lainnya",
+};
 
 const statusPresentation = {
   DRAFT: {
@@ -37,8 +61,16 @@ const statusPresentation = {
 const PurchaseOrderDetailDialog = ({
   isOpen,
   purchaseOrder,
+  canManageSupplierPayments = false,
+  requireTransferProof = false,
+  onCreateSupplierPayment,
+  onAddSupplierProofs,
+  onReplaceSupplierProof,
+  onDeleteSupplierProof,
+  onOpenSupplierProof,
   onClose,
 }) => {
+  const [isPaymentFormOpen, setIsPaymentFormOpen] = useState(false);
   useEffect(() => {
     if (!isOpen) {
       return undefined;
@@ -77,6 +109,9 @@ const PurchaseOrderDetailDialog = ({
 
   const items = Array.isArray(purchaseOrder.items)
     ? purchaseOrder.items
+    : [];
+  const supplierPayments = Array.isArray(purchaseOrder.supplier_payments)
+    ? purchaseOrder.supplier_payments
     : [];
 
   return (
@@ -174,6 +209,27 @@ const PurchaseOrderDetailDialog = ({
                 </strong>
               </div>
             </article>
+
+            <article>
+              <WalletCards aria-hidden="true" />
+              <div>
+                <span>Ketentuan pembayaran</span>
+                <strong>
+                  {paymentSchemeLabels[purchaseOrder.payment_scheme] ||
+                    purchaseOrder.payment_scheme}
+                </strong>
+                {purchaseOrder.payment_scheme === "TERM" && (
+                  <small>
+                    {formatNumber(purchaseOrder.payment_terms_days)} hari
+                  </small>
+                )}
+                {purchaseOrder.payment_scheme === "DOWN_PAYMENT" && (
+                  <small>
+                    DP {formatNumber(purchaseOrder.down_payment_percent)}%
+                  </small>
+                )}
+              </div>
+            </article>
           </section>
 
           <section className="purchase-order-detail-notes">
@@ -256,6 +312,89 @@ const PurchaseOrderDetailDialog = ({
               </table>
             </div>
           </section>
+
+          {purchaseOrder.can_view_supplier_payments && (
+            <section className="supplier-payment-section">
+              <div className="purchase-order-detail-section-heading">
+                <div>
+                  <p>Pembayaran supplier</p>
+                  <span>
+                    {paymentStatusLabels[purchaseOrder.payment_status] ||
+                      purchaseOrder.payment_status}
+                    {" · "}sisa {formatCurrency(purchaseOrder.outstanding_amount)}
+                  </span>
+                </div>
+                {canManageSupplierPayments &&
+                  !["DRAFT", "CANCELLED"].includes(purchaseOrder.status) &&
+                  Number(purchaseOrder.outstanding_amount) > 0 && (
+                    <button
+                      type="button"
+                      className="supplier-payment-add"
+                      onClick={() => setIsPaymentFormOpen(true)}
+                    >
+                      <Plus aria-hidden="true" /> Catat pembayaran
+                    </button>
+                  )}
+              </div>
+
+              <div className="supplier-payment-totals">
+                <article>
+                  <span>Total PO</span>
+                  <strong>{formatCurrency(purchaseOrder.total_amount)}</strong>
+                </article>
+                <article>
+                  <span>Sudah dibayar</span>
+                  <strong>{formatCurrency(purchaseOrder.paid_amount)}</strong>
+                </article>
+                <article>
+                  <span>Sisa pembayaran</span>
+                  <strong>{formatCurrency(purchaseOrder.outstanding_amount)}</strong>
+                </article>
+              </div>
+
+              {supplierPayments.length === 0 ? (
+                <div className="payment-proof-empty">
+                  Belum ada pembayaran supplier yang dicatat.
+                </div>
+              ) : (
+                <div className="supplier-payment-list">
+                  {supplierPayments.map((payment) => (
+                    <article key={payment.id} className="supplier-payment-card">
+                      <header>
+                        <div>
+                          <strong>{payment.payment_number}</strong>
+                          <span>{formatDate(payment.payment_date)}</span>
+                        </div>
+                        <strong>{formatCurrency(payment.amount)}</strong>
+                      </header>
+                      <div className="supplier-payment-meta">
+                        <span>{paymentMethodLabels[payment.method] || payment.method}</span>
+                        <span>Referensi: {payment.reference_number || "-"}</span>
+                        <span>
+                          Invoice supplier: {payment.supplier_invoice_number || "-"}
+                        </span>
+                        <span>Dicatat oleh: {payment.paid_by_name || "-"}</span>
+                      </div>
+                      <PaymentProofManager
+                        proofs={payment.proofs || []}
+                        canManage={canManageSupplierPayments}
+                        onAdd={(files) => onAddSupplierProofs(payment.id, files)}
+                        onReplace={(proofId, file) =>
+                          onReplaceSupplierProof(payment.id, proofId, file)
+                        }
+                        onDelete={(proofId) =>
+                          onDeleteSupplierProof(payment.id, proofId)
+                        }
+                        onOpen={(proofId) =>
+                          onOpenSupplierProof(payment.id, proofId)
+                        }
+                      />
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </div>
 
         <footer className="purchase-order-detail-footer">
@@ -263,6 +402,16 @@ const PurchaseOrderDetailDialog = ({
             Tutup
           </button>
         </footer>
+
+        {isPaymentFormOpen && (
+          <SupplierPaymentFormModal
+            isOpen
+            purchaseOrder={purchaseOrder}
+            requireTransferProof={requireTransferProof}
+            onClose={() => setIsPaymentFormOpen(false)}
+            onSubmit={onCreateSupplierPayment}
+          />
+        )}
       </section>
     </div>
   );

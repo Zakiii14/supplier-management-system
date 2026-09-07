@@ -592,7 +592,9 @@ const updateSalesOrderStatus = async (req, res) => {
           throw new Error(`${item.product_name} is inactive`);
         }
         if (Number(item.quantity) > Number(item.current_stock)) {
-          throw new Error(`Insufficient stock for ${item.product_name}. Available: ${item.current_stock}`);
+          throw new Error(
+            `Insufficient stock for ${item.product_name}. Available: ${Number(item.current_stock)}`
+          );
         }
       }
     }

@@ -17,6 +17,7 @@ import FormDatePicker from "../forms/FormDatePicker";
 import FormSelect from "../forms/FormSelect";
 import CodeNumberField from "../forms/CodeNumberField";
 import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
+import { PaymentProofPicker } from "./PaymentProofField";
 
 const paymentMethodOptions = [
   {
@@ -61,6 +62,7 @@ const PaymentFormModal = ({
   invoices = [],
   isSubmitting = false,
   requestError = "",
+  requireTransferProof = false,
   onClose,
   onSubmit,
 }) => {
@@ -70,6 +72,7 @@ const PaymentFormModal = ({
 
   const [validationError, setValidationError] =
     useState("");
+  const [proofFiles, setProofFiles] = useState([]);
   const {
     setting: codeNumberSetting,
     isLoading: isNumberingLoading,
@@ -246,6 +249,17 @@ const PaymentFormModal = ({
       return;
     }
 
+    if (
+      requireTransferProof &&
+      ["BANK_TRANSFER", "GIRO"].includes(values.method) &&
+      proofFiles.length === 0
+    ) {
+      setValidationError(
+        "Bukti pembayaran wajib untuk transfer bank atau giro.",
+      );
+      return;
+    }
+
     onSubmit({
       payment_number:
         values.payment_number
@@ -258,6 +272,7 @@ const PaymentFormModal = ({
       reference_number:
         values.reference_number.trim() || null,
       notes: values.notes.trim() || null,
+      proofs: proofFiles,
     });
   };
 
@@ -448,6 +463,18 @@ const PaymentFormModal = ({
                     onChange={handleFieldChange}
                   />
                 </label>
+
+                <div className="purchase-order-form-field is-full">
+                  <PaymentProofPicker
+                    files={proofFiles}
+                    onChange={setProofFiles}
+                    disabled={isSubmitting}
+                    required={
+                      requireTransferProof &&
+                      ["BANK_TRANSFER", "GIRO"].includes(values.method)
+                    }
+                  />
+                </div>
               </div>
             </section>
 

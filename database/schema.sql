@@ -212,7 +212,8 @@ VALUES
     ('SALES_ORDER', 'Sales Order', 'so_number', 'SO', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
     ('DELIVERY', 'Delivery', 'delivery_number', 'DEL', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
     ('INVOICE', 'Invoice', 'invoice_number', 'INV', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('PAYMENT', 'Pembayaran', 'payment_number', 'PAY', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY'));
+    ('PAYMENT', 'Pembayaran', 'payment_number', 'PAY', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
+    ('SUPPLIER_PAYMENT', 'Pembayaran Supplier', 'payment_number', 'SPAY', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY'));
 
 
 --
@@ -426,11 +427,115 @@ CREATE TABLE app.purchase_orders (
     order_date date DEFAULT CURRENT_DATE NOT NULL,
     expected_date date,
     status app.purchase_order_status DEFAULT 'DRAFT'::app.purchase_order_status NOT NULL,
+    payment_scheme character varying(20) DEFAULT 'TERM'::character varying NOT NULL,
+    payment_terms_days integer DEFAULT 0 NOT NULL,
+    down_payment_percent numeric(5,2) DEFAULT 0 NOT NULL,
     notes text,
     created_by uuid,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT purchase_orders_check CHECK (((expected_date IS NULL) OR (expected_date >= order_date)))
+    CONSTRAINT purchase_orders_check CHECK (((expected_date IS NULL) OR (expected_date >= order_date))),
+    CONSTRAINT purchase_orders_payment_scheme_check CHECK (((payment_scheme)::text = ANY ((ARRAY['DIRECT'::character varying, 'TERM'::character varying, 'DOWN_PAYMENT'::character varying, 'COD'::character varying])::text[]))),
+    CONSTRAINT purchase_orders_payment_terms_days_check CHECK (((payment_terms_days >= 0) AND (payment_terms_days <= 365))),
+    CONSTRAINT purchase_orders_down_payment_percent_check CHECK (((down_payment_percent >= (0)::numeric) AND (down_payment_percent <= (100)::numeric)))
+);
+
+
+--
+-- Name: payment_settings; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.payment_settings (
+    id smallint DEFAULT 1 NOT NULL,
+    default_purchase_scheme character varying(20) DEFAULT 'TERM'::character varying NOT NULL,
+    default_purchase_term_days integer DEFAULT 0 NOT NULL,
+    default_down_payment_percent numeric(5,2) DEFAULT 30 NOT NULL,
+    require_purchase_transfer_proof boolean DEFAULT false NOT NULL,
+    require_sales_transfer_proof boolean DEFAULT false NOT NULL,
+    updated_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT payment_settings_singleton_check CHECK ((id = 1)),
+    CONSTRAINT payment_settings_scheme_check CHECK (((default_purchase_scheme)::text = ANY ((ARRAY['DIRECT'::character varying, 'TERM'::character varying, 'DOWN_PAYMENT'::character varying, 'COD'::character varying])::text[]))),
+    CONSTRAINT payment_settings_term_days_check CHECK (((default_purchase_term_days >= 0) AND (default_purchase_term_days <= 365))),
+    CONSTRAINT payment_settings_down_payment_check CHECK (((default_down_payment_percent >= (0)::numeric) AND (default_down_payment_percent <= (100)::numeric))),
+    CONSTRAINT payment_settings_pkey PRIMARY KEY (id)
+);
+
+INSERT INTO app.payment_settings (id) VALUES (1);
+
+
+--
+-- Name: supplier_payments; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.supplier_invoices (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    invoice_number character varying(100) NOT NULL,
+    purchase_order_id uuid NOT NULL REFERENCES app.purchase_orders(id) ON DELETE RESTRICT,
+    invoice_date date DEFAULT CURRENT_DATE NOT NULL,
+    due_date date NOT NULL,
+    total_amount numeric(18,2) NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT supplier_invoices_total_check CHECK (total_amount > 0),
+    CONSTRAINT supplier_invoices_due_date_check CHECK (due_date >= invoice_date),
+    CONSTRAINT supplier_invoices_number_supplier_unique UNIQUE (purchase_order_id, invoice_number)
+);
+
+CREATE TABLE app.supplier_invoice_attachments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    supplier_invoice_id uuid NOT NULL REFERENCES app.supplier_invoices(id) ON DELETE CASCADE,
+    original_name character varying(255) NOT NULL,
+    storage_name character varying(120) NOT NULL UNIQUE,
+    mime_type character varying(100) NOT NULL,
+    size_bytes bigint NOT NULL CHECK (size_bytes > 0),
+    uploaded_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE app.supplier_payments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    payment_number character varying(40) NOT NULL,
+    purchase_order_id uuid NOT NULL,
+    payment_date date DEFAULT CURRENT_DATE NOT NULL,
+    amount numeric(18,2) NOT NULL,
+    method app.payment_method NOT NULL,
+    reference_number character varying(100),
+    supplier_invoice_number character varying(100),
+    supplier_invoice_id uuid REFERENCES app.supplier_invoices(id) ON DELETE RESTRICT,
+    notes text,
+    paid_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT supplier_payments_amount_check CHECK ((amount > (0)::numeric)),
+    CONSTRAINT supplier_payments_pkey PRIMARY KEY (id),
+    CONSTRAINT supplier_payments_payment_number_key UNIQUE (payment_number)
+);
+
+
+--
+-- Name: payment_proofs; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.payment_proofs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    customer_payment_id uuid,
+    supplier_payment_id uuid,
+    original_name character varying(255) NOT NULL,
+    storage_name character varying(120) NOT NULL,
+    mime_type character varying(100) NOT NULL,
+    size_bytes bigint NOT NULL,
+    checksum_sha256 character(64) NOT NULL,
+    uploaded_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT payment_proofs_owner_check CHECK ((((customer_payment_id IS NOT NULL) AND (supplier_payment_id IS NULL)) OR ((customer_payment_id IS NULL) AND (supplier_payment_id IS NOT NULL)))),
+    CONSTRAINT payment_proofs_size_check CHECK ((size_bytes > 0)),
+    CONSTRAINT payment_proofs_pkey PRIMARY KEY (id),
+    CONSTRAINT payment_proofs_storage_name_key UNIQUE (storage_name)
 );
 
 
@@ -484,11 +589,15 @@ CREATE TABLE app.suppliers (
     address text,
     city character varying(100),
     payment_terms_days integer DEFAULT 0 NOT NULL,
+    payment_scheme character varying(20),
+    down_payment_percent numeric(5,2),
     status app.record_status DEFAULT 'ACTIVE'::app.record_status NOT NULL,
     notes text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT suppliers_payment_terms_days_check CHECK ((payment_terms_days >= 0))
+    CONSTRAINT suppliers_payment_terms_days_check CHECK ((payment_terms_days >= 0)),
+    CONSTRAINT suppliers_payment_scheme_check CHECK (((payment_scheme IS NULL) OR ((payment_scheme)::text = ANY ((ARRAY['DIRECT'::character varying, 'TERM'::character varying, 'DOWN_PAYMENT'::character varying, 'COD'::character varying])::text[])))),
+    CONSTRAINT suppliers_down_payment_percent_check CHECK (((down_payment_percent IS NULL) OR ((down_payment_percent >= (0)::numeric) AND (down_payment_percent <= (100)::numeric))))
 );
 
 
@@ -505,7 +614,12 @@ CREATE TABLE app.users (
     role app.user_role DEFAULT 'ADMIN'::app.user_role NOT NULL,
     status app.record_status DEFAULT 'ACTIVE'::app.record_status NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    avatar_storage_name text,
+    avatar_original_name character varying(255),
+    avatar_mime_type character varying(50),
+    avatar_size_bytes integer,
+    avatar_updated_at timestamp with time zone
 );
 
 
@@ -880,6 +994,30 @@ CREATE INDEX idx_payment_invoice ON app.payments USING btree (invoice_id);
 
 
 --
+-- Name: idx_supplier_payments_purchase_order; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_supplier_payments_purchase_order ON app.supplier_payments USING btree (purchase_order_id, payment_date DESC);
+CREATE INDEX idx_supplier_payments_invoice ON app.supplier_payments USING btree (supplier_invoice_id) WHERE (supplier_invoice_id IS NOT NULL);
+CREATE INDEX idx_supplier_invoices_po ON app.supplier_invoices USING btree (purchase_order_id, invoice_date DESC);
+CREATE INDEX idx_supplier_invoices_due_date ON app.supplier_invoices USING btree (due_date);
+
+
+--
+-- Name: idx_payment_proofs_customer_payment; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_payment_proofs_customer_payment ON app.payment_proofs USING btree (customer_payment_id) WHERE (customer_payment_id IS NOT NULL);
+
+
+--
+-- Name: idx_payment_proofs_supplier_payment; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_payment_proofs_supplier_payment ON app.payment_proofs USING btree (supplier_payment_id) WHERE (supplier_payment_id IS NOT NULL);
+
+
+--
 -- Name: idx_po_items_product; Type: INDEX; Schema: app; Owner: -
 --
 
@@ -982,6 +1120,28 @@ CREATE TRIGGER trg_products_updated_at BEFORE UPDATE ON app.products FOR EACH RO
 --
 
 CREATE TRIGGER trg_purchase_orders_updated_at BEFORE UPDATE ON app.purchase_orders FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: payment_settings trg_payment_settings_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_payment_settings_updated_at BEFORE UPDATE ON app.payment_settings FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: supplier_payments trg_supplier_payments_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_supplier_payments_updated_at BEFORE UPDATE ON app.supplier_payments FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+CREATE TRIGGER trg_supplier_invoices_updated_at BEFORE UPDATE ON app.supplier_invoices FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: payment_proofs trg_payment_proofs_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_payment_proofs_updated_at BEFORE UPDATE ON app.payment_proofs FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
 
 
 --
@@ -1139,6 +1299,60 @@ ALTER TABLE ONLY app.payments
 
 ALTER TABLE ONLY app.payments
     ADD CONSTRAINT payments_received_by_fkey FOREIGN KEY (received_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: payment_settings payment_settings_updated_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.payment_settings
+    ADD CONSTRAINT payment_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: supplier_payments supplier_payments_purchase_order_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_payments
+    ADD CONSTRAINT supplier_payments_purchase_order_id_fkey FOREIGN KEY (purchase_order_id) REFERENCES app.purchase_orders(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: supplier_payments supplier_payments_paid_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_payments
+    ADD CONSTRAINT supplier_payments_paid_by_fkey FOREIGN KEY (paid_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY app.supplier_invoices
+    ADD CONSTRAINT supplier_invoices_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY app.supplier_invoice_attachments
+    ADD CONSTRAINT supplier_invoice_attachments_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: payment_proofs payment_proofs_customer_payment_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.payment_proofs
+    ADD CONSTRAINT payment_proofs_customer_payment_id_fkey FOREIGN KEY (customer_payment_id) REFERENCES app.payments(id) ON DELETE CASCADE;
+
+
+--
+-- Name: payment_proofs payment_proofs_supplier_payment_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.payment_proofs
+    ADD CONSTRAINT payment_proofs_supplier_payment_id_fkey FOREIGN KEY (supplier_payment_id) REFERENCES app.supplier_payments(id) ON DELETE CASCADE;
+
+
+--
+-- Name: payment_proofs payment_proofs_uploaded_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.payment_proofs
+    ADD CONSTRAINT payment_proofs_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
 
 --

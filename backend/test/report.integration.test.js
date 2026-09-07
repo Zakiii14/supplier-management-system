@@ -23,6 +23,10 @@ const {
 const assert = require("node:assert/strict");
 const request = require("supertest");
 const bcrypt = require("bcryptjs");
+const {
+  strFromU8,
+  unzipSync,
+} = require("fflate");
 
 const pool = require("../src/config/database");
 const app = require("../src/app");
@@ -41,6 +45,7 @@ const testData = {
   deliveryNumber: "RPT-DEL-0001",
   invoiceNumber: "RPT-INV-0001",
   paymentNumber: "RPT-PAY-0001",
+  supplierPaymentNumber: "RPT-SPAY-0001",
 };
 
 const testPassword =
@@ -55,6 +60,14 @@ const login = (identifier) =>
     });
 
 const cleanupTestData = async () => {
+  await pool.query(
+    `
+    DELETE FROM app.supplier_payments
+    WHERE payment_number = $1
+    `,
+    [testData.supplierPaymentNumber],
+  );
+
   await pool.query(
     `
     DELETE FROM app.payments
@@ -366,6 +379,34 @@ before(async () => {
 
   await pool.query(
     `
+    INSERT INTO app.supplier_payments (
+      payment_number,
+      purchase_order_id,
+      payment_date,
+      amount,
+      method,
+      reference_number,
+      paid_by
+    )
+    VALUES (
+      $1,
+      $2,
+      CURRENT_DATE - 4,
+      40000,
+      'BANK_TRANSFER',
+      'REPORT-SUPPLIER-REFERENCE',
+      $3
+    )
+    `,
+    [
+      testData.supplierPaymentNumber,
+      purchaseOrderResult.rows[0].id,
+      adminId,
+    ],
+  );
+
+  await pool.query(
+    `
     INSERT INTO app.inventory_movements (
       product_id,
       movement_type,
@@ -613,6 +654,15 @@ const assertReportEnvelope = (response) => {
   assert.equal(response.body.pagination.limit, 10);
 };
 
+const binaryParser = (response, callback) => {
+  const chunks = [];
+
+  response.on("data", (chunk) => chunks.push(chunk));
+  response.on("end", () =>
+    callback(null, Buffer.concat(chunks)),
+  );
+};
+
 test(
   "reports provide filtered aggregates, trends, pagination, validation, and RBAC",
   async () => {
@@ -664,6 +714,96 @@ test(
     );
 
     response = await request(app)
+      .get("/api/reports/purchasing/export")
+      .query({
+        format: "xlsx",
+        search: testData.purchaseOrderNumber,
+        status: "PARTIALLY_RECEIVED",
+        date_from: "2000-01-01",
+        date_to: "2100-01-01",
+      })
+      .set("Authorization", adminAuthorization)
+      .buffer(true)
+      .parse(binaryParser);
+
+    assert.equal(response.status, 200);
+    assert.match(
+      response.headers["content-type"],
+      /spreadsheetml\.sheet/,
+    );
+    assert.match(
+      response.headers["content-disposition"],
+      /laporan-pembelian-.*\.xlsx/,
+    );
+    assert.equal(Buffer.isBuffer(response.body), true);
+    assert.equal(
+      response.body.subarray(0, 2).toString(),
+      "PK",
+    );
+
+    const purchasingWorkbook = unzipSync(response.body);
+    const purchasingWorkbookXml = strFromU8(
+      purchasingWorkbook["xl/workbook.xml"],
+    );
+    const purchasingSummarySheet = strFromU8(
+      purchasingWorkbook["xl/worksheets/sheet1.xml"],
+    );
+    const purchasingTransactionSheet = strFromU8(
+      purchasingWorkbook["xl/worksheets/sheet2.xml"],
+    );
+    const purchasingDetailSheet = strFromU8(
+      purchasingWorkbook["xl/worksheets/sheet3.xml"],
+    );
+
+    assert.match(purchasingWorkbookXml, /name="Ringkasan"/);
+    assert.match(purchasingWorkbookXml, /name="Transaksi"/);
+    assert.match(
+      purchasingWorkbookXml,
+      /name="Rincian Item"/,
+    );
+    assert.match(purchasingSummarySheet, /Ringkasan/);
+    assert.ok(purchasingWorkbook["xl/charts/chart1.xml"]);
+
+    assert.match(
+      purchasingTransactionSheet,
+      new RegExp(testData.purchaseOrderNumber),
+    );
+    assert.match(
+      purchasingDetailSheet,
+      new RegExp(testData.purchaseOrderNumber),
+    );
+    assert.match(
+      purchasingDetailSheet,
+      new RegExp(testData.productSku),
+    );
+
+    response = await request(app)
+      .get("/api/reports/purchasing/export")
+      .query({
+        format: "pdf",
+        search: testData.purchaseOrderNumber,
+      })
+      .set("Authorization", adminAuthorization)
+      .buffer(true)
+      .parse(binaryParser);
+
+    assert.equal(response.status, 200);
+    assert.match(
+      response.headers["content-type"],
+      /application\/pdf/,
+    );
+    assert.equal(
+      response.body.subarray(0, 4).toString(),
+      "%PDF",
+    );
+    assert.equal(
+      response.body
+        .toString("latin1")
+        .match(/\/Type\s*\/Page\b/g)?.length,
+      1,
+    );
+
+    response = await request(app)
       .get("/api/reports/inventory")
       .query({
         search: testData.productSku,
@@ -698,6 +838,48 @@ test(
     );
 
     response = await request(app)
+      .get("/api/reports/inventory/export")
+      .query({
+        format: "xlsx",
+        search: testData.productSku,
+        date_from: "2000-01-01",
+        date_to: "2100-01-01",
+      })
+      .set("Authorization", adminAuthorization)
+      .buffer(true)
+      .parse(binaryParser);
+
+    assert.equal(response.status, 200);
+    assert.match(
+      response.headers["content-disposition"],
+      /laporan-persediaan-.*\.xlsx/,
+    );
+    const inventoryWorkbook = unzipSync(response.body);
+    const inventoryWorkbookXml = strFromU8(
+      inventoryWorkbook["xl/workbook.xml"],
+    );
+    assert.match(inventoryWorkbookXml, /name="Produk"/);
+    assert.match(inventoryWorkbookXml, /name="Pergerakan Stok"/);
+    assert.match(
+      strFromU8(inventoryWorkbook["xl/worksheets/sheet2.xml"]),
+      new RegExp(testData.productSku),
+    );
+    assert.match(
+      strFromU8(inventoryWorkbook["xl/worksheets/sheet3.xml"]),
+      /MOV-/,
+    );
+    assert.ok(inventoryWorkbook["xl/charts/chart1.xml"]);
+
+    response = await request(app)
+      .get("/api/reports/inventory/export")
+      .query({ format: "pdf", search: testData.productSku })
+      .set("Authorization", adminAuthorization)
+      .buffer(true)
+      .parse(binaryParser);
+    assert.equal(response.status, 200);
+    assert.equal(response.body.subarray(0, 4).toString(), "%PDF");
+
+    response = await request(app)
       .get("/api/reports/sales")
       .query({
         search: testData.salesOrderNumber,
@@ -729,6 +911,62 @@ test(
     assertNumericAtLeast(
       response.body.data.summary.total_sales_value,
       60000,
+    );
+
+    response = await request(app)
+      .get("/api/reports/sales/export")
+      .query({
+        format: "xlsx",
+        search: testData.salesOrderNumber,
+        status: "DELIVERED",
+      })
+      .set("Authorization", adminAuthorization)
+      .buffer(true)
+      .parse(binaryParser);
+
+    assert.equal(response.status, 200);
+    assert.match(
+      response.headers["content-disposition"],
+      /laporan-penjualan-.*\.xlsx/,
+    );
+
+    const salesWorkbook = unzipSync(response.body);
+    const salesTransactionSheet = strFromU8(
+      salesWorkbook["xl/worksheets/sheet2.xml"],
+    );
+    const salesDetailSheet = strFromU8(
+      salesWorkbook["xl/worksheets/sheet3.xml"],
+    );
+
+    assert.match(
+      salesTransactionSheet,
+      new RegExp(testData.salesOrderNumber),
+    );
+    assert.match(
+      salesDetailSheet,
+      new RegExp(testData.productSku),
+    );
+
+    response = await request(app)
+      .get("/api/reports/sales/export")
+      .query({
+        format: "pdf",
+        search: testData.salesOrderNumber,
+      })
+      .set("Authorization", adminAuthorization)
+      .buffer(true)
+      .parse(binaryParser);
+
+    assert.equal(response.status, 200);
+    assert.equal(
+      response.body.subarray(0, 4).toString(),
+      "%PDF",
+    );
+    assert.equal(
+      response.body
+        .toString("latin1")
+        .match(/\/Type\s*\/Page\b/g)?.length,
+      1,
     );
 
     response = await request(app)
@@ -768,6 +1006,113 @@ test(
     );
 
     response = await request(app)
+      .get("/api/reports/finance/export")
+      .query({
+        format: "xlsx",
+        search: testData.invoiceNumber,
+        date_from: "2000-01-01",
+        date_to: "2100-01-01",
+      })
+      .set("Authorization", adminAuthorization)
+      .buffer(true)
+      .parse(binaryParser);
+
+    assert.equal(response.status, 200);
+    assert.match(
+      response.headers["content-disposition"],
+      /laporan-keuangan-.*\.xlsx/,
+    );
+    const financeWorkbook = unzipSync(response.body);
+    const financeWorkbookXml = strFromU8(
+      financeWorkbook["xl/workbook.xml"],
+    );
+    assert.match(financeWorkbookXml, /name="Invoice"/);
+    assert.match(financeWorkbookXml, /name="Pembayaran"/);
+    assert.match(
+      strFromU8(financeWorkbook["xl/worksheets/sheet2.xml"]),
+      new RegExp(testData.invoiceNumber),
+    );
+    assert.match(
+      strFromU8(financeWorkbook["xl/worksheets/sheet3.xml"]),
+      new RegExp(testData.paymentNumber),
+    );
+    assert.ok(financeWorkbook["xl/charts/chart1.xml"]);
+
+    response = await request(app)
+      .get("/api/reports/finance/export")
+      .query({ format: "pdf", search: testData.invoiceNumber })
+      .set("Authorization", adminAuthorization)
+      .buffer(true)
+      .parse(binaryParser);
+    assert.equal(response.status, 200);
+    assert.equal(response.body.subarray(0, 4).toString(), "%PDF");
+
+    response = await request(app)
+      .get("/api/reports/supplier-finance")
+      .query({
+        search: testData.purchaseOrderNumber,
+        payment_status: "OVERDUE",
+        date_from: "2000-01-01",
+        date_to: "2100-01-01",
+        page: 1,
+        limit: 10,
+      })
+      .set("Authorization", adminAuthorization);
+
+    assertReportEnvelope(response);
+    assert.equal(
+      response.body.message,
+      "Supplier finance report retrieved successfully",
+    );
+    const supplierFinanceRow = response.body.data.rows.find(
+      (row) => row.po_number === testData.purchaseOrderNumber,
+    );
+    assert.ok(supplierFinanceRow);
+    assert.equal(supplierFinanceRow.payment_status, "OVERDUE");
+    assert.equal(Number(supplierFinanceRow.total_amount), 100000);
+    assert.equal(Number(supplierFinanceRow.paid_amount), 40000);
+    assert.equal(Number(supplierFinanceRow.outstanding_amount), 60000);
+    assertNumericAtLeast(
+      response.body.data.summary.supplier_payments_made,
+      40000,
+    );
+
+    response = await request(app)
+      .get("/api/reports/supplier-finance/export")
+      .query({
+        format: "xlsx",
+        search: testData.purchaseOrderNumber,
+      })
+      .set("Authorization", adminAuthorization)
+      .buffer(true)
+      .parse(binaryParser);
+
+    assert.equal(response.status, 200);
+    assert.match(
+      response.headers["content-disposition"],
+      /laporan-keuangan-pembelian-.*\.xlsx/,
+    );
+    const supplierFinanceWorkbook = unzipSync(response.body);
+    assert.match(
+      strFromU8(supplierFinanceWorkbook["xl/workbook.xml"]),
+      /name="Utang Supplier"/,
+    );
+    assert.match(
+      strFromU8(supplierFinanceWorkbook["xl/worksheets/sheet3.xml"]),
+      new RegExp(testData.supplierPaymentNumber),
+    );
+    assert.ok(supplierFinanceWorkbook["xl/charts/chart1.xml"]);
+
+    response = await request(app)
+      .get("/api/reports/supplier-finance/export")
+      .query({ format: "pdf", search: testData.purchaseOrderNumber })
+      .set("Authorization", adminAuthorization)
+      .buffer(true)
+      .parse(binaryParser);
+    assert.equal(response.status, 200);
+    assert.equal(response.body.subarray(0, 4).toString(), "%PDF");
+
+    response = await request(app)
       .get("/api/reports/purchasing")
       .query({
         date_from: "2026-12-31",
@@ -784,6 +1129,17 @@ test(
 
     assert.equal(response.status, 400);
 
+    response = await request(app)
+      .get("/api/reports/sales/export")
+      .query({ format: "docx" })
+      .set("Authorization", adminAuthorization);
+
+    assert.equal(response.status, 400);
+    assert.equal(
+      response.body.message,
+      "Invalid export format. Use xlsx or pdf",
+    );
+
     const salesAuthorization =
       await getAuthorization(
         testData.salesUsername,
@@ -799,11 +1155,31 @@ test(
       "purchasing",
       "inventory",
       "finance",
+      "supplier-finance",
     ]) {
       response = await request(app)
         .get(`/api/reports/${reportPath}`)
         .set("Authorization", salesAuthorization);
 
+      assert.equal(response.status, 403);
+    }
+
+    response = await request(app)
+      .get("/api/reports/purchasing/export")
+      .query({ format: "xlsx" })
+      .set("Authorization", salesAuthorization);
+
+    assert.equal(response.status, 403);
+
+    for (const exportPath of [
+      "inventory",
+      "finance",
+      "supplier-finance",
+    ]) {
+      response = await request(app)
+        .get(`/api/reports/${exportPath}/export`)
+        .query({ format: "xlsx" })
+        .set("Authorization", salesAuthorization);
       assert.equal(response.status, 403);
     }
 
@@ -814,6 +1190,11 @@ test(
 
     response = await request(app)
       .get("/api/reports/finance")
+      .set("Authorization", financeAuthorization);
+
+    assert.equal(response.status, 200);
+    response = await request(app)
+      .get("/api/reports/supplier-finance")
       .set("Authorization", financeAuthorization);
 
     assert.equal(response.status, 200);

@@ -1,0 +1,11 @@
+const router=require("express").Router();
+const authorize=require("../middleware/authorizeRoles");
+const controller=require("../controllers/supplierInvoiceController");
+const {uploadAttachments}=require("../services/supplierInvoiceAttachmentService");
+router.get("/",authorize("ADMIN","PURCHASING","FINANCE","MANAGER"),controller.listSupplierInvoices);
+router.get("/:id",authorize("ADMIN","PURCHASING","FINANCE","MANAGER"),controller.getSupplierInvoice);
+router.post("/",authorize("ADMIN","FINANCE"),uploadAttachments,controller.saveSupplierInvoice);
+router.put("/:id",authorize("ADMIN","FINANCE"),uploadAttachments,controller.saveSupplierInvoice);
+router.get("/:id/attachments/:attachmentId/content",authorize("ADMIN","PURCHASING","FINANCE","MANAGER"),controller.serveAttachment);
+router.delete("/:id/attachments/:attachmentId",authorize("ADMIN","FINANCE"),controller.deleteAttachment);
+module.exports=router;

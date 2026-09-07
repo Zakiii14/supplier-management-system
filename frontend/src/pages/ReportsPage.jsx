@@ -2,6 +2,9 @@ import {
   AlertTriangle,
   BarChart3,
   FileBarChart,
+  FileSpreadsheet,
+  FileText,
+  HandCoins,
   RefreshCw,
   Search,
   ShoppingCart,
@@ -16,8 +19,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { getPurchaseOrderByIdRequest } from "../api/purchaseOrders";
 import {
+  getPurchaseOrderByIdRequest,
+  openSupplierPaymentProofRequest,
+} from "../api/purchaseOrders";
+import {
+  getReportExportRequest,
   getReportOptionsRequest,
   getReportRequest,
 } from "../api/reports";
@@ -32,6 +39,7 @@ import SalesOrderDetailDialog from "../components/sales-orders/SalesOrderDetailD
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 import useStickyDataFilters from "../hooks/useStickyDataFilters";
+import "../styles/payments.css";
 import "../styles/purchase-orders.css";
 import "../styles/reports.css";
 import "../styles/sales-orders.css";
@@ -63,6 +71,7 @@ const REPORT_ICONS = {
   inventory: Warehouse,
   sales: TrendingUp,
   finance: WalletCards,
+  supplierFinance: HandCoins,
 };
 
 const mapReportOptions = (
@@ -193,10 +202,22 @@ const ReportsPage = () => {
     useState("");
   const [detailError, setDetailError] =
     useState("");
+  const [exportFormat, setExportFormat] =
+    useState("");
+  const [exportError, setExportError] =
+    useState("");
 
   const canViewTransactionDetails = [
     "purchasing",
     "sales",
+    "supplierFinance",
+  ].includes(activeReportType);
+  const canExportReport = [
+    "purchasing",
+    "inventory",
+    "sales",
+    "finance",
+    "supplierFinance",
   ].includes(activeReportType);
 
   useEffect(() => {
@@ -362,6 +383,7 @@ const ReportsPage = () => {
     setReportDetail(null);
     setLoadingDetailId("");
     setDetailError("");
+    setExportError("");
   };
 
   const handleOpenReportDetail = async (row) => {
@@ -380,7 +402,7 @@ const ReportsPage = () => {
       setDetailError("");
 
       const detail =
-        detailType === "purchasing"
+        ["purchasing", "supplierFinance"].includes(detailType)
           ? await getPurchaseOrderByIdRequest(
             row.id,
           )
@@ -408,7 +430,7 @@ const ReportsPage = () => {
       setDetailError(
         error.response?.data?.message ||
         `Rincian laporan ${
-          detailType === "purchasing"
+          ["purchasing", "supplierFinance"].includes(detailType)
             ? "pembelian"
             : "penjualan"
         } gagal dimuat.`,
@@ -424,6 +446,67 @@ const ReportsPage = () => {
 
   const handleCloseReportDetail = () => {
     setReportDetail(null);
+  };
+
+  const handleExportReport = async (format) => {
+    if (
+      !canExportReport ||
+      exportFormat
+    ) {
+      return;
+    }
+
+    try {
+      setExportFormat(format);
+      setExportError("");
+
+      const params = {
+        ...(appliedSearch && {
+          search: appliedSearch,
+        }),
+        ...(status && {
+          [activeConfig.statusParam]: status,
+        }),
+        ...(entityId &&
+          entityParam && {
+          [entityParam]: entityId,
+        }),
+        ...(dateFrom && {
+          date_from: dateFrom,
+        }),
+        ...(dateTo && {
+          date_to: dateTo,
+        }),
+      };
+      const { blob, fileName } =
+        await getReportExportRequest(
+          activeReportType,
+          format,
+          params,
+        );
+      const downloadUrl =
+        URL.createObjectURL(blob);
+      const downloadLink =
+        document.createElement("a");
+
+      downloadLink.href = downloadUrl;
+      downloadLink.download = fileName;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
+
+      window.setTimeout(() => {
+        URL.revokeObjectURL(downloadUrl);
+      }, 0);
+    } catch (error) {
+      setExportError(
+        error.response?.data?.message ||
+        error.message ||
+        "File laporan gagal dibuat.",
+      );
+    } finally {
+      setExportFormat("");
+    }
   };
 
   const handleSearch = (event) => {
@@ -549,10 +632,72 @@ const ReportsPage = () => {
         </div>
 
         <div className="page-heading-actions">
+          {canExportReport && (
+            <>
+              <button
+                type="button"
+                className="secondary-action report-export-action"
+                disabled={
+                  isLoading ||
+                  Boolean(exportFormat) ||
+                  pagination.total === 0
+                }
+                title="Unduh laporan Excel"
+                onClick={() =>
+                  handleExportReport("xlsx")
+                }
+              >
+                {exportFormat === "xlsx" ? (
+                  <RefreshCw
+                    className="is-spinning"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <FileSpreadsheet
+                    aria-hidden="true"
+                  />
+                )}
+
+                {exportFormat === "xlsx"
+                  ? "Membuat..."
+                  : "Excel"}
+              </button>
+
+              <button
+                type="button"
+                className="secondary-action report-export-action"
+                disabled={
+                  isLoading ||
+                  Boolean(exportFormat) ||
+                  pagination.total === 0
+                }
+                title="Unduh laporan PDF"
+                onClick={() =>
+                  handleExportReport("pdf")
+                }
+              >
+                {exportFormat === "pdf" ? (
+                  <RefreshCw
+                    className="is-spinning"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <FileText aria-hidden="true" />
+                )}
+
+                {exportFormat === "pdf"
+                  ? "Membuat..."
+                  : "PDF"}
+              </button>
+            </>
+          )}
+
           <button
             type="button"
             className="secondary-action"
-            disabled={isLoading}
+            disabled={
+              isLoading || Boolean(exportFormat)
+            }
             onClick={() =>
               setReloadKey(
                 (current) => current + 1,
@@ -761,6 +906,23 @@ const ReportsPage = () => {
             </div>
           </div>
         )}
+
+        {exportError && (
+          <div
+            className="data-error"
+            role="alert"
+          >
+            <AlertTriangle aria-hidden="true" />
+
+            <div>
+              <strong>
+                Laporan gagal diunduh
+              </strong>
+
+              <span>{exportError}</span>
+            </div>
+          </div>
+        )}
       </section>
 
       <ReportSummaryCards
@@ -837,10 +999,17 @@ const ReportsPage = () => {
         />
       </section>
 
-      {reportDetail?.type === "purchasing" && (
+      {["purchasing", "supplierFinance"].includes(reportDetail?.type) && (
         <PurchaseOrderDetailDialog
           isOpen
           purchaseOrder={reportDetail.data}
+          onOpenSupplierProof={(paymentId, proofId) =>
+            openSupplierPaymentProofRequest(
+              reportDetail.data.id,
+              paymentId,
+              proofId,
+            )
+          }
           onClose={handleCloseReportDetail}
         />
       )}

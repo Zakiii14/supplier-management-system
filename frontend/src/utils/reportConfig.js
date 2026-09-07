@@ -113,8 +113,8 @@ const REPORT_CONFIG = {
 
     finance: {
         type: "finance",
-        label: "Keuangan",
-        title: "Laporan Keuangan",
+        label: "Piutang Pelanggan",
+        title: "Laporan Keuangan Penjualan",
         description:
             "Pantau invoice, pembayaran diterima, dan sisa tagihan pelanggan.",
         roles: ["ADMIN", "FINANCE", "MANAGER"],
@@ -145,6 +145,27 @@ const REPORT_CONFIG = {
         entityParam: "customer_id",
         entityLabel: "Pelanggan",
         entityType: "customer",
+    },
+
+    supplierFinance: {
+        type: "supplierFinance",
+        label: "Utang Supplier",
+        title: "Laporan Keuangan Pembelian",
+        description:
+            "Pantau nilai PO, pembayaran keluar, dan sisa utang kepada supplier.",
+        roles: ["ADMIN", "FINANCE", "MANAGER"],
+        statusParam: "payment_status",
+        statusLabel: "Status pembayaran",
+        statusOptions: [
+            { value: "UNPAID", label: "Belum dibayar" },
+            { value: "PARTIAL", label: "Dibayar sebagian" },
+            { value: "PAID", label: "Lunas" },
+            { value: "OVERDUE", label: "Jatuh tempo" },
+            { value: "CANCELLED", label: "Dibatalkan" },
+        ],
+        entityParam: "supplier_id",
+        entityLabel: "Supplier",
+        entityType: "supplier",
     },
 };
 

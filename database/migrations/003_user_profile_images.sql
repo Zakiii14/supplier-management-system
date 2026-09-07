@@ -1,0 +1,7 @@
+BEGIN;
+ALTER TABLE app.users ADD COLUMN IF NOT EXISTS avatar_storage_name TEXT;
+ALTER TABLE app.users ADD COLUMN IF NOT EXISTS avatar_original_name VARCHAR(255);
+ALTER TABLE app.users ADD COLUMN IF NOT EXISTS avatar_mime_type VARCHAR(50);
+ALTER TABLE app.users ADD COLUMN IF NOT EXISTS avatar_size_bytes INTEGER;
+ALTER TABLE app.users ADD COLUMN IF NOT EXISTS avatar_updated_at TIMESTAMPTZ;
+COMMIT;

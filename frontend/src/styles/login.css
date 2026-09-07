@@ -3,7 +3,7 @@
   grid-template-columns:
     minmax(0, 1.08fr) minmax(420px, 0.92fr);
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--sf-surface);
 }
 
 .login-brand-panel {
@@ -64,7 +64,7 @@
   width: 42px;
   height: 42px;
   color: #0f2b52;
-  background: #ffffff;
+  background: var(--sf-surface);
   border-radius: 12px;
   place-items: center;
 }
@@ -133,7 +133,7 @@
 
 .login-card-header p {
   margin: 12px 0 0;
-  color: #64748b;
+  color: var(--sf-text-muted);
   line-height: 1.6;
 }
 
@@ -144,11 +144,11 @@
 
 .login-error {
   padding: 13px 15px;
-  color: #b42318;
+  color: var(--sf-status-danger-text);
   font-size: 0.9rem;
   line-height: 1.5;
-  background: #fef3f2;
-  border: 1px solid #fecdca;
+  background: var(--sf-status-danger-bg);
+  border: 1px solid transparent;
   border-radius: 10px;
 }
 
@@ -158,7 +158,7 @@
 }
 
 .login-field>span {
-  color: #344054;
+  color: var(--sf-text-strong);
   font-size: 0.9rem;
   font-weight: 650;
 }
@@ -169,8 +169,8 @@
   gap: 11px;
   min-height: 50px;
   padding: 0 14px;
-  background: #ffffff;
-  border: 1px solid #d5dce7;
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border);
   border-radius: 11px;
   box-shadow: 0 1px 2px rgb(16 24 40 / 4%);
   transition:
@@ -187,21 +187,21 @@
   flex: 0 0 auto;
   width: 19px;
   height: 19px;
-  color: #98a2b3;
+  color: var(--sf-text-soft);
 }
 
 .login-input-wrapper input {
   width: 100%;
   min-width: 0;
   padding: 13px 0;
-  color: #172033;
+  color: var(--sf-text-strong);
   background: transparent;
   border: 0;
   outline: 0;
 }
 
 .login-input-wrapper input::placeholder {
-  color: #98a2b3;
+  color: var(--sf-text-soft);
 }
 
 .login-input-wrapper input:disabled {
@@ -214,7 +214,7 @@
   width: 36px;
   height: 36px;
   padding: 0;
-  color: #667085;
+  color: var(--sf-text-muted);
   background: transparent;
   border: 0;
   border-radius: 8px;
@@ -222,8 +222,8 @@
 }
 
 .password-toggle:hover:not(:disabled) {
-  color: #2563eb;
-  background: #eff6ff;
+  color: var(--sf-accent);
+  background: var(--sf-accent-soft);
 }
 
 .password-toggle:focus-visible {
@@ -279,7 +279,7 @@
 
 .login-footer {
   margin: 30px 0 0;
-  color: #98a2b3;
+  color: var(--sf-text-soft);
   font-size: 0.84rem;
   text-align: center;
 }

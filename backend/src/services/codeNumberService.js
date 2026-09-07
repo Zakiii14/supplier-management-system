@@ -49,6 +49,11 @@ const MODULE_DEFINITIONS = Object.freeze({
     column: "payment_number",
     maxLength: 40,
   },
+  SUPPLIER_PAYMENT: {
+    table: "supplier_payments",
+    column: "payment_number",
+    maxLength: 40,
+  },
 });
 
 const normalizeModuleKey = (value) =>

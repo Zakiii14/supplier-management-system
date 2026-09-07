@@ -38,7 +38,9 @@ const authenticate = async (req, res, next) => {
         full_name,
         email,
         role,
-        status
+        status,
+        (avatar_storage_name IS NOT NULL) AS has_avatar,
+        avatar_updated_at
       FROM app.users
       WHERE id = $1
         AND status = 'ACTIVE'

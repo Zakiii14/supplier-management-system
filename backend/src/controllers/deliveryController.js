@@ -730,7 +730,7 @@ const updateDeliveryStatus = async (req, res) => {
           Number(item.current_stock)
         ) {
           throw new Error(
-            `Insufficient stock for ${item.product_name}. Available: ${item.current_stock}`
+            `Insufficient stock for ${item.product_name}. Available: ${Number(item.current_stock)}`
           );
         }
 

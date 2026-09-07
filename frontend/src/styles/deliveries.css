@@ -13,27 +13,27 @@
 }
 
 .delivery-status.is-pending {
-  color: #b54708;
-  background: #fffaeb;
-  border-color: #fedf89;
+  color: var(--sf-status-warning-text);
+  background: var(--sf-status-warning-bg);
+  border-color: transparent;
 }
 
 .delivery-status.is-shipped {
-  color: #175cd3;
-  background: #eff8ff;
-  border-color: #b2ddff;
+  color: var(--sf-accent);
+  background: var(--sf-accent-soft);
+  border-color: var(--sf-border);
 }
 
 .delivery-status.is-delivered {
-  color: #067647;
-  background: #ecfdf3;
-  border-color: #abefc6;
+  color: var(--sf-status-success-text);
+  background: var(--sf-status-success-bg);
+  border-color: transparent;
 }
 
 .delivery-status.is-cancelled {
-  color: #b42318;
-  background: #fef3f2;
-  border-color: #fecdca;
+  color: var(--sf-status-danger-text);
+  background: var(--sf-status-danger-bg);
+  border-color: transparent;
 }
 
 .delivery-table th:nth-child(1) {
@@ -72,14 +72,14 @@
 .delivery-sales-order,
 .delivery-customer {
   display: block;
-  color: #25324a;
+  color: var(--sf-text-strong);
   font-weight: 750;
 }
 
 .delivery-subtext {
   display: block;
   margin-top: 3px;
-  color: #98a2b3;
+  color: var(--sf-text-soft);
   font-size: 0.68rem;
 }
 
@@ -107,7 +107,7 @@
   width: 17px;
   height: 17px;
   flex: 0 0 auto;
-  color: #2563eb;
+  color: var(--sf-accent);
 }
 
 .delivery-detail-information > div span {
@@ -136,7 +136,7 @@
 }
 
 .delivery-detail-table .is-stock {
-  color: #067647;
+  color: var(--sf-status-success-text);
 }
 
 .delivery-detail-status-note {
@@ -144,9 +144,9 @@
   align-items: flex-start;
   gap: 12px;
   padding: 14px 16px;
-  color: #175cd3;
-  background: #eff8ff;
-  border: 1px solid #b2ddff;
+  color: var(--sf-accent);
+  background: var(--sf-accent-soft);
+  border: 1px solid var(--sf-border);
   border-radius: 13px;
 }
 
@@ -167,7 +167,7 @@
 }
 
 .delivery-detail-status-note span {
-  color: #344054;
+  color: var(--sf-text-strong);
   font-size: 0.75rem;
   line-height: 1.5;
 }

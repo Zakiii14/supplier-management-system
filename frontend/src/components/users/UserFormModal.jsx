@@ -1,7 +1,9 @@
 import {
   Eye,
   EyeOff,
+  Camera,
   Save,
+  Trash2,
   UserCog,
   X,
 } from "lucide-react";
@@ -10,6 +12,7 @@ import {
   useState,
 } from "react";
 import FormSelect from "../forms/FormSelect";
+import UserAvatar from "./UserAvatar";
 
 const roleOptions = [
   {
@@ -94,6 +97,13 @@ const UserFormModal = ({
 
   const [showPassword, setShowPassword] =
     useState(false);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState("");
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+
+  useEffect(() => () => {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
+  }, [avatarPreview]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -233,7 +243,7 @@ const UserFormModal = ({
       payload.password = values.password;
     }
 
-    onSubmit(payload);
+    onSubmit(payload, { avatarFile, removeAvatar });
   };
 
   const title = isEditMode
@@ -298,6 +308,45 @@ const UserFormModal = ({
                   Role menentukan modul yang dapat
                   diakses oleh pengguna.
                 </span>
+              </div>
+            </div>
+
+            <div className="user-avatar-editor">
+              <div className="user-avatar-editor-preview">
+                {avatarPreview ? <img src={avatarPreview} alt="Preview foto profil" /> : removeAvatar ? <span>{values.full_name.trim().charAt(0).toUpperCase() || "U"}</span> : <UserAvatar user={user || { full_name: values.full_name }} />}
+              </div>
+              <div className="user-avatar-editor-copy">
+                <strong>Foto profil</strong>
+                <span>JPG, PNG, atau WebP. Maksimal 2 MB.</span>
+                <div>
+                  <label className="user-avatar-upload">
+                    <Camera aria-hidden="true" />
+                    <span>{user?.has_avatar || avatarFile ? "Ganti foto" : "Pilih foto"}</span>
+                    <input type="file" accept="image/jpeg,image/png,image/webp" disabled={isSubmitting} onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 2 * 1024 * 1024) {
+                        setValidationError("Ukuran foto profil maksimal 2 MB.");
+                        event.target.value = "";
+                        return;
+                      }
+                      setAvatarFile(file);
+                      setRemoveAvatar(false);
+                      setAvatarPreview(URL.createObjectURL(file));
+                      setValidationError("");
+                    }} />
+                  </label>
+                  {(user?.has_avatar || avatarFile) && !removeAvatar && (
+                    <button type="button" className="user-avatar-remove" disabled={isSubmitting} onClick={() => {
+                      setAvatarFile(null);
+                      setAvatarPreview("");
+                      setRemoveAvatar(true);
+                    }}>
+                      <Trash2 aria-hidden="true" /> Hapus
+                    </button>
+                  )}
+                </div>
+                {removeAvatar && <small>Foto akan dihapus saat perubahan disimpan.</small>}
               </div>
             </div>
 

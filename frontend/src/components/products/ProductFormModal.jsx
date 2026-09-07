@@ -29,7 +29,12 @@ const createInitialValues = (product) => {
     unit: product.unit ?? "PCS",
     purchase_price: product.purchase_price ?? "",
     selling_price: product.selling_price ?? "",
-    minimum_stock: product.minimum_stock ?? "",
+    minimum_stock:
+      product.minimum_stock === null ||
+      product.minimum_stock === undefined ||
+      product.minimum_stock === ""
+        ? ""
+        : String(Number(product.minimum_stock)),
     description: product.description ?? "",
   };
 };

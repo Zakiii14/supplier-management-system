@@ -29,7 +29,9 @@ const login = async (req, res) => {
         email,
         password_hash,
         role,
-        status
+        status,
+        (avatar_storage_name IS NOT NULL) AS has_avatar,
+        avatar_updated_at
       FROM app.users
       WHERE
         LOWER(username) = LOWER($1)
@@ -97,6 +99,8 @@ const login = async (req, res) => {
           full_name: user.full_name,
           email: user.email,
           role: user.role,
+          has_avatar: user.has_avatar,
+          avatar_updated_at: user.avatar_updated_at,
         },
       },
     });

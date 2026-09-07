@@ -12,11 +12,16 @@ import {
   useState,
 } from "react";
 import {
+  addPaymentProofsRequest,
   createPaymentRequest,
+  deletePaymentProofRequest,
   getPaymentByIdRequest,
   getPaymentEligibleInvoicesRequest,
   getPaymentsRequest,
+  openPaymentProofRequest,
+  replacePaymentProofRequest,
 } from "../api/payments";
+import { getPaymentSettingsRequest } from "../api/paymentSettings";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import StatusFilter from "../components/filters/StatusFilter";
 import PaymentDetailDialog from "../components/payments/PaymentDetailDialog";
@@ -157,6 +162,8 @@ const PaymentsPage = () => {
     useState("");
   const [actionError, setActionError] =
     useState("");
+  const [requireTransferProof, setRequireTransferProof] =
+    useState(false);
 
   useEffect(() => {
     let isCancelled = false;
@@ -264,8 +271,10 @@ const PaymentsPage = () => {
       setActionError("");
       setFormError("");
 
-      const invoiceData =
-        await getPaymentEligibleInvoicesRequest();
+      const [invoiceData, paymentSettings] = await Promise.all([
+        getPaymentEligibleInvoicesRequest(),
+        getPaymentSettingsRequest(),
+      ]);
 
       if (invoiceData.length === 0) {
         setActionError(
@@ -275,6 +284,9 @@ const PaymentsPage = () => {
       }
 
       setEligibleInvoices(invoiceData);
+      setRequireTransferProof(
+        Boolean(paymentSettings.require_sales_transfer_proof),
+      );
       setIsFormOpen(true);
     } catch (error) {
       setActionError(
@@ -294,6 +306,37 @@ const PaymentsPage = () => {
     setIsFormOpen(false);
     setEligibleInvoices([]);
     setFormError("");
+  };
+
+  const updateSelectedProofs = (proofs) => {
+    setSelectedPayment((current) =>
+      current ? { ...current, proofs } : current,
+    );
+  };
+
+  const handleAddProofs = async (files) => {
+    const proofs = await addPaymentProofsRequest(
+      selectedPayment.id,
+      files,
+    );
+    updateSelectedProofs(proofs);
+  };
+
+  const handleReplaceProof = async (proofId, file) => {
+    const proofs = await replacePaymentProofRequest(
+      selectedPayment.id,
+      proofId,
+      file,
+    );
+    updateSelectedProofs(proofs);
+  };
+
+  const handleDeleteProof = async (proofId) => {
+    const proofs = await deletePaymentProofRequest(
+      selectedPayment.id,
+      proofId,
+    );
+    updateSelectedProofs(proofs);
   };
 
   const handleCreatePayment = async (payload) => {
@@ -701,6 +744,7 @@ const PaymentsPage = () => {
           invoices={eligibleInvoices}
           isSubmitting={isSubmitting}
           requestError={formError}
+          requireTransferProof={requireTransferProof}
           onClose={handleCloseForm}
           onSubmit={handleCreatePayment}
         />
@@ -710,6 +754,13 @@ const PaymentsPage = () => {
         <PaymentDetailDialog
           isOpen
           payment={selectedPayment}
+          canManageProofs={canManagePayments}
+          onAddProofs={handleAddProofs}
+          onReplaceProof={handleReplaceProof}
+          onDeleteProof={handleDeleteProof}
+          onOpenProof={(proofId) =>
+            openPaymentProofRequest(selectedPayment.id, proofId)
+          }
           onClose={handleCloseDetail}
         />
       )}

@@ -24,6 +24,10 @@ const userRoutes = require("./routes/userRoutes");
 const codeNumberSettingRoutes = require(
   "./routes/codeNumberSettingRoutes"
 );
+const paymentSettingRoutes = require(
+  "./routes/paymentSettingRoutes"
+);
+const supplierInvoiceRoutes = require("./routes/supplierInvoiceRoutes");
 
 const authenticate = require("./middleware/authMiddleware");
 
@@ -84,11 +88,17 @@ app.use("/api/sales-orders", authenticate, salesOrderRoutes);
 app.use("/api/deliveries", authenticate, deliveryRoutes);
 app.use("/api/invoices", authenticate, invoiceRoutes);
 app.use("/api/payments", authenticate, paymentRoutes);
+app.use("/api/supplier-invoices", authenticate, supplierInvoiceRoutes);
 app.use("/api/users", authenticate, userRoutes);
 app.use(
   "/api/code-number-settings",
   authenticate,
   codeNumberSettingRoutes
+);
+app.use(
+  "/api/payment-settings",
+  authenticate,
+  paymentSettingRoutes
 );
 app.use("/api/auth", authRoutes);
 

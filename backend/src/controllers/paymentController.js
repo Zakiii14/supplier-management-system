@@ -6,6 +6,11 @@ const {
 const {
 	parseDateRange,
 } = require("../utils/dateRange");
+const {
+	removeStoredProofFiles,
+	serializeProof,
+	storeAndInsertProofs,
+} = require("../services/paymentProofService");
 
 const PAYMENT_METHODS = [
 	"CASH",
@@ -480,10 +485,25 @@ const getPaymentById = async (req, res) => {
 			});
 		}
 
+		const proofsResult = await pool.query(
+			`
+      SELECT pp.*, u.full_name AS uploaded_by_name
+      FROM app.payment_proofs pp
+      LEFT JOIN app.users u
+        ON u.id = pp.uploaded_by
+      WHERE pp.customer_payment_id = $1
+      ORDER BY pp.created_at ASC
+      `,
+			[id],
+		);
+
 		res.status(200).json({
 			success: true,
 			message: "Payment retrieved successfully",
-			data: result.rows[0],
+			data: {
+				...result.rows[0],
+				proofs: proofsResult.rows.map(serializeProof),
+			},
 		});
 	} catch (error) {
 		console.error(
@@ -508,6 +528,7 @@ const getPaymentById = async (req, res) => {
 const createPayment = async (req, res) => {
 	const client = await pool.connect();
 	let transactionStarted = false;
+	let storedProofs = [];
 
 	try {
 		const {
@@ -549,6 +570,7 @@ const createPayment = async (req, res) => {
 			typeof notes === "string"
 				? notes.trim()
 				: "";
+		const proofFiles = req.files || [];
 
 		if (
 			!normalizedInvoiceId ||
@@ -603,6 +625,24 @@ const createPayment = async (req, res) => {
 
 		await client.query("BEGIN");
 		transactionStarted = true;
+
+		const settingsResult = await client.query(
+			`
+      SELECT require_sales_transfer_proof
+      FROM app.payment_settings
+      WHERE id = 1
+      `,
+		);
+
+		if (
+			settingsResult.rows[0]?.require_sales_transfer_proof &&
+			["BANK_TRANSFER", "GIRO"].includes(normalizedMethod) &&
+			proofFiles.length === 0
+		) {
+			throw createRequestError(
+				"Bukti pembayaran wajib untuk transfer bank atau giro",
+			);
+		}
 
 		const resolvedPaymentNumber =
 			await resolveCodeNumber({
@@ -760,6 +800,14 @@ const createPayment = async (req, res) => {
 				[numericAmount, normalizedInvoiceId],
 			);
 
+		storedProofs = await storeAndInsertProofs({
+			client,
+			files: proofFiles,
+			ownerColumn: "customer_payment_id",
+			ownerId: paymentResult.rows[0].id,
+			uploadedBy: req.user.id,
+		});
+
 		await client.query("COMMIT");
 		transactionStarted = false;
 
@@ -774,6 +822,10 @@ const createPayment = async (req, res) => {
 	} catch (error) {
 		if (transactionStarted) {
 			await client.query("ROLLBACK");
+		}
+
+		if (storedProofs.length) {
+			await removeStoredProofFiles(storedProofs);
 		}
 
 		if (error.code === "23505") {

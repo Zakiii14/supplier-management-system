@@ -12,6 +12,8 @@ const REPORT_FIELD_LABELS = {
     so_number: "Nomor SO",
     invoice_number: "Nomor invoice",
     payment_number: "Nomor pembayaran",
+    payment_status: "Status pembayaran",
+    payment_scheme: "Skema pembayaran",
 
     supplier_code: "Kode supplier",
     supplier_name: "Supplier",
@@ -30,6 +32,7 @@ const REPORT_FIELD_LABELS = {
     invoice_date: "Tanggal invoice",
     payment_date: "Tanggal pembayaran",
     due_date: "Jatuh tempo",
+    estimated_due_date: "Estimasi jatuh tempo",
 
     total_po: "Total pesanan pembelian",
     total_purchase_orders:
@@ -102,6 +105,18 @@ const REPORT_FIELD_LABELS = {
         "Total transaksi pembayaran",
     payments_received:
         "Total pembayaran diterima",
+    overdue_purchase_orders:
+        "PO melewati jatuh tempo",
+    supplier_payments_made:
+        "Pembayaran kepada supplier",
+    supplier_outstanding_amount:
+        "Sisa utang supplier",
+    overdue_supplier_amount:
+        "Utang melewati jatuh tempo",
+    supplier_payment_value:
+        "Pembayaran supplier",
+    payment_count: "Jumlah pembayaran",
+    proof_count: "Jumlah bukti",
 
     total_orders: "Total pesanan",
     total_value: "Total nilai",
@@ -146,7 +161,7 @@ const HIDDEN_REPORT_FIELDS = new Set([
 ]);
 
 const CURRENCY_FIELD_PATTERN =
-    /(_amount$|_value$|_balance$|_revenue$|_cost$|_price$|^grand_total$|^paid_amount$|^outstanding_amount$|^payments_received$)/i;
+    /(_amount$|_value$|_balance$|_revenue$|_cost$|_price$|^grand_total$|^paid_amount$|^outstanding_amount$|^payments_received$|^supplier_payments_made$)/i;
 
 const DATE_FIELD_PATTERN =
     /(^date$|_date$|^due_date$)/i;
@@ -171,6 +186,11 @@ const REPORT_ENUM_LABELS = {
     OUT: "Stok habis",
 
     CANCELLED: "Dibatalkan",
+
+    DIRECT: "Pembayaran langsung",
+    TERM: "Termin pembayaran",
+    DOWN_PAYMENT: "DP dan pelunasan",
+    COD: "Bayar saat barang diterima",
 };
 
 const formatEnumLabel = (value) => {
@@ -230,7 +250,8 @@ const formatReportValue = (field, value) => {
 
     if (
         field === "status" ||
-        field.endsWith("_status")
+        field.endsWith("_status") ||
+        field === "payment_scheme"
     ) {
         return formatEnumLabel(value);
     }

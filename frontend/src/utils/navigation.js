@@ -7,6 +7,7 @@ import {
   Hash,
   PackageOpen,
   ReceiptText,
+  FileText,
   ShoppingCart,
   Tags,
   Truck,
@@ -165,6 +166,12 @@ const navigationGroups = [
         icon: WalletCards,
         roles: ["ADMIN", "FINANCE", "MANAGER"],
       },
+      {
+        label: "Tagihan Supplier",
+        path: "/supplier-invoices",
+        icon: FileText,
+        roles: ["ADMIN", "PURCHASING", "FINANCE", "MANAGER"],
+      },
     ],
   },
   {
@@ -185,6 +192,12 @@ const navigationGroups = [
         label: "Pengaturan Penomoran",
         path: "/code-number-settings",
         icon: Hash,
+        roles: ["ADMIN"],
+      },
+      {
+        label: "Pengaturan Pembayaran",
+        path: "/payment-settings",
+        icon: WalletCards,
         roles: ["ADMIN"],
       },
       {

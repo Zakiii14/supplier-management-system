@@ -6,7 +6,10 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { formatCurrency } from "../../utils/formatters";
+import {
+  formatCurrency,
+  formatNumber,
+} from "../../utils/formatters";
 import FormDatePicker from "../forms/FormDatePicker";
 import FormSelect from "../forms/FormSelect";
 import CodeNumberField from "../forms/CodeNumberField";
@@ -517,7 +520,7 @@ const SalesOrderFormModal = ({
                                 code: product.sku,
                                 label:
                                   `${product.product_name} ` +
-                                  `(Stok: ${product.current_stock} ${product.unit})`,
+                                  `(Stok: ${formatNumber(product.current_stock)} ${product.unit})`,
                               }),
                             )}
                             onChange={(productId) =>

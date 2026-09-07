@@ -22,6 +22,8 @@ import SuppliersPage from "./pages/SuppliersPage";
 import UsersPage from "./pages/UsersPage";
 import ReportsPage from "./pages/ReportsPage";
 import CodeNumberSettingsPage from "./pages/CodeNumberSettingsPage";
+import PaymentSettingsPage from "./pages/PaymentSettingsPage";
+import SupplierInvoicesPage from "./pages/SupplierInvoicesPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { navigationGroups } from "./utils/navigation";
 
@@ -46,6 +48,8 @@ const App = () => {
         item.path !== "/payments" &&
         item.path !== "/reports" &&
         item.path !== "/code-number-settings" &&
+        item.path !== "/payment-settings" &&
+        item.path !== "/supplier-invoices" &&
         item.path !== "/users",
     );
 
@@ -133,6 +137,8 @@ const App = () => {
             element={<PaymentsPage />}
           />
 
+          <Route path="supplier-invoices" element={<SupplierInvoicesPage />} />
+
           <Route
             path="reports"
             element={<ReportsPage />}
@@ -146,6 +152,11 @@ const App = () => {
           <Route
             path="code-number-settings"
             element={<CodeNumberSettingsPage />}
+          />
+
+          <Route
+            path="payment-settings"
+            element={<PaymentSettingsPage />}
           />
 
           {moduleRoutes.map((item) => (

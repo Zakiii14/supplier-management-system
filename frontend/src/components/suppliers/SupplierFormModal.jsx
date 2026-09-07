@@ -2,6 +2,15 @@ import { useEffect, useState } from "react";
 import { Save, X } from "lucide-react";
 import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
 import CodeNumberField from "../forms/CodeNumberField";
+import FormSelect from "../forms/FormSelect";
+
+const paymentSchemeOptions = [
+  { value: "", label: "Ikuti pengaturan global" },
+  { value: "DIRECT", label: "Pembayaran langsung" },
+  { value: "TERM", label: "Termin pembayaran" },
+  { value: "DOWN_PAYMENT", label: "DP dan pelunasan" },
+  { value: "COD", label: "Bayar saat barang diterima (COD)" },
+];
 
 const emptyValues = {
   supplier_code: "",
@@ -11,6 +20,8 @@ const emptyValues = {
   email: "",
   city: "",
   payment_terms_days: "",
+  payment_scheme: "",
+  down_payment_percent: "",
   address: "",
   notes: "",
 };
@@ -29,6 +40,9 @@ const createInitialValues = (supplier) => {
     city: supplier.city ?? "",
     payment_terms_days:
       supplier.payment_terms_days ?? "",
+    payment_scheme: supplier.payment_scheme ?? "",
+    down_payment_percent:
+      supplier.down_payment_percent ?? "",
     address: supplier.address ?? "",
     notes: supplier.notes ?? "",
   };
@@ -137,6 +151,19 @@ const SupplierFormModal = ({
       return;
     }
 
+    const downPayment =
+      values.down_payment_percent === ""
+        ? null
+        : Number(values.down_payment_percent);
+
+    if (
+      downPayment !== null &&
+      (!Number.isFinite(downPayment) || downPayment < 0 || downPayment > 100)
+    ) {
+      setValidationError("DP supplier harus berada di antara 0-100%.");
+      return;
+    }
+
     onSubmit({
       supplier_code:
         values.supplier_code
@@ -150,6 +177,9 @@ const SupplierFormModal = ({
         values.email.trim().toLowerCase() || null,
       city: values.city.trim() || null,
       payment_terms_days: paymentTerms,
+      payment_scheme: values.payment_scheme || null,
+      down_payment_percent:
+        downPayment,
       address: values.address.trim() || null,
       notes: values.notes.trim() || null,
     });
@@ -293,6 +323,35 @@ const SupplierFormModal = ({
                 min="0"
                 step="1"
                 placeholder="0"
+                disabled={isSubmitting}
+                onChange={handleChange}
+              />
+            </label>
+
+            <FormSelect
+              label="Skema pembayaran"
+              value={values.payment_scheme}
+              options={paymentSchemeOptions}
+              searchable={false}
+              disabled={isSubmitting}
+              onChange={(paymentScheme) =>
+                setValues((current) => ({
+                  ...current,
+                  payment_scheme: paymentScheme,
+                }))
+              }
+            />
+
+            <label className="product-form-field">
+              <span>DP khusus supplier (%)</span>
+              <input
+                type="number"
+                name="down_payment_percent"
+                value={values.down_payment_percent}
+                min="0"
+                max="100"
+                step="0.01"
+                placeholder="Ikuti pengaturan global"
                 disabled={isSubmitting}
                 onChange={handleChange}
               />

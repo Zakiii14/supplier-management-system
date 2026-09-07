@@ -13,33 +13,33 @@
 }
 
 .invoice-status.is-unpaid {
-  color: #475467;
-  background: #f2f4f7;
-  border-color: #d0d5dd;
+  color: var(--sf-text-muted);
+  background: var(--sf-surface-muted);
+  border-color: var(--sf-border-strong);
 }
 
 .invoice-status.is-partial {
-  color: #175cd3;
-  background: #eff8ff;
-  border-color: #b2ddff;
+  color: var(--sf-accent);
+  background: var(--sf-accent-soft);
+  border-color: var(--sf-border);
 }
 
 .invoice-status.is-paid {
-  color: #067647;
-  background: #ecfdf3;
-  border-color: #abefc6;
+  color: var(--sf-status-success-text);
+  background: var(--sf-status-success-bg);
+  border-color: transparent;
 }
 
 .invoice-status.is-overdue {
-  color: #b54708;
-  background: #fffaeb;
-  border-color: #fedf89;
+  color: var(--sf-status-warning-text);
+  background: var(--sf-status-warning-bg);
+  border-color: transparent;
 }
 
 .invoice-status.is-cancelled {
-  color: #b42318;
-  background: #fef3f2;
-  border-color: #fecdca;
+  color: var(--sf-status-danger-text);
+  background: var(--sf-status-danger-bg);
+  border-color: transparent;
 }
 
 .invoice-table th:nth-child(1) {
@@ -73,19 +73,19 @@
 .invoice-customer,
 .invoice-amount {
   display: block;
-  color: #25324a;
+  color: var(--sf-text-strong);
   font-weight: 750;
 }
 
 .invoice-subtext {
   display: block;
   margin-top: 3px;
-  color: #98a2b3;
+  color: var(--sf-text-soft);
   font-size: 0.68rem;
 }
 
 .invoice-amount.is-outstanding {
-  color: #b54708;
+  color: var(--sf-status-warning-text);
 }
 
 .invoice-form-modal {
@@ -97,9 +97,9 @@
   grid-template-columns:
     repeat(4, minmax(0, 1fr));
   overflow: hidden;
-  border: 1px solid #dfe7f1;
+  border: 1px solid var(--sf-border);
   border-radius: 14px;
-  background: #f8fafc;
+  background: var(--sf-surface-muted);
 }
 
 .invoice-form-order-summary article {
@@ -107,7 +107,7 @@
   min-width: 0;
   gap: 4px;
   padding: 14px;
-  border-right: 1px solid #dfe7f1;
+  border-right: 1px solid var(--sf-border);
 }
 
 .invoice-form-order-summary article:last-child {
@@ -117,21 +117,21 @@
 .invoice-form-order-summary span,
 .invoice-form-due-date span,
 .invoice-form-calculation span {
-  color: #667085;
+  color: var(--sf-text-muted);
   font-size: 0.7rem;
   font-weight: 700;
 }
 
 .invoice-form-order-summary strong {
   overflow: hidden;
-  color: #25324a;
+  color: var(--sf-text-strong);
   font-size: 0.8rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .invoice-form-order-summary small {
-  color: #98a2b3;
+  color: var(--sf-text-soft);
   font-size: 0.65rem;
 }
 
@@ -140,9 +140,9 @@
   align-items: center;
   gap: 11px;
   padding: 13px 15px;
-  color: #175cd3;
-  background: #eff8ff;
-  border: 1px solid #b2ddff;
+  color: var(--sf-accent);
+  background: var(--sf-accent-soft);
+  border: 1px solid var(--sf-border);
   border-radius: 12px;
 }
 
@@ -158,7 +158,7 @@
 }
 
 .invoice-form-due-date strong {
-  color: #175cd3;
+  color: var(--sf-accent);
   font-size: 0.82rem;
 }
 
@@ -166,9 +166,9 @@
   display: grid;
   gap: 1px;
   overflow: hidden;
-  border: 1px solid #dfe7f1;
+  border: 1px solid var(--sf-border);
   border-radius: 13px;
-  background: #dfe7f1;
+  background: var(--sf-surface-active);
 }
 
 .invoice-form-calculation > div {
@@ -177,11 +177,11 @@
   justify-content: space-between;
   gap: 18px;
   padding: 11px 14px;
-  background: #fff;
+  background: var(--sf-surface);
 }
 
 .invoice-form-calculation strong {
-  color: #25324a;
+  color: var(--sf-text-strong);
   font-size: 0.8rem;
 }
 
@@ -192,7 +192,7 @@
 }
 
 .invoice-form-calculation .is-total span {
-  color: #cbd5e1;
+  color: var(--sf-text-muted);
 }
 
 .invoice-form-calculation .is-total strong {
@@ -211,9 +211,9 @@
   align-self: stretch;
   overflow: visible;
   overflow: clip;
-  border: 1px solid #dfe7f1;
+  border: 1px solid var(--sf-border);
   border-radius: 14px;
-  background: #f8fafc;
+  background: var(--sf-surface-muted);
 }
 
 .invoice-detail-totals article {
@@ -222,7 +222,7 @@
   flex: 1 1 0;
   gap: 5px;
   padding: 15px;
-  border-right: 1px solid #dfe7f1;
+  border-right: 1px solid var(--sf-border);
   box-sizing: border-box;
 }
 
@@ -231,23 +231,23 @@
 }
 
 .invoice-detail-totals span {
-  color: #667085;
+  color: var(--sf-text-muted);
   font-size: 0.7rem;
   font-weight: 700;
 }
 
 .invoice-detail-totals strong {
-  color: #25324a;
+  color: var(--sf-text-strong);
   font-size: 0.9rem;
 }
 
 .invoice-detail-totals .is-paid strong {
-  color: #067647;
+  color: var(--sf-status-success-text);
 }
 
 .invoice-detail-totals
   .is-outstanding strong {
-  color: #b54708;
+  color: var(--sf-status-warning-text);
 }
 
 .invoice-detail-calculation {
@@ -257,7 +257,7 @@
   align-self: stretch;
   overflow: visible;
   overflow: clip;
-  border: 1px solid #dfe7f1;
+  border: 1px solid var(--sf-border);
   border-radius: 13px;
 }
 
@@ -267,9 +267,9 @@
   flex: 1 1 0;
   gap: 4px;
   padding: 13px;
-  border-right: 1px solid #dfe7f1;
+  border-right: 1px solid var(--sf-border);
   box-sizing: border-box;
-  background: #fff;
+  background: var(--sf-surface);
 }
 
 .invoice-detail-calculation > div:last-child {
@@ -277,13 +277,13 @@
 }
 
 .invoice-detail-calculation span {
-  color: #667085;
+  color: var(--sf-text-muted);
   font-size: 0.68rem;
   font-weight: 700;
 }
 
 .invoice-detail-calculation strong {
-  color: #25324a;
+  color: var(--sf-text-strong);
   font-size: 0.8rem;
 }
 
@@ -293,7 +293,7 @@
 
 .invoice-detail-calculation
   .is-total span {
-  color: #cbd5e1;
+  color: var(--sf-text-muted);
 }
 
 .invoice-detail-calculation
@@ -337,7 +337,7 @@
   > svg {
   width: 21px;
   height: 21px;
-  color: #2563eb;
+  color: var(--sf-accent);
 }
 
 .invoice-payment-table {
@@ -374,9 +374,9 @@
   align-items: flex-start;
   gap: 12px;
   padding: 14px 16px;
-  color: #175cd3;
-  background: #eff8ff;
-  border: 1px solid #b2ddff;
+  color: var(--sf-accent);
+  background: var(--sf-accent-soft);
+  border: 1px solid var(--sf-border);
   border-radius: 13px;
 }
 
@@ -397,7 +397,7 @@
 }
 
 .invoice-detail-status-note span {
-  color: #344054;
+  color: var(--sf-text-strong);
   font-size: 0.75rem;
   line-height: 1.5;
 }
@@ -450,7 +450,7 @@
 
   .invoice-form-order-summary
     article:nth-child(-n + 2) {
-    border-bottom: 1px solid #dfe7f1;
+    border-bottom: 1px solid var(--sf-border);
   }
 
   .invoice-detail-calculation {
@@ -468,7 +468,7 @@
 
   .invoice-detail-calculation
     > div:nth-child(-n + 2) {
-    border-bottom: 1px solid #dfe7f1;
+    border-bottom: 1px solid var(--sf-border);
   }
 }
 
@@ -494,7 +494,7 @@
   .invoice-detail-totals article {
     flex: 0 0 auto;
     border-right: 0;
-    border-bottom: 1px solid #dfe7f1;
+    border-bottom: 1px solid var(--sf-border);
   }
 
   .invoice-detail-totals article:last-child {
@@ -532,7 +532,7 @@
   .invoice-form-order-summary article,
   .invoice-detail-calculation > div {
     border-right: 0;
-    border-bottom: 1px solid #dfe7f1;
+    border-bottom: 1px solid var(--sf-border);
   }
 
   .invoice-form-order-summary

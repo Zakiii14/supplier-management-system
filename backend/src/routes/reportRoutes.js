@@ -24,6 +24,28 @@ const {
 } = require(
   "../controllers/financeReportController",
 );
+const {
+  getSupplierFinanceReport,
+} = require(
+  "../controllers/supplierFinanceReportController",
+);
+const {
+  exportPurchasingReport,
+  exportSalesReport,
+} = require(
+  "../controllers/reportExportController",
+);
+const {
+  exportFinanceReport,
+  exportInventoryReport,
+} = require(
+  "../controllers/additionalReportExportController",
+);
+const {
+  exportSupplierFinanceReport,
+} = require(
+  "../controllers/supplierFinanceReportExportController",
+);
 
 const {
   getCategoryReportOptions,
@@ -72,6 +94,18 @@ router.get(
 );
 
 router.get(
+  "/purchasing/export",
+  authorizeRoles(
+    "ADMIN",
+    "PURCHASING",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER",
+  ),
+  exportPurchasingReport,
+);
+
+router.get(
   "/purchasing",
   authorizeRoles(
     "ADMIN",
@@ -81,6 +115,18 @@ router.get(
     "MANAGER",
   ),
   getPurchasingReport,
+);
+
+router.get(
+  "/inventory/export",
+  authorizeRoles(
+    "ADMIN",
+    "PURCHASING",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER",
+  ),
+  exportInventoryReport,
 );
 
 router.get(
@@ -96,6 +142,18 @@ router.get(
 );
 
 router.get(
+  "/sales/export",
+  authorizeRoles(
+    "ADMIN",
+    "SALES",
+    "WAREHOUSE",
+    "FINANCE",
+    "MANAGER",
+  ),
+  exportSalesReport,
+);
+
+router.get(
   "/sales",
   authorizeRoles(
     "ADMIN",
@@ -108,6 +166,16 @@ router.get(
 );
 
 router.get(
+  "/finance/export",
+  authorizeRoles(
+    "ADMIN",
+    "FINANCE",
+    "MANAGER",
+  ),
+  exportFinanceReport,
+);
+
+router.get(
   "/finance",
   authorizeRoles(
     "ADMIN",
@@ -115,6 +183,26 @@ router.get(
     "MANAGER",
   ),
   getFinanceReport,
+);
+
+router.get(
+  "/supplier-finance/export",
+  authorizeRoles(
+    "ADMIN",
+    "FINANCE",
+    "MANAGER",
+  ),
+  exportSupplierFinanceReport,
+);
+
+router.get(
+  "/supplier-finance",
+  authorizeRoles(
+    "ADMIN",
+    "FINANCE",
+    "MANAGER",
+  ),
+  getSupplierFinanceReport,
 );
 
 module.exports = router;

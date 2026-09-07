@@ -46,6 +46,13 @@ const AuthProvider = ({ children }) => {
     clearSession();
   }, [clearSession]);
 
+  const refreshUser = useCallback(async () => {
+    const currentUser = await getCurrentUserRequest();
+    setUser(currentUser);
+    localStorage.setItem("auth_user", JSON.stringify(currentUser));
+    return currentUser;
+  }, []);
+
   useEffect(() => {
     let isCancelled = false;
 
@@ -94,8 +101,9 @@ const AuthProvider = ({ children }) => {
       isLoading,
       login,
       logout,
+      refreshUser,
     }),
-    [user, isLoading, login, logout],
+    [user, isLoading, login, logout, refreshUser],
   );
 
   return (
