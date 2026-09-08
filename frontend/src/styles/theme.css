@@ -4,6 +4,33 @@
  */
 
 :root {
+  --sf-type-h1-size: 30px;
+  --sf-type-h1-line: 45px;
+  --sf-type-h2-size: 24px;
+  --sf-type-h2-line: 36px;
+  --sf-type-h3-size: 21px;
+  --sf-type-h3-line: 31.5px;
+  --sf-type-h4-size: 18px;
+  --sf-type-h4-line: 27px;
+  --sf-type-h5-size: 16px;
+  --sf-type-h5-line: 24px;
+  --sf-type-h6-size: 14px;
+  --sf-type-h6-line: 21px;
+  --sf-type-subtitle-1-size: 16px;
+  --sf-type-subtitle-1-line: 28px;
+  --sf-type-subtitle-2-size: 14px;
+  --sf-type-subtitle-2-line: 21px;
+  --sf-type-body-1-size: 16px;
+  --sf-type-body-1-line: 24px;
+  --sf-type-body-2-size: 14px;
+  --sf-type-body-2-line: 20px;
+  --sf-type-caption-size: 12px;
+  --sf-type-caption-line: 19px;
+  --sf-type-overline-size: 12px;
+  --sf-type-overline-line: 31px;
+  --sf-type-heading-weight: 500;
+  --sf-type-body-weight: 400;
+
   --sf-bg: #f7f8fa;
   --sf-surface: #ffffff;
   --sf-surface-muted: #f8fafc;
@@ -80,6 +107,12 @@ html,
 body,
 .dashboard-shell {
   background: var(--sf-bg);
+}
+
+body {
+  font-size: var(--sf-type-body-2-size);
+  font-weight: var(--sf-type-body-weight);
+  line-height: var(--sf-type-body-2-line);
 }
 
 body,
@@ -1020,4 +1053,105 @@ html[data-theme="dark"] .report-trend-scale-note {
     grid-template-columns: 20px minmax(0, 1fr);
     column-gap: 10px;
   }
+}
+
+/* Global typography scale */
+
+h1,
+.sf-heading-1 {
+  font-size: var(--sf-type-h1-size) !important;
+  font-weight: var(--sf-type-heading-weight) !important;
+  line-height: var(--sf-type-h1-line) !important;
+}
+
+h2,
+.sf-heading-2 {
+  font-size: var(--sf-type-h2-size) !important;
+  font-weight: var(--sf-type-heading-weight) !important;
+  line-height: var(--sf-type-h2-line) !important;
+}
+
+h3,
+.sf-heading-3 {
+  font-size: var(--sf-type-h3-size) !important;
+  font-weight: var(--sf-type-heading-weight) !important;
+  line-height: var(--sf-type-h3-line) !important;
+}
+
+h4,
+.sf-heading-4 {
+  font-size: var(--sf-type-h4-size) !important;
+  font-weight: var(--sf-type-heading-weight) !important;
+  line-height: var(--sf-type-h4-line) !important;
+}
+
+h5,
+.sf-heading-5 {
+  font-size: var(--sf-type-h5-size) !important;
+  font-weight: var(--sf-type-heading-weight) !important;
+  line-height: var(--sf-type-h5-line) !important;
+}
+
+h6,
+.sf-heading-6 {
+  font-size: var(--sf-type-h6-size) !important;
+  font-weight: var(--sf-type-heading-weight) !important;
+  line-height: var(--sf-type-h6-line) !important;
+}
+
+.sf-subtitle-1 {
+  font-size: var(--sf-type-subtitle-1-size) !important;
+  font-weight: var(--sf-type-body-weight) !important;
+  line-height: var(--sf-type-subtitle-1-line) !important;
+}
+
+.payment-settings-note > p,
+.code-settings-note > p {
+  font-size: var(--sf-type-subtitle-1-size) !important;
+  font-weight: var(--sf-type-body-weight) !important;
+  line-height: var(--sf-type-subtitle-1-line) !important;
+}
+
+.sf-subtitle-2,
+.page-heading > div > span {
+  font-size: var(--sf-type-subtitle-2-size) !important;
+  font-weight: var(--sf-type-body-weight) !important;
+  line-height: var(--sf-type-subtitle-2-line) !important;
+}
+
+.sf-body-1 {
+  font-size: var(--sf-type-body-1-size) !important;
+  font-weight: var(--sf-type-body-weight) !important;
+  line-height: var(--sf-type-body-1-line) !important;
+}
+
+.sf-body-2 {
+  font-size: var(--sf-type-body-2-size) !important;
+  font-weight: var(--sf-type-body-weight) !important;
+  line-height: var(--sf-type-body-2-line) !important;
+}
+
+.table-summary {
+  font-size: var(--sf-type-body-2-size) !important;
+  line-height: var(--sf-type-body-2-line) !important;
+}
+
+small,
+.sf-caption {
+  font-size: var(--sf-type-caption-size) !important;
+  font-weight: var(--sf-type-body-weight) !important;
+  line-height: var(--sf-type-caption-line) !important;
+}
+
+.sf-overline,
+.page-heading > div > p,
+.page-eyebrow,
+.dashboard-section-heading > div > p,
+.dashboard-trend-eyebrow,
+.module-placeholder-eyebrow,
+.product-modal-eyebrow,
+.category-form-heading > p {
+  font-size: var(--sf-type-overline-size) !important;
+  font-weight: var(--sf-type-body-weight) !important;
+  line-height: var(--sf-type-overline-line) !important;
 }
