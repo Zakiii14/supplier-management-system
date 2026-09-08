@@ -280,17 +280,33 @@ const DashboardLayout = () => {
         </nav>
 
         <div className="sidebar-footer">
+          <div className="sidebar-account-card">
+            <UserAvatar
+              user={user}
+              className="sidebar-account-avatar"
+            />
+
+            <div className="sidebar-account-copy">
+              <strong>{displayName}</strong>
+              <span>
+                {ROLE_LABELS[user.role] || user.role}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className="sidebar-account-logout"
+              onClick={handleLogout}
+              aria-label="Keluar dari akun"
+              title="Keluar dari akun"
+            >
+              <LogOut aria-hidden="true" />
+            </button>
+          </div>
+
           <p className="sidebar-copyright" title={`© ${new Date().getFullYear()} Zakilabs`}>
             <span>© {new Date().getFullYear()} Zakilabs</span>
           </p>
-          <button
-            type="button"
-            className="sidebar-logout"
-            onClick={handleLogout}
-          >
-            <LogOut aria-hidden="true" />
-            <span>Keluar</span>
-          </button>
         </div>
       </aside>
 

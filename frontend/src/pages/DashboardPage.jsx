@@ -283,9 +283,10 @@ const formatDateTime = (value) => {
   }).format(date);
 };
 
-const OperationalSection = ({
+const DashboardMetricCard = ({
   sectionKey,
-  data,
+  metric,
+  value,
 }) => {
   const presentation =
     sectionPresentation[sectionKey];
@@ -294,61 +295,33 @@ const OperationalSection = ({
     return null;
   }
 
-  const SectionIcon = presentation.icon;
+  const MetricIcon = metric.icon;
 
   return (
-    <article
-      className={`dashboard-operation-card is-${sectionKey}`}
+    <Link
+      className={`dashboard-metric-card is-${sectionKey}${
+        metric.tone ? ` is-${metric.tone}` : ""
+      }`}
+      to={presentation.path}
+      aria-label={`Buka ${presentation.title}: ${metric.label}`}
     >
-      <div className="dashboard-operation-heading">
-        <span className="dashboard-operation-icon">
-          <SectionIcon aria-hidden="true" />
-        </span>
+      <span className="dashboard-metric-icon">
+        <MetricIcon aria-hidden="true" />
+      </span>
 
-        <div>
-          <h3>{presentation.title}</h3>
-          <p>{presentation.description}</p>
-        </div>
-
-        <Link
-          to={presentation.path}
-          aria-label={`Buka modul ${presentation.title}`}
-        >
-          <ArrowRight aria-hidden="true" />
-        </Link>
+      <div className="dashboard-metric-copy">
+        <p>{presentation.title}</p>
+        <strong>
+          {formatMetricValue(value, metric.format)}
+        </strong>
+        <span>{metric.label}</span>
       </div>
 
-      <div className="dashboard-operation-metrics">
-        {presentation.metrics.map((metric) => {
-          const MetricIcon = metric.icon;
-
-          return (
-            <div
-              className={`dashboard-operation-metric${
-                metric.tone
-                  ? ` is-${metric.tone}`
-                  : ""
-              }`}
-              key={metric.key}
-            >
-              <span>
-                <MetricIcon aria-hidden="true" />
-              </span>
-
-              <div>
-                <p>{metric.label}</p>
-                <strong>
-                  {formatMetricValue(
-                    data[metric.key],
-                    metric.format,
-                  )}
-                </strong>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </article>
+      <ArrowRight
+        className="dashboard-metric-arrow"
+        aria-hidden="true"
+      />
+    </Link>
   );
 };
 
@@ -420,6 +393,22 @@ const DashboardPage = () => {
 
   const sections = summary?.sections ?? {};
   const sectionEntries = Object.entries(sections);
+  const metricCards = sectionEntries.flatMap(
+    ([sectionKey, data]) => {
+      const presentation =
+        sectionPresentation[sectionKey];
+
+      if (!presentation) {
+        return [];
+      }
+
+      return presentation.metrics.map((metric) => ({
+        sectionKey,
+        metric,
+        value: data[metric.key],
+      }));
+    },
+  );
   const lowStockProducts =
     summary?.alerts?.low_stock_products ?? [];
   const overdueInvoices =
@@ -537,25 +526,27 @@ const DashboardPage = () => {
             </div>
 
             <div className="dashboard-operation-grid">
-              {sectionEntries.map(
-                ([sectionKey, data]) => (
-                  <OperationalSection
+              {metricCards.map(
+                ({ sectionKey, metric, value }) => (
+                  <DashboardMetricCard
                     sectionKey={sectionKey}
-                    data={data}
-                    key={sectionKey}
+                    metric={metric}
+                    value={value}
+                    key={`${sectionKey}-${metric.key}`}
                   />
                 ),
               )}
             </div>
           </section>
 
-          <DashboardTrendChart
-            key={`${user.id || user.username}:${user.role}`}
-            reloadKey={reloadKey}
-          />
+          <div className="dashboard-modern-main-grid">
+            <DashboardTrendChart
+              key={`${user.id || user.username}:${user.role}`}
+              reloadKey={reloadKey}
+            />
 
-          <div className="dashboard-information-grid">
-            <section className="dashboard-panel dashboard-alerts-panel">
+            <div className="dashboard-information-grid">
+              <section className="dashboard-panel dashboard-alerts-panel">
               <div className="dashboard-section-heading">
                 <div>
                   <p>Perlu perhatian</p>
@@ -714,8 +705,8 @@ const DashboardPage = () => {
                   )}
                 </div>
               )}
-            </section>
-
+              </section>
+            </div>
           </div>
 
           <section className="dashboard-panel dashboard-activity-panel">
