@@ -14,6 +14,7 @@ import {
 } from "../../utils/formatters";
 import { PaymentProofManager } from "../payments/PaymentProofField";
 import SupplierPaymentFormModal from "./SupplierPaymentFormModal";
+import ApprovalHistory from "../approvals/ApprovalHistory";
 
 const paymentSchemeLabels = {
   DIRECT: "Pembayaran langsung",
@@ -101,8 +102,11 @@ const PurchaseOrderDetailDialog = ({
     return null;
   }
 
-  const presentation =
-    statusPresentation[purchaseOrder.status] ?? {
+  const presentation = purchaseOrder.approval_status === "PENDING"
+    ? { label: "Menunggu persetujuan", className: "is-pending" }
+    : purchaseOrder.approval_status === "REJECTED"
+      ? { label: "Ditolak", className: "is-rejected" }
+      : statusPresentation[purchaseOrder.status] ?? {
       label: purchaseOrder.status,
       className: "is-draft",
     };
@@ -236,6 +240,12 @@ const PurchaseOrderDetailDialog = ({
             <span>Catatan</span>
             <p>{purchaseOrder.notes || "Tidak ada catatan."}</p>
           </section>
+
+          <ApprovalHistory
+            approvalStatus={purchaseOrder.approval_status}
+            rejectionReason={purchaseOrder.rejection_reason}
+            history={purchaseOrder.approval_history}
+          />
 
           <section className="purchase-order-detail-items">
             <div className="purchase-order-detail-section-heading">

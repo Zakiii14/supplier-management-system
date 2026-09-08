@@ -10,6 +10,7 @@ import {
   formatDate,
   formatNumber,
 } from "../../utils/formatters";
+import ApprovalHistory from "../approvals/ApprovalHistory";
 
 const statusPresentation = {
   DRAFT: {
@@ -74,8 +75,11 @@ const SalesOrderDetailDialog = ({
     return null;
   }
 
-  const presentation =
-    statusPresentation[salesOrder.status] ?? {
+  const presentation = salesOrder.approval_status === "PENDING"
+    ? { label: "Menunggu persetujuan", className: "is-pending" }
+    : salesOrder.approval_status === "REJECTED"
+      ? { label: "Ditolak", className: "is-rejected" }
+      : statusPresentation[salesOrder.status] ?? {
       label: salesOrder.status,
       className: "is-draft",
     };
@@ -219,6 +223,12 @@ const SalesOrderDetailDialog = ({
                 "Tidak ada catatan."}
             </p>
           </section>
+
+          <ApprovalHistory
+            approvalStatus={salesOrder.approval_status}
+            rejectionReason={salesOrder.rejection_reason}
+            history={salesOrder.approval_history}
+          />
 
           <section className="purchase-order-detail-items">
             <div className="purchase-order-detail-section-heading">

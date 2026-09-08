@@ -409,6 +409,7 @@ const createdBy = req.user.id;
         id,
         so_number,
         status,
+        approval_status,
         customer_id
       FROM app.sales_orders
       WHERE id = $1
@@ -424,13 +425,14 @@ const createdBy = req.user.id;
     const salesOrder = orderResult.rows[0];
 
     if (
+      salesOrder.approval_status !== "APPROVED" ||
       ![
         "CONFIRMED",
         "PARTIALLY_DELIVERED",
       ].includes(salesOrder.status)
     ) {
       throw new Error(
-        "Sales order must be CONFIRMED or PARTIALLY_DELIVERED"
+        "Sales order harus disetujui sebelum pengiriman"
       );
     }
 

@@ -197,14 +197,12 @@ before(async () => {
   const firstSalesOrderItemId =
     response.body.data.items[0].id;
 
-  response = await request(app)
-    .patch(
-      `/api/sales-orders/${firstSalesOrderId}/status`,
-    )
-    .set("Authorization", authorization)
-    .send({ status: "CONFIRMED" });
-
-  assert.equal(response.status, 200);
+  await pool.query(
+    `UPDATE app.sales_orders
+     SET status = 'CONFIRMED', approval_status = 'APPROVED'
+     WHERE id = $1`,
+    [firstSalesOrderId],
+  );
 
   response = await request(app)
     .post("/api/sales-orders")
@@ -232,14 +230,12 @@ before(async () => {
   const secondSalesOrderItemId =
     response.body.data.items[0].id;
 
-  response = await request(app)
-    .patch(
-      `/api/sales-orders/${secondSalesOrderId}/status`,
-    )
-    .set("Authorization", authorization)
-    .send({ status: "CONFIRMED" });
-
-  assert.equal(response.status, 200);
+  await pool.query(
+    `UPDATE app.sales_orders
+     SET status = 'CONFIRMED', approval_status = 'APPROVED'
+     WHERE id = $1`,
+    [secondSalesOrderId],
+  );
 
   response = await request(app)
     .post("/api/deliveries")

@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Ban,
+  CheckCircle2,
   Eye,
   Plus,
   RefreshCw,
@@ -8,6 +9,7 @@ import {
   Send,
   ShoppingCart,
   X,
+  XCircle,
 } from "lucide-react";
 import {
   useEffect,
@@ -23,14 +25,17 @@ import {
   createSupplierPaymentRequest,
   createPurchaseOrderRequest,
   deleteSupplierPaymentProofRequest,
+  decidePurchaseOrderApprovalRequest,
   getPurchaseOrderByIdRequest,
   getPurchaseOrdersRequest,
   openSupplierPaymentProofRequest,
   replaceSupplierPaymentProofRequest,
+  submitPurchaseOrderApprovalRequest,
   updatePurchaseOrderStatusRequest,
 } from "../api/purchaseOrders";
 import { getPaymentSettingsRequest } from "../api/paymentSettings";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
+import ApprovalActionDialog from "../components/approvals/ApprovalActionDialog";
 import StatusFilter from "../components/filters/StatusFilter";
 import PurchaseOrderDetailDialog from "../components/purchase-orders/PurchaseOrderDetailDialog";
 import PurchaseOrderStatusDialog from "../components/purchase-orders/PurchaseOrderStatusDialog";
@@ -64,6 +69,14 @@ const purchaseOrderStatusOptions = [
   {
     value: "DRAFT",
     label: "Draft",
+  },
+  {
+    value: "PENDING_APPROVAL",
+    label: "Menunggu persetujuan",
+  },
+  {
+    value: "REJECTED_APPROVAL",
+    label: "Ditolak",
   },
   {
     value: "SUBMITTED",
@@ -106,6 +119,19 @@ const statusPresentation = {
   },
 };
 
+const getStatusPresentation = (purchaseOrder) => {
+  if (purchaseOrder.approval_status === "PENDING") {
+    return { label: "Menunggu persetujuan", className: "is-pending" };
+  }
+  if (purchaseOrder.approval_status === "REJECTED") {
+    return { label: "Ditolak", className: "is-rejected" };
+  }
+  return statusPresentation[purchaseOrder.status] ?? {
+    label: purchaseOrder.status,
+    className: "is-draft",
+  };
+};
+
 const PurchaseOrdersPage = () => {
   const filtersRef = useStickyDataFilters();
   const { user } = useAuth();
@@ -117,6 +143,7 @@ const PurchaseOrdersPage = () => {
     "ADMIN",
     "PURCHASING",
   ].includes(user?.role);
+  const canApprovePurchaseOrders = ["ADMIN", "MANAGER"].includes(user?.role);
   const canManageSupplierPayments = ["ADMIN", "FINANCE"].includes(
     user?.role,
   );
@@ -187,6 +214,11 @@ const PurchaseOrdersPage = () => {
 
   const [statusError, setStatusError] =
     useState("");
+  const [approvalPurchaseOrder, setApprovalPurchaseOrder] = useState(null);
+  const [approvalAction, setApprovalAction] = useState("");
+  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
+  const [isUpdatingApproval, setIsUpdatingApproval] = useState(false);
+  const [approvalError, setApprovalError] = useState("");
 
   useEffect(() => {
     let isCancelled = false;
@@ -628,6 +660,48 @@ const PurchaseOrdersPage = () => {
     }
   };
 
+  const handleOpenApprovalDialog = (purchaseOrder, action) => {
+    setApprovalPurchaseOrder(purchaseOrder);
+    setApprovalAction(action);
+    setApprovalError("");
+    setIsApprovalDialogOpen(true);
+  };
+
+  const handleCloseApprovalDialog = () => {
+    if (isUpdatingApproval) return;
+    setIsApprovalDialogOpen(false);
+    setApprovalPurchaseOrder(null);
+    setApprovalAction("");
+    setApprovalError("");
+  };
+
+  const handleConfirmApproval = async ({ action, reason }) => {
+    if (!approvalPurchaseOrder) return;
+    try {
+      setIsUpdatingApproval(true);
+      setApprovalError("");
+      if (action === "SUBMIT") {
+        await submitPurchaseOrderApprovalRequest(approvalPurchaseOrder.id);
+      } else {
+        await decidePurchaseOrderApprovalRequest(
+          approvalPurchaseOrder.id,
+          action === "APPROVE" ? "APPROVED" : "REJECTED",
+          reason,
+        );
+      }
+      setIsApprovalDialogOpen(false);
+      setApprovalPurchaseOrder(null);
+      setApprovalAction("");
+      setReloadKey((current) => current + 1);
+    } catch (error) {
+      setApprovalError(
+        error.response?.data?.message || "Proses persetujuan purchase order gagal.",
+      );
+    } finally {
+      setIsUpdatingApproval(false);
+    }
+  };
+
   const totalPages = Math.max(
     pagination.total_pages,
     1,
@@ -818,13 +892,7 @@ const PurchaseOrdersPage = () => {
                 </tr>
               ) : (
                 purchaseOrders.map((purchaseOrder) => {
-                  const presentation =
-                    statusPresentation[
-                    purchaseOrder.status
-                    ] ?? {
-                      label: purchaseOrder.status,
-                      className: "is-draft",
-                    };
+                  const presentation = getStatusPresentation(purchaseOrder);
 
                   return (
                     <tr key={purchaseOrder.id}>
@@ -887,7 +955,7 @@ const PurchaseOrdersPage = () => {
                             className="table-edit-action purchase-order-detail-action"
                             disabled={
                               Boolean(loadingDetailId) ||
-                              isUpdatingStatus
+                              isUpdatingStatus || isUpdatingApproval
                             }
                             onClick={() =>
                               handleOpenDetail(purchaseOrder.id)
@@ -906,24 +974,48 @@ const PurchaseOrdersPage = () => {
                           </button>
 
                           {canManagePurchaseOrders &&
-                            purchaseOrder.status === "DRAFT" && (
+                            purchaseOrder.status === "DRAFT" &&
+                            purchaseOrder.approval_status !== "PENDING" && (
                               <button
                                 type="button"
                                 className="table-status-action is-activate"
                                 disabled={
                                   Boolean(loadingDetailId) ||
-                                  isUpdatingStatus
+                                  isUpdatingStatus || isUpdatingApproval
                                 }
                                 onClick={() =>
-                                  handleOpenStatusDialog(
+                                  handleOpenApprovalDialog(
                                     purchaseOrder,
-                                    "SUBMITTED",
+                                    "SUBMIT",
                                   )
                                 }
                               >
                                 <Send aria-hidden="true" />
                                 Ajukan
                               </button>
+                            )}
+
+                          {canApprovePurchaseOrders &&
+                            purchaseOrder.approval_status === "PENDING" &&
+                            purchaseOrder.submitted_by !== user?.id && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="table-status-action is-activate"
+                                  disabled={Boolean(loadingDetailId) || isUpdatingApproval}
+                                  onClick={() => handleOpenApprovalDialog(purchaseOrder, "APPROVE")}
+                                >
+                                  <CheckCircle2 aria-hidden="true" /> Setujui
+                                </button>
+                                <button
+                                  type="button"
+                                  className="table-status-action is-deactivate"
+                                  disabled={Boolean(loadingDetailId) || isUpdatingApproval}
+                                  onClick={() => handleOpenApprovalDialog(purchaseOrder, "REJECT")}
+                                >
+                                  <XCircle aria-hidden="true" /> Tolak
+                                </button>
+                              </>
                             )}
 
                           {canManagePurchaseOrders &&
@@ -935,7 +1027,7 @@ const PurchaseOrdersPage = () => {
                                 className="table-status-action is-deactivate"
                                 disabled={
                                   Boolean(loadingDetailId) ||
-                                  isUpdatingStatus
+                                  isUpdatingStatus || isUpdatingApproval
                                 }
                                 onClick={() =>
                                   handleOpenStatusDialog(
@@ -1015,6 +1107,18 @@ const PurchaseOrdersPage = () => {
           requestError={statusError}
           onCancel={handleCloseStatusDialog}
           onConfirm={handleConfirmStatus}
+        />
+      )}
+      {isApprovalDialogOpen && approvalPurchaseOrder && (
+        <ApprovalActionDialog
+          isOpen
+          action={approvalAction}
+          transactionLabel="Purchase order"
+          transactionNumber={approvalPurchaseOrder.po_number}
+          isSubmitting={isUpdatingApproval}
+          requestError={approvalError}
+          onCancel={handleCloseApprovalDialog}
+          onConfirm={handleConfirmApproval}
         />
       )}
     </div>

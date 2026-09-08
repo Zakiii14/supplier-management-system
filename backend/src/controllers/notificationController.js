@@ -20,6 +20,42 @@ const getNotifications = async (req, res) => {
     const notifications = [];
     const jobs = [];
 
+    if (["ADMIN", "MANAGER"].includes(role)) {
+      jobs.push(pool.query(`
+        SELECT po.id,po.po_number,po.submitted_at,s.supplier_name
+        FROM app.purchase_orders po JOIN app.suppliers s ON s.id=po.supplier_id
+        WHERE po.approval_status='PENDING'
+        ORDER BY po.submitted_at DESC LIMIT 20
+      `).then(({ rows }) => rows.forEach((row) => notifications.push({
+        key: `PO_APPROVAL:${row.id}:${new Date(row.submitted_at).getTime()}`,
+        type: "PURCHASE_ORDER_APPROVAL",
+        severity: "WARNING",
+        title: "Purchase order perlu disetujui",
+        description: `${row.po_number} · ${row.supplier_name}`,
+        path: "/purchase-orders",
+        entity_id: row.id,
+        entity_label: row.po_number,
+        occurred_at: row.submitted_at,
+      }))));
+
+      jobs.push(pool.query(`
+        SELECT so.id,so.so_number,so.submitted_at,c.customer_name
+        FROM app.sales_orders so JOIN app.customers c ON c.id=so.customer_id
+        WHERE so.approval_status='PENDING'
+        ORDER BY so.submitted_at DESC LIMIT 20
+      `).then(({ rows }) => rows.forEach((row) => notifications.push({
+        key: `SO_APPROVAL:${row.id}:${new Date(row.submitted_at).getTime()}`,
+        type: "SALES_ORDER_APPROVAL",
+        severity: "WARNING",
+        title: "Sales order perlu disetujui",
+        description: `${row.so_number} · ${row.customer_name}`,
+        path: "/sales-orders",
+        entity_id: row.id,
+        entity_label: row.so_number,
+        occurred_at: row.submitted_at,
+      }))));
+    }
+
     if (["ADMIN", "PURCHASING", "WAREHOUSE", "MANAGER"].includes(role)) {
       jobs.push(pool.query(`
         SELECT id,sku,product_name,current_stock,minimum_stock,unit,updated_at

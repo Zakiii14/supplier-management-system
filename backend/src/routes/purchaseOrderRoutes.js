@@ -14,6 +14,11 @@ const {
   createSupplierPayment,
 } = require("../controllers/supplierPaymentController");
 const {
+  decidePurchaseOrderApproval,
+  getPurchaseOrderApprovalHistory,
+  submitPurchaseOrderApproval,
+} = require("../controllers/orderApprovalController");
+const {
   addSupplierPaymentProofs,
   deleteSupplierPaymentProof,
   replaceSupplierPaymentProof,
@@ -87,6 +92,24 @@ router.post(
   "/",
   authorizeRoles("ADMIN", "PURCHASING"),
   createPurchaseOrder
+);
+
+router.get(
+  "/:id/approval-history",
+  authorizeRoles("ADMIN", "PURCHASING", "WAREHOUSE", "FINANCE", "MANAGER"),
+  getPurchaseOrderApprovalHistory,
+);
+
+router.post(
+  "/:id/approval/submit",
+  authorizeRoles("ADMIN", "PURCHASING"),
+  submitPurchaseOrderApproval,
+);
+
+router.post(
+  "/:id/approval/decision",
+  authorizeRoles("ADMIN", "MANAGER"),
+  decidePurchaseOrderApproval,
 );
 
 router.patch(

@@ -12,10 +12,29 @@ const getSalesOrdersRequest = async (params = {}) => {
 const getSalesOrderByIdRequest = async (
   salesOrderId,
 ) => {
-  const response = await apiClient.get(
-    `/sales-orders/${salesOrderId}`,
-  );
+  const [response, historyResponse] = await Promise.all([
+    apiClient.get(`/sales-orders/${salesOrderId}`),
+    apiClient.get(`/sales-orders/${salesOrderId}/approval-history`),
+  ]);
 
+  return {
+    ...response.data.data,
+    approval_history: historyResponse.data.data,
+  };
+};
+
+const submitSalesOrderApprovalRequest = async (salesOrderId) => {
+  const response = await apiClient.post(
+    `/sales-orders/${salesOrderId}/approval/submit`,
+  );
+  return response.data.data;
+};
+
+const decideSalesOrderApprovalRequest = async (salesOrderId, decision, reason = "") => {
+  const response = await apiClient.post(
+    `/sales-orders/${salesOrderId}/approval/decision`,
+    { decision, reason },
+  );
   return response.data.data;
 };
 
@@ -70,8 +89,10 @@ const updateSalesOrderStatusRequest = async (
 
 export {
   createSalesOrderRequest,
+  decideSalesOrderApprovalRequest,
   getDeliverableSalesOrdersRequest,
   getSalesOrderByIdRequest,
   getSalesOrdersRequest,
+  submitSalesOrderApprovalRequest,
   updateSalesOrderStatusRequest,
 };

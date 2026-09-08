@@ -67,7 +67,8 @@ const createGoodsReceipt = async (req, res) => {
       SELECT
         id,
         po_number,
-        status
+        status,
+        approval_status
       FROM app.purchase_orders
       WHERE id = $1
       FOR UPDATE
@@ -82,12 +83,13 @@ const createGoodsReceipt = async (req, res) => {
     const purchaseOrder = poResult.rows[0];
 
     if (
+      purchaseOrder.approval_status !== "APPROVED" ||
       !["SUBMITTED", "PARTIALLY_RECEIVED"].includes(
         purchaseOrder.status
       )
     ) {
       throw new Error(
-        "Purchase order must be SUBMITTED or PARTIALLY_RECEIVED"
+        "Purchase order harus disetujui sebelum penerimaan barang"
       );
     }
 

@@ -40,6 +40,8 @@ const getAllSalesOrders = async (req, res) => {
       "PARTIALLY_DELIVERED",
       "DELIVERED",
       "CANCELLED",
+      "PENDING_APPROVAL",
+      "REJECTED_APPROVAL",
     ];
 
     const normalizedStatus =
@@ -110,11 +112,16 @@ const getAllSalesOrders = async (req, res) => {
     }
 
     if (normalizedStatus) {
-      values.push(normalizedStatus);
-
-      conditions.push(
-        `so.status = $${values.length}`,
-      );
+      if (normalizedStatus === "DRAFT") {
+        conditions.push("so.status = 'DRAFT' AND so.approval_status = 'DRAFT'");
+      } else if (normalizedStatus === "PENDING_APPROVAL") {
+        conditions.push("so.approval_status = 'PENDING'");
+      } else if (normalizedStatus === "REJECTED_APPROVAL") {
+        conditions.push("so.approval_status = 'REJECTED'");
+      } else {
+        values.push(normalizedStatus);
+        conditions.push(`so.status = $${values.length}`);
+      }
     }
 
     if (normalizedCustomerId) {
@@ -186,6 +193,12 @@ const getAllSalesOrders = async (req, res) => {
         so.order_date,
         so.requested_delivery_date,
         so.status,
+        so.approval_status,
+        so.submitted_by,
+        so.submitted_at,
+        so.decided_by,
+        so.decided_at,
+        so.rejection_reason,
         so.notes,
         so.created_by,
         so.created_at,
@@ -550,15 +563,15 @@ const updateSalesOrderStatus = async (req, res) => {
     const {
       status
     } = req.body;
-    if (!["CONFIRMED", "CANCELLED"].includes(status)) {
+    if (status !== "CANCELLED") {
       return res.status(400).json({
         success: false,
-        message: "Status can only be CONFIRMED or CANCELLED manually",
+        message: "Status manual hanya dapat diubah menjadi CANCELLED",
       });
     }
     await client.query("BEGIN");
     const orderResult = await client.query(`
-      SELECT id, status
+      SELECT id, status, approval_status
       FROM app.sales_orders
       WHERE id = $1
       FOR UPDATE
@@ -568,40 +581,14 @@ const updateSalesOrderStatus = async (req, res) => {
       throw new Error("Sales order not found");
     }
     const currentStatus = orderResult.rows[0].status;
-    if (status === "CONFIRMED" && currentStatus !== "DRAFT") {
-      throw new Error("Only DRAFT sales orders can be confirmed");
-    }
     if (status === "CANCELLED" && !["DRAFT", "CONFIRMED"].includes(currentStatus)) {
       throw new Error("This sales order cannot be cancelled");
-    }
-    if (status === "CONFIRMED") {
-      const itemsResult = await client.query(`
-        SELECT
-          soi.quantity,
-          p.product_name,
-          p.current_stock,
-          p.status
-        FROM app.sales_order_items soi
-        JOIN app.products p
-          ON p.id = soi.product_id
-        WHERE soi.sales_order_id = $1
-        `,
-        [id]);
-      for (const item of itemsResult.rows) {
-        if (item.status !== "ACTIVE") {
-          throw new Error(`${item.product_name} is inactive`);
-        }
-        if (Number(item.quantity) > Number(item.current_stock)) {
-          throw new Error(
-            `Insufficient stock for ${item.product_name}. Available: ${Number(item.current_stock)}`
-          );
-        }
-      }
     }
     const result = await client.query(`
       UPDATE app.sales_orders
       SET
         status = $1,
+        approval_status = 'CANCELLED',
         updated_at = NOW()
       WHERE id = $2
       RETURNING *

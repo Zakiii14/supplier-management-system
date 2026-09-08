@@ -298,17 +298,11 @@ test(
     const purchaseOrderItemId =
       response.body.data.items[0].id;
 
-    response = await request(app)
-      .patch(
-        `/api/purchase-orders/${purchaseOrderId}/status`
-      )
-      .set("Authorization", authorization)
-      .send({ status: "SUBMITTED" });
-
-    assert.equal(response.status, 200);
-    assert.equal(
-      response.body.data.status,
-      "SUBMITTED"
+    await pool.query(
+      `UPDATE app.purchase_orders
+       SET status = 'SUBMITTED', approval_status = 'APPROVED'
+       WHERE id = $1`,
+      [purchaseOrderId],
     );
 
     response = await request(app)
@@ -379,17 +373,11 @@ test(
     const salesOrderItemId =
       response.body.data.items[0].id;
 
-    response = await request(app)
-      .patch(
-        `/api/sales-orders/${salesOrderId}/status`
-      )
-      .set("Authorization", authorization)
-      .send({ status: "CONFIRMED" });
-
-    assert.equal(response.status, 200);
-    assert.equal(
-      response.body.data.status,
-      "CONFIRMED"
+    await pool.query(
+      `UPDATE app.sales_orders
+       SET status = 'CONFIRMED', approval_status = 'APPROVED'
+       WHERE id = $1`,
+      [salesOrderId],
     );
 
     response = await request(app)

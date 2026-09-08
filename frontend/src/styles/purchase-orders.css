@@ -107,6 +107,209 @@
   border-color: transparent;
 }
 
+.purchase-order-status.is-pending,
+.sales-order-status.is-pending,
+.approval-state.is-pending {
+  color: var(--sf-status-warning-text);
+  background: var(--sf-status-warning-bg);
+  border-color: transparent;
+}
+
+.purchase-order-status.is-rejected,
+.sales-order-status.is-rejected,
+.approval-state.is-rejected {
+  color: var(--sf-status-danger-text);
+  background: var(--sf-status-danger-bg);
+  border-color: transparent;
+}
+
+.approval-action-dialog .status-dialog-icon.is-danger {
+  color: var(--sf-status-danger-text);
+  background: var(--sf-status-danger-bg);
+  border: 1px solid transparent;
+}
+
+.approval-reason-field {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+}
+
+.approval-reason-field > span {
+  color: var(--sf-text-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.approval-reason-field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 104px;
+  padding: 12px 13px;
+  border: 1px solid var(--sf-border);
+  border-radius: 11px;
+  color: var(--sf-text-strong);
+  background: var(--sf-surface-muted);
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.approval-reason-field textarea:focus {
+  border-color: var(--sf-accent);
+  outline: 3px solid rgb(59 130 246 / 16%);
+}
+
+.approval-reason-field small {
+  color: var(--sf-text-soft);
+  text-align: right;
+}
+
+.approval-action-dialog .status-dialog-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.approval-action-dialog .status-dialog-error svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.approval-history {
+  display: grid;
+  gap: 14px;
+  padding: 17px;
+  border: 1px solid var(--sf-border);
+  border-radius: 14px;
+  background: var(--sf-surface-muted);
+}
+
+.approval-history-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.approval-history-heading p {
+  margin: 0;
+  color: var(--sf-text-strong);
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.approval-history-heading div > span {
+  display: block;
+  margin-top: 3px;
+  color: var(--sf-text-muted);
+  font-size: 0.75rem;
+}
+
+.approval-state {
+  display: inline-flex;
+  flex: 0 0 auto;
+  min-height: 27px;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid var(--sf-border);
+  border-radius: 999px;
+  color: var(--sf-text-muted);
+  background: var(--sf-surface);
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.approval-state.is-approved {
+  color: var(--sf-status-success-text);
+  background: var(--sf-status-success-bg);
+  border-color: transparent;
+}
+
+.approval-rejection-note {
+  display: grid;
+  gap: 4px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  color: var(--sf-status-danger-text);
+  background: var(--sf-status-danger-bg);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.approval-timeline {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.approval-timeline li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.approval-timeline-icon {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: var(--sf-accent);
+  background: var(--sf-accent-soft);
+}
+
+.approval-timeline-icon.is-approved {
+  color: var(--sf-status-success-text);
+  background: var(--sf-status-success-bg);
+}
+
+.approval-timeline-icon.is-rejected {
+  color: var(--sf-status-danger-text);
+  background: var(--sf-status-danger-bg);
+}
+
+.approval-timeline-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.approval-timeline li > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.approval-timeline strong {
+  color: var(--sf-text-strong);
+  font-size: 0.78rem;
+}
+
+.approval-timeline span,
+.approval-timeline p,
+.approval-history-empty {
+  margin: 0;
+  color: var(--sf-text-muted);
+  font-size: 0.73rem;
+  line-height: 1.5;
+}
+
+.approval-history-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.approval-history-empty svg {
+  width: 16px;
+  height: 16px;
+}
+
 .purchase-order-detail-action {
   width: 100%;
   min-width: 0;
@@ -490,6 +693,14 @@
   .purchase-order-detail-action {
     width: auto;
     min-width: 104px;
+  }
+
+  .approval-history-heading {
+    display: grid;
+  }
+
+  .approval-state {
+    justify-self: start;
   }
 
   .purchase-order-detail-backdrop {

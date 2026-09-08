@@ -46,10 +46,29 @@ const getReceivablePurchaseOrdersRequest =
 const getPurchaseOrderByIdRequest = async (
   purchaseOrderId,
 ) => {
-  const response = await apiClient.get(
-    `/purchase-orders/${purchaseOrderId}`,
-  );
+  const [response, historyResponse] = await Promise.all([
+    apiClient.get(`/purchase-orders/${purchaseOrderId}`),
+    apiClient.get(`/purchase-orders/${purchaseOrderId}/approval-history`),
+  ]);
 
+  return {
+    ...response.data.data,
+    approval_history: historyResponse.data.data,
+  };
+};
+
+const submitPurchaseOrderApprovalRequest = async (purchaseOrderId) => {
+  const response = await apiClient.post(
+    `/purchase-orders/${purchaseOrderId}/approval/submit`,
+  );
+  return response.data.data;
+};
+
+const decidePurchaseOrderApprovalRequest = async (purchaseOrderId, decision, reason = "") => {
+  const response = await apiClient.post(
+    `/purchase-orders/${purchaseOrderId}/approval/decision`,
+    { decision, reason },
+  );
   return response.data.data;
 };
 
@@ -155,10 +174,12 @@ export {
   createPurchaseOrderRequest,
   createSupplierPaymentRequest,
   deleteSupplierPaymentProofRequest,
+  decidePurchaseOrderApprovalRequest,
   getPurchaseOrderByIdRequest,
   getPurchaseOrdersRequest,
   getReceivablePurchaseOrdersRequest,
   openSupplierPaymentProofRequest,
   replaceSupplierPaymentProofRequest,
+  submitPurchaseOrderApprovalRequest,
   updatePurchaseOrderStatusRequest,
 };

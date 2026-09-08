@@ -21,6 +21,14 @@ const dateFormatter = new Intl.DateTimeFormat(
   },
 );
 
+const dateTimeFormatter = new Intl.DateTimeFormat(
+  "id-ID",
+  {
+    dateStyle: "medium",
+    timeStyle: "short",
+  },
+);
+
 const formatCurrency = (value) => {
   const numberValue = Number(value);
 
@@ -49,8 +57,17 @@ const formatDate = (value) => {
     : dateFormatter.format(date);
 };
 
+const formatDateTime = (value) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "-"
+    : dateTimeFormatter.format(date);
+};
+
 export {
   formatCurrency,
   formatDate,
+  formatDateTime,
   formatNumber,
 };

@@ -12,6 +12,11 @@ const {
 } = require(
   "../controllers/salesOrderController"
 );
+const {
+  decideSalesOrderApproval,
+  getSalesOrderApprovalHistory,
+  submitSalesOrderApproval,
+} = require("../controllers/orderApprovalController");
 
 const router = express.Router();
 
@@ -43,6 +48,24 @@ router.post(
   "/",
   authorizeRoles("ADMIN", "SALES"),
   createSalesOrder
+);
+
+router.get(
+  "/:id/approval-history",
+  authorizeRoles("ADMIN", "SALES", "WAREHOUSE", "FINANCE", "MANAGER"),
+  getSalesOrderApprovalHistory,
+);
+
+router.post(
+  "/:id/approval/submit",
+  authorizeRoles("ADMIN", "SALES"),
+  submitSalesOrderApproval,
+);
+
+router.post(
+  "/:id/approval/decision",
+  authorizeRoles("ADMIN", "MANAGER"),
+  decideSalesOrderApproval,
 );
 
 router.patch(

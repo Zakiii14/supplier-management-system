@@ -35,6 +35,8 @@ const suffix = randomBytes(4)
 const testData = {
     username: `po_admin_${suffix.toLowerCase()}`,
     email: `po.${suffix.toLowerCase()}@local.test`,
+    managerUsername: `po_manager_${suffix.toLowerCase()}`,
+    managerEmail: `po.manager.${suffix.toLowerCase()}@local.test`,
     supplierCode: `PO-SUP-${suffix}`,
     categoryCode: `PO-CAT-${suffix}`,
     sku: `PO-SKU-${suffix}`,
@@ -57,6 +59,7 @@ const expectedDate = new Date(
     .slice(0, 10);
 
 let authorization;
+let managerAuthorization;
 let supplierId;
 let productId;
 
@@ -92,6 +95,12 @@ before(async () => {
         ],
     );
 
+    await pool.query(
+        `INSERT INTO app.users (username, full_name, email, password_hash, role, status)
+         VALUES ($1, 'Purchase Order Test Manager', $2, $3, 'MANAGER', 'ACTIVE')`,
+        [testData.managerUsername, testData.managerEmail, passwordHash],
+    );
+
     let response = await request(app)
         .post("/api/auth/login")
         .send({
@@ -103,6 +112,12 @@ before(async () => {
 
     authorization =
         `Bearer ${response.body.data.access_token}`;
+
+    response = await request(app)
+        .post("/api/auth/login")
+        .send({ identifier: testData.managerUsername, password });
+    assert.equal(response.status, 200);
+    managerAuthorization = `Bearer ${response.body.data.access_token}`;
 
     response = await request(app)
         .post("/api/suppliers")
@@ -192,11 +207,16 @@ before(async () => {
         response.body.data.id;
 
     response = await request(app)
-        .patch(
-            `/api/purchase-orders/${secondPurchaseOrderId}/status`,
-        )
+        .post(`/api/purchase-orders/${secondPurchaseOrderId}/approval/submit`)
         .set("Authorization", authorization)
-        .send({ status: "SUBMITTED" });
+        .send();
+
+    assert.equal(response.status, 200);
+
+    response = await request(app)
+        .post(`/api/purchase-orders/${secondPurchaseOrderId}/approval/decision`)
+        .set("Authorization", managerAuthorization)
+        .send({ decision: "APPROVED" });
 
     assert.equal(response.status, 200);
 });
@@ -208,6 +228,13 @@ after(async () => {
   testData.secondPoNumber,
   testData.statusPoNumber,
 ];
+
+        await pool.query(
+            `DELETE FROM app.transaction_approvals
+             WHERE transaction_type = 'PURCHASE_ORDER'
+               AND transaction_id IN (SELECT id FROM app.purchase_orders WHERE po_number = ANY($1::VARCHAR[]))`,
+            [poNumbers],
+        );
 
         await pool.query(
             `
@@ -256,9 +283,9 @@ after(async () => {
         await pool.query(
             `
       DELETE FROM app.users
-      WHERE username = $1
+      WHERE username = ANY($1::VARCHAR[])
       `,
-            [testData.username],
+            [[testData.username, testData.managerUsername]],
         );
     } finally {
         await pool.end();
@@ -429,7 +456,7 @@ test(
 );
 
 test(
-  "purchase order status follows valid transition rules",
+  "purchase order approval enforces submission, separation of duties, rejection, and approval",
   async () => {
     let response = await request(app)
       .post("/api/purchase-orders")
@@ -455,35 +482,69 @@ test(
     const purchaseOrderId = response.body.data.id;
 
     response = await request(app)
-      .patch(
-        `/api/purchase-orders/${purchaseOrderId}/status`,
-      )
+      .post(`/api/purchase-orders/${purchaseOrderId}/approval/submit`)
       .set("Authorization", authorization)
-      .send({ status: "submitted" });
+      .send();
 
     assert.equal(response.status, 200);
-    assert.equal(
-      response.body.data.status,
-      "SUBMITTED",
+    assert.equal(response.body.data.status, "DRAFT");
+    assert.equal(response.body.data.approval_status, "PENDING");
+
+    response = await request(app)
+      .post(`/api/purchase-orders/${purchaseOrderId}/approval/decision`)
+      .set("Authorization", authorization)
+      .send({ decision: "APPROVED" });
+
+    assert.equal(response.status, 403);
+
+    response = await request(app)
+      .post(`/api/purchase-orders/${purchaseOrderId}/approval/decision`)
+      .set("Authorization", managerAuthorization)
+      .send({ decision: "REJECTED", reason: "Harga perlu diperiksa kembali" });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.approval_status, "REJECTED");
+    assert.equal(response.body.data.status, "DRAFT");
+
+    response = await request(app)
+      .post(`/api/purchase-orders/${purchaseOrderId}/approval/submit`)
+      .set("Authorization", authorization)
+      .send();
+
+    assert.equal(response.status, 200);
+
+    response = await request(app)
+      .post(`/api/purchase-orders/${purchaseOrderId}/approval/decision`)
+      .set("Authorization", managerAuthorization)
+      .send({ decision: "APPROVED" });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.status, "SUBMITTED");
+    assert.equal(response.body.data.approval_status, "APPROVED");
+
+    response = await request(app)
+      .get(`/api/purchase-orders/${purchaseOrderId}/approval-history`)
+      .set("Authorization", authorization);
+
+    assert.equal(response.status, 200);
+    assert.deepEqual(
+      response.body.data.map((entry) => entry.action),
+      ["APPROVED", "RESUBMITTED", "REJECTED", "SUBMITTED"],
     );
 
     response = await request(app)
-      .patch(
-        `/api/purchase-orders/${purchaseOrderId}/status`,
-      )
+      .patch(`/api/purchase-orders/${purchaseOrderId}/status`)
       .set("Authorization", authorization)
-      .send({ status: "DRAFT" });
+      .send({ status: "SUBMITTED" });
 
     assert.equal(response.status, 400);
     assert.equal(
       response.body.message,
-      "Status must be SUBMITTED or CANCELLED",
+      "Status manual hanya dapat diubah menjadi CANCELLED",
     );
 
     response = await request(app)
-      .patch(
-        `/api/purchase-orders/${purchaseOrderId}/status`,
-      )
+      .patch(`/api/purchase-orders/${purchaseOrderId}/status`)
       .set("Authorization", authorization)
       .send({ status: "cancelled" });
 
@@ -494,29 +555,23 @@ test(
     );
 
     response = await request(app)
-      .patch(
-        `/api/purchase-orders/${purchaseOrderId}/status`,
-      )
+      .post(`/api/purchase-orders/${purchaseOrderId}/approval/submit`)
       .set("Authorization", authorization)
-      .send({ status: "SUBMITTED" });
+      .send();
 
     assert.equal(response.status, 409);
-    assert.equal(
-      response.body.message,
-      "Purchase order status cannot be changed from CANCELLED to SUBMITTED",
-    );
 
     response = await request(app)
-      .patch(
-        "/api/purchase-orders/not-a-uuid/status",
+      .post(
+        "/api/purchase-orders/not-a-uuid/approval/submit",
       )
       .set("Authorization", authorization)
-      .send({ status: "SUBMITTED" });
+      .send();
 
     assert.equal(response.status, 400);
     assert.equal(
       response.body.message,
-      "Invalid purchase order ID",
+      "ID transaksi tidak valid",
     );
   },
 );

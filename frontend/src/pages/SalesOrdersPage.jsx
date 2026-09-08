@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Ban,
+  CheckCircle2,
   Eye,
   Plus,
   RefreshCw,
@@ -8,6 +9,7 @@ import {
   Send,
   ShoppingBag,
   X,
+  XCircle,
 } from "lucide-react";
 import {
   useEffect,
@@ -17,11 +19,14 @@ import { getActiveCustomersRequest } from "../api/customers";
 import { getActiveProductsRequest } from "../api/products";
 import {
   createSalesOrderRequest,
+  decideSalesOrderApprovalRequest,
   getSalesOrderByIdRequest,
   getSalesOrdersRequest,
+  submitSalesOrderApprovalRequest,
   updateSalesOrderStatusRequest,
 } from "../api/salesOrders";
 import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
+import ApprovalActionDialog from "../components/approvals/ApprovalActionDialog";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import StatusFilter from "../components/filters/StatusFilter";
 import SalesOrderDetailDialog from "../components/sales-orders/SalesOrderDetailDialog";
@@ -47,6 +52,14 @@ const salesOrderStatusOptions = [
   {
     value: "DRAFT",
     label: "Draft",
+  },
+  {
+    value: "PENDING_APPROVAL",
+    label: "Menunggu persetujuan",
+  },
+  {
+    value: "REJECTED_APPROVAL",
+    label: "Ditolak",
   },
   {
     value: "CONFIRMED",
@@ -89,6 +102,19 @@ const statusPresentation = {
   },
 };
 
+const getStatusPresentation = (salesOrder) => {
+  if (salesOrder.approval_status === "PENDING") {
+    return { label: "Menunggu persetujuan", className: "is-pending" };
+  }
+  if (salesOrder.approval_status === "REJECTED") {
+    return { label: "Ditolak", className: "is-rejected" };
+  }
+  return statusPresentation[salesOrder.status] ?? {
+    label: salesOrder.status,
+    className: "is-draft",
+  };
+};
+
 const SalesOrdersPage = () => {
   const filtersRef = useStickyDataFilters();
   const { user } = useAuth();
@@ -97,6 +123,7 @@ const SalesOrdersPage = () => {
     "ADMIN",
     "SALES",
   ].includes(user?.role);
+  const canApproveSalesOrders = ["ADMIN", "MANAGER"].includes(user?.role);
 
   const [salesOrders, setSalesOrders] =
     useState([]);
@@ -152,6 +179,11 @@ const SalesOrdersPage = () => {
     useState(false);
   const [statusError, setStatusError] =
     useState("");
+  const [approvalSalesOrder, setApprovalSalesOrder] = useState(null);
+  const [approvalAction, setApprovalAction] = useState("");
+  const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
+  const [isUpdatingApproval, setIsUpdatingApproval] = useState(false);
+  const [approvalError, setApprovalError] = useState("");
 
   useEffect(() => {
     let isCancelled = false;
@@ -386,6 +418,48 @@ const SalesOrdersPage = () => {
     }
   };
 
+  const handleOpenApprovalDialog = (salesOrder, action) => {
+    setApprovalSalesOrder(salesOrder);
+    setApprovalAction(action);
+    setApprovalError("");
+    setIsApprovalDialogOpen(true);
+  };
+
+  const handleCloseApprovalDialog = () => {
+    if (isUpdatingApproval) return;
+    setIsApprovalDialogOpen(false);
+    setApprovalSalesOrder(null);
+    setApprovalAction("");
+    setApprovalError("");
+  };
+
+  const handleConfirmApproval = async ({ action, reason }) => {
+    if (!approvalSalesOrder) return;
+    try {
+      setIsUpdatingApproval(true);
+      setApprovalError("");
+      if (action === "SUBMIT") {
+        await submitSalesOrderApprovalRequest(approvalSalesOrder.id);
+      } else {
+        await decideSalesOrderApprovalRequest(
+          approvalSalesOrder.id,
+          action === "APPROVE" ? "APPROVED" : "REJECTED",
+          reason,
+        );
+      }
+      setIsApprovalDialogOpen(false);
+      setApprovalSalesOrder(null);
+      setApprovalAction("");
+      setReloadKey((current) => current + 1);
+    } catch (error) {
+      setApprovalError(
+        error.response?.data?.message || "Proses persetujuan sales order gagal.",
+      );
+    } finally {
+      setIsUpdatingApproval(false);
+    }
+  };
+
   const totalPages = Math.max(
     pagination.total_pages,
     1,
@@ -581,13 +655,7 @@ const SalesOrdersPage = () => {
                 </tr>
               ) : (
                 salesOrders.map((salesOrder) => {
-                  const presentation =
-                    statusPresentation[
-                      salesOrder.status
-                    ] ?? {
-                      label: salesOrder.status,
-                      className: "is-draft",
-                    };
+                  const presentation = getStatusPresentation(salesOrder);
 
                   return (
                     <tr key={salesOrder.id}>
@@ -651,7 +719,7 @@ const SalesOrdersPage = () => {
                             className="table-edit-action purchase-order-detail-action"
                             disabled={
                               Boolean(loadingDetailId) ||
-                              isUpdatingStatus
+                              isUpdatingStatus || isUpdatingApproval
                             }
                             onClick={() =>
                               handleOpenDetail(salesOrder.id)
@@ -670,24 +738,48 @@ const SalesOrdersPage = () => {
                           </button>
 
                           {canManageSalesOrders &&
-                            salesOrder.status === "DRAFT" && (
+                            salesOrder.status === "DRAFT" &&
+                            salesOrder.approval_status !== "PENDING" && (
                               <button
                                 type="button"
                                 className="table-status-action is-activate"
                                 disabled={
                                   Boolean(loadingDetailId) ||
-                                  isUpdatingStatus
+                                  isUpdatingStatus || isUpdatingApproval
                                 }
                                 onClick={() =>
-                                  handleOpenStatusDialog(
+                                  handleOpenApprovalDialog(
                                     salesOrder,
-                                    "CONFIRMED",
+                                    "SUBMIT",
                                   )
                                 }
                               >
                                 <Send aria-hidden="true" />
-                                Konfirmasi
+                                Ajukan
                               </button>
+                            )}
+
+                          {canApproveSalesOrders &&
+                            salesOrder.approval_status === "PENDING" &&
+                            salesOrder.submitted_by !== user?.id && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="table-status-action is-activate"
+                                  disabled={Boolean(loadingDetailId) || isUpdatingApproval}
+                                  onClick={() => handleOpenApprovalDialog(salesOrder, "APPROVE")}
+                                >
+                                  <CheckCircle2 aria-hidden="true" /> Setujui
+                                </button>
+                                <button
+                                  type="button"
+                                  className="table-status-action is-deactivate"
+                                  disabled={Boolean(loadingDetailId) || isUpdatingApproval}
+                                  onClick={() => handleOpenApprovalDialog(salesOrder, "REJECT")}
+                                >
+                                  <XCircle aria-hidden="true" /> Tolak
+                                </button>
+                              </>
                             )}
 
                           {canManageSalesOrders &&
@@ -699,7 +791,7 @@ const SalesOrdersPage = () => {
                                 className="table-status-action is-deactivate"
                                 disabled={
                                   Boolean(loadingDetailId) ||
-                                  isUpdatingStatus
+                                  isUpdatingStatus || isUpdatingApproval
                                 }
                                 onClick={() =>
                                   handleOpenStatusDialog(
@@ -779,6 +871,18 @@ const SalesOrdersPage = () => {
           requestError={statusError}
           onCancel={handleCloseStatusDialog}
           onConfirm={handleConfirmStatus}
+        />
+      )}
+      {isApprovalDialogOpen && approvalSalesOrder && (
+        <ApprovalActionDialog
+          isOpen
+          action={approvalAction}
+          transactionLabel="Sales order"
+          transactionNumber={approvalSalesOrder.so_number}
+          isSubmitting={isUpdatingApproval}
+          requestError={approvalError}
+          onCancel={handleCloseApprovalDialog}
+          onConfirm={handleConfirmApproval}
         />
       )}
     </div>

@@ -52,6 +52,8 @@ const getAllPurchaseOrders = async (req, res) => {
       "PARTIALLY_RECEIVED",
       "RECEIVED",
       "CANCELLED",
+      "PENDING_APPROVAL",
+      "REJECTED_APPROVAL",
     ];
 
     const normalizedStatus =
@@ -104,11 +106,16 @@ const getAllPurchaseOrders = async (req, res) => {
     }
 
     if (normalizedStatus) {
-      values.push(normalizedStatus);
-
-      conditions.push(
-        `po.status = $${values.length}`,
-      );
+      if (normalizedStatus === "DRAFT") {
+        conditions.push("po.status = 'DRAFT' AND po.approval_status = 'DRAFT'");
+      } else if (normalizedStatus === "PENDING_APPROVAL") {
+        conditions.push("po.approval_status = 'PENDING'");
+      } else if (normalizedStatus === "REJECTED_APPROVAL") {
+        conditions.push("po.approval_status = 'REJECTED'");
+      } else {
+        values.push(normalizedStatus);
+        conditions.push(`po.status = $${values.length}`);
+      }
     }
 
     if (dateFrom) {
@@ -168,6 +175,12 @@ const getAllPurchaseOrders = async (req, res) => {
         po.order_date,
         po.expected_date,
         po.status,
+        po.approval_status,
+        po.submitted_by,
+        po.submitted_at,
+        po.decided_by,
+        po.decided_at,
+        po.rejection_reason,
         po.notes,
         po.payment_scheme,
         po.payment_terms_days,
@@ -280,6 +293,12 @@ const getPurchaseOrderById = async (req, res) => {
         po.order_date,
         po.expected_date,
         po.status,
+        po.approval_status,
+        po.submitted_by,
+        po.submitted_at,
+        po.decided_by,
+        po.decided_at,
+        po.rejection_reason,
         po.notes,
 		po.payment_scheme,
 		po.payment_terms_days,
@@ -652,10 +671,7 @@ const updatePurchaseOrderStatus = async (req, res) => {
         ? req.body.status.trim().toUpperCase()
         : "";
 
-    const allowedTargetStatuses = [
-      "SUBMITTED",
-      "CANCELLED",
-    ];
+    const allowedTargetStatuses = ["CANCELLED"];
 
     if (
       !allowedTargetStatuses.includes(
@@ -665,13 +681,13 @@ const updatePurchaseOrderStatus = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Status must be SUBMITTED or CANCELLED",
+          "Status manual hanya dapat diubah menjadi CANCELLED",
       });
     }
 
     const currentResult = await pool.query(
       `
-      SELECT id, status
+      SELECT id, status, approval_status
       FROM app.purchase_orders
       WHERE id = $1
       `,
@@ -689,7 +705,7 @@ const updatePurchaseOrderStatus = async (req, res) => {
       currentResult.rows[0].status;
 
     const allowedTransitions = {
-      DRAFT: ["SUBMITTED", "CANCELLED"],
+      DRAFT: ["CANCELLED"],
       SUBMITTED: ["CANCELLED"],
       PARTIALLY_RECEIVED: [],
       RECEIVED: [],
@@ -712,7 +728,9 @@ const updatePurchaseOrderStatus = async (req, res) => {
     const result = await pool.query(
       `
       UPDATE app.purchase_orders
-      SET status = $1
+      SET status = $1,
+          approval_status = 'CANCELLED',
+          updated_at = NOW()
       WHERE id = $2
       AND status = $3
       RETURNING *

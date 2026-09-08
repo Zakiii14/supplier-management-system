@@ -432,12 +432,19 @@ CREATE TABLE app.purchase_orders (
     down_payment_percent numeric(5,2) DEFAULT 0 NOT NULL,
     notes text,
     created_by uuid,
+    approval_status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
+    submitted_by uuid,
+    submitted_at timestamp with time zone,
+    decided_by uuid,
+    decided_at timestamp with time zone,
+    rejection_reason text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT purchase_orders_check CHECK (((expected_date IS NULL) OR (expected_date >= order_date))),
     CONSTRAINT purchase_orders_payment_scheme_check CHECK (((payment_scheme)::text = ANY ((ARRAY['DIRECT'::character varying, 'TERM'::character varying, 'DOWN_PAYMENT'::character varying, 'COD'::character varying])::text[]))),
     CONSTRAINT purchase_orders_payment_terms_days_check CHECK (((payment_terms_days >= 0) AND (payment_terms_days <= 365))),
-    CONSTRAINT purchase_orders_down_payment_percent_check CHECK (((down_payment_percent >= (0)::numeric) AND (down_payment_percent <= (100)::numeric)))
+    CONSTRAINT purchase_orders_down_payment_percent_check CHECK (((down_payment_percent >= (0)::numeric) AND (down_payment_percent <= (100)::numeric))),
+    CONSTRAINT purchase_orders_approval_status_check CHECK (((approval_status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[])))
 );
 
 
@@ -569,9 +576,16 @@ CREATE TABLE app.sales_orders (
     status app.sales_order_status DEFAULT 'DRAFT'::app.sales_order_status NOT NULL,
     notes text,
     created_by uuid,
+    approval_status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
+    submitted_by uuid,
+    submitted_at timestamp with time zone,
+    decided_by uuid,
+    decided_at timestamp with time zone,
+    rejection_reason text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT sales_orders_check CHECK (((requested_delivery_date IS NULL) OR (requested_delivery_date >= order_date)))
+    CONSTRAINT sales_orders_check CHECK (((requested_delivery_date IS NULL) OR (requested_delivery_date >= order_date))),
+    CONSTRAINT sales_orders_approval_status_check CHECK (((approval_status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[])))
 );
 
 
@@ -646,6 +660,18 @@ CREATE TABLE app.audit_logs (
     ip_address character varying(80),
     user_agent character varying(500),
     created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE app.transaction_approvals (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    transaction_type character varying(30) NOT NULL,
+    transaction_id uuid NOT NULL,
+    action character varying(20) NOT NULL,
+    reason text,
+    acted_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    acted_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT transaction_approvals_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['PURCHASE_ORDER'::character varying, 'SALES_ORDER'::character varying])::text[]))),
+    CONSTRAINT transaction_approvals_action_check CHECK (((action)::text = ANY ((ARRAY['SUBMITTED'::character varying, 'RESUBMITTED'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying])::text[])))
 );
 
 
@@ -1060,6 +1086,8 @@ CREATE INDEX idx_po_items_product ON app.purchase_order_items USING btree (produ
 
 CREATE INDEX idx_po_status ON app.purchase_orders USING btree (status);
 
+CREATE INDEX idx_purchase_orders_approval_status ON app.purchase_orders USING btree (approval_status);
+
 
 --
 -- Name: idx_po_supplier; Type: INDEX; Schema: app; Owner: -
@@ -1108,6 +1136,10 @@ CREATE INDEX idx_receipts_po ON app.goods_receipts USING btree (purchase_order_i
 --
 
 CREATE INDEX idx_so_customer ON app.sales_orders USING btree (customer_id);
+
+CREATE INDEX idx_sales_orders_approval_status ON app.sales_orders USING btree (approval_status);
+
+CREATE INDEX idx_transaction_approvals_transaction ON app.transaction_approvals USING btree (transaction_type, transaction_id, acted_at DESC);
 
 
 --
@@ -1424,6 +1456,12 @@ ALTER TABLE ONLY app.purchase_order_items
 ALTER TABLE ONLY app.purchase_orders
     ADD CONSTRAINT purchase_orders_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
+ALTER TABLE ONLY app.purchase_orders
+    ADD CONSTRAINT purchase_orders_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY app.purchase_orders
+    ADD CONSTRAINT purchase_orders_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
 
 --
 -- Name: purchase_orders purchase_orders_supplier_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
@@ -1455,6 +1493,12 @@ ALTER TABLE ONLY app.sales_order_items
 
 ALTER TABLE ONLY app.sales_orders
     ADD CONSTRAINT sales_orders_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY app.sales_orders
+    ADD CONSTRAINT sales_orders_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY app.sales_orders
+    ADD CONSTRAINT sales_orders_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
 
 --

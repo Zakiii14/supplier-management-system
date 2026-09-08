@@ -35,6 +35,8 @@ const suffix = randomBytes(4)
 const testData = {
   username: `so_admin_${suffix.toLowerCase()}`,
   email: `so.${suffix.toLowerCase()}@local.test`,
+  managerUsername: `so_manager_${suffix.toLowerCase()}`,
+  managerEmail: `so.manager.${suffix.toLowerCase()}@local.test`,
   supplierCode: `SO-SUP-${suffix}`,
   categoryCode: `SO-CAT-${suffix}`,
   sku: `SO-SKU-${suffix}`,
@@ -57,6 +59,7 @@ const requestedDeliveryDate = new Date(
   .slice(0, 10);
 
 let authorization;
+let managerAuthorization;
 let customerId;
 let productId;
 
@@ -92,6 +95,12 @@ before(async () => {
     ],
   );
 
+  await pool.query(
+    `INSERT INTO app.users (username, full_name, email, password_hash, role, status)
+     VALUES ($1, 'Sales Order Test Manager', $2, $3, 'MANAGER', 'ACTIVE')`,
+    [testData.managerUsername, testData.managerEmail, passwordHash],
+  );
+
   let response = await request(app)
     .post("/api/auth/login")
     .send({
@@ -103,6 +112,12 @@ before(async () => {
 
   authorization =
     `Bearer ${response.body.data.access_token}`;
+
+  response = await request(app)
+    .post("/api/auth/login")
+    .send({ identifier: testData.managerUsername, password });
+  assert.equal(response.status, 200);
+  managerAuthorization = `Bearer ${response.body.data.access_token}`;
 
   response = await request(app)
     .post("/api/suppliers")
@@ -222,11 +237,16 @@ before(async () => {
     response.body.data.id;
 
   response = await request(app)
-    .patch(
-      `/api/sales-orders/${secondSalesOrderId}/status`,
-    )
+    .post(`/api/sales-orders/${secondSalesOrderId}/approval/submit`)
     .set("Authorization", authorization)
-    .send({ status: "CONFIRMED" });
+    .send();
+
+  assert.equal(response.status, 200);
+
+  response = await request(app)
+    .post(`/api/sales-orders/${secondSalesOrderId}/approval/decision`)
+    .set("Authorization", managerAuthorization)
+    .send({ decision: "APPROVED" });
 
   assert.equal(response.status, 200);
 });
@@ -237,6 +257,13 @@ after(async () => {
       testData.firstSoNumber,
       testData.secondSoNumber,
     ];
+
+    await pool.query(
+      `DELETE FROM app.transaction_approvals
+       WHERE transaction_type = 'SALES_ORDER'
+         AND transaction_id IN (SELECT id FROM app.sales_orders WHERE so_number = ANY($1::VARCHAR[]))`,
+      [salesOrderNumbers],
+    );
 
     await pool.query(
       `
@@ -293,9 +320,9 @@ after(async () => {
     await pool.query(
       `
       DELETE FROM app.users
-      WHERE username = $1
+      WHERE username = ANY($1::VARCHAR[])
       `,
-      [testData.username],
+      [[testData.username, testData.managerUsername]],
     );
   } finally {
     await pool.end();

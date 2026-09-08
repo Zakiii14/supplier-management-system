@@ -23,9 +23,9 @@ const sanitize = (value, depth=0) => {
 };
 const moduleName = (path) => path.split("/").filter(Boolean)[0] || "system";
 const actionName = (method,path) => {
-  if(method==="POST") return /status|confirm|submit|reset/i.test(path)?"PROCESS":"CREATE";
+  if(method==="POST") return /status|confirm|submit|reset|approval|decision|reject/i.test(path)?"PROCESS":"CREATE";
   if(method==="DELETE") return "DELETE";
-  return /status|confirm|submit|reset/i.test(path)?"PROCESS":"UPDATE";
+  return /status|confirm|submit|reset|approval|decision|reject/i.test(path)?"PROCESS":"UPDATE";
 };
 const findLabel = (...objects) => {
   for(const object of objects) for(const field of LABEL_FIELDS) if(object?.[field]) return String(object[field]).slice(0,180);

@@ -98,6 +98,10 @@ const FIELD_LABELS = {
   module: "Modul",
   imported: "Jumlah data berhasil",
   rows: "Baris impor",
+  approval_status: "Status persetujuan",
+  decision: "Keputusan",
+  reason: "Alasan",
+  rejection_reason: "Alasan penolakan",
 };
 const VALUE_LABELS = {
   ACTIVE: "Aktif",
@@ -107,6 +111,8 @@ const VALUE_LABELS = {
   CONFIRMED: "Dikonfirmasi",
   CANCELLED: "Dibatalkan",
   PENDING: "Menunggu",
+  APPROVED: "Disetujui",
+  REJECTED: "Ditolak",
   RECEIVED: "Diterima",
   DELIVERED: "Terkirim",
   PAID: "Lunas",
