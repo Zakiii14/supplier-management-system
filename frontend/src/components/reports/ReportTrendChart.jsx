@@ -61,6 +61,8 @@ const ReportTrendChart = ({
     selectedMetric,
     setSelectedMetric,
   ] = useState(ALL_METRICS);
+  const [activePeriod, setActivePeriod] =
+    useState("");
 
   const activeMetric =
     selectedMetric === ALL_METRICS ||
@@ -120,10 +122,13 @@ const ReportTrendChart = ({
       Math.round(sharedMaximum * ratio),
   );
 
-  const periodWidth = Math.max(
-    displayedMetrics.length * 104,
-    128,
-  );
+  const periodWidth =
+    activeMetric === ALL_METRICS
+      ? Math.max(
+        displayedMetrics.length * 76 + 16,
+        168,
+      )
+      : 144;
 
   if (
     trend.length === 0 ||
@@ -315,12 +320,42 @@ const ReportTrendChart = ({
             {trend.map((item) => (
               <article
                 key={item.period}
-                className="report-trend-period"
+                className={`report-trend-period ${activePeriod === item.period ? "is-active" : ""}`}
                 style={{
                   "--report-period-width":
                     `${periodWidth}px`,
                 }}
+                tabIndex={0}
+                aria-label={`Rincian ${formatPeriod(item.period)}`}
+                onPointerEnter={() => setActivePeriod(item.period)}
+                onPointerLeave={() => setActivePeriod("")}
+                onFocus={() => setActivePeriod(item.period)}
+                onBlur={() => setActivePeriod("")}
+                onClick={() => setActivePeriod(item.period)}
               >
+                {activePeriod === item.period && (
+                  <div
+                    className="report-trend-tooltip"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <strong>{formatPeriod(item.period)}</strong>
+                    {displayedMetrics.map((field) => {
+                      const metricIndex = metricFields.indexOf(field);
+                      return (
+                        <span key={field}>
+                          <i
+                            className={`is-series-${(metricIndex % 4) + 1}`}
+                            aria-hidden="true"
+                          />
+                          <em>{getReportFieldLabel(field)}</em>
+                          <b>{formatReportValue(field, item[field])}</b>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+
                 <div className="report-trend-bars">
                   {displayedMetrics.map(
                     (field) => {

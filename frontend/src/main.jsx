@@ -6,6 +6,7 @@ import { AuthProvider } from "./context/AuthContext";
 import "./index.css";
 import "./styles/components.css";
 import "./styles/theme.css";
+import "./styles/modern-interactive-charts.css";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

@@ -1,0 +1,171 @@
+/* Chart-specific refinements loaded after the global theme. */
+
+.dashboard-trend-line {
+  filter: drop-shadow(0 2px 5px rgb(37 99 235 / 16%));
+}
+
+.dashboard-trend-area {
+  pointer-events: none;
+}
+
+.dashboard-trend-tooltip {
+  transition: left 80ms linear, opacity 120ms ease, transform 120ms ease;
+}
+
+.dashboard-trend-axis {
+  fill: var(--sf-text-muted);
+}
+
+.report-trend-chart {
+  --report-value-space: 26px;
+  height: 300px;
+}
+
+.report-trend-chart::before {
+  background-image: linear-gradient(
+    to bottom,
+    var(--sf-border) 1px,
+    transparent 1px
+  );
+}
+
+.report-trend-periods {
+  gap: 48px;
+}
+
+.report-trend-period {
+  position: relative;
+  border-radius: 10px 10px 0 0;
+  outline: none;
+  transition: background 160ms ease;
+}
+
+.report-trend-bars {
+  gap: 4px;
+}
+
+.report-trend-bar-item {
+  width: 72px;
+}
+
+.report-trend-bar-item small {
+  width: 68px;
+}
+
+.report-trend-period.is-active {
+  background: linear-gradient(
+    to bottom,
+    var(--sf-accent-soft),
+    transparent 76%
+  );
+}
+
+.report-trend-period:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--sf-accent);
+}
+
+.report-trend-value {
+  display: none;
+}
+
+.report-trend-bar-fill {
+  width: 18px;
+}
+
+.report-trend-bar {
+  border-radius: 8px 8px 3px 3px;
+  opacity: .82;
+  transition: opacity 160ms ease, filter 160ms ease, transform 160ms ease;
+}
+
+.report-trend-bar:hover {
+  filter: none;
+  transform: none;
+}
+
+.report-trend-period.is-active .report-trend-bar {
+  filter: brightness(1.05);
+  opacity: 1;
+  transform: scaleX(1.12);
+}
+
+.report-trend-chart.is-single .report-trend-bar-fill {
+  width: 30px;
+}
+
+.report-trend-tooltip {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 6;
+  display: grid;
+  width: 220px;
+  gap: 8px;
+  padding: 12px 13px;
+  color: var(--sf-text-muted);
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border);
+  border-radius: 11px;
+  box-shadow: var(--sf-shadow-menu);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.report-trend-period:first-child .report-trend-tooltip {
+  left: 4px;
+  transform: none;
+}
+
+.report-trend-period:last-child .report-trend-tooltip {
+  right: 4px;
+  left: auto;
+  transform: none;
+}
+
+.report-trend-tooltip > strong {
+  color: var(--sf-text-strong);
+}
+
+.report-trend-tooltip > span {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.report-trend-tooltip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.report-trend-tooltip em {
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-trend-tooltip b {
+  color: var(--sf-text-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .report-trend-periods {
+    gap: 34px;
+  }
+
+  .report-trend-bars {
+    gap: 2px;
+  }
+
+  .report-trend-bar-item {
+    width: 68px;
+  }
+
+  .report-trend-bar-item small {
+    width: 64px;
+  }
+}

@@ -41,6 +41,23 @@ const formatPeriod = (period) => {
     : monthFormatter.format(date);
 };
 
+const createSmoothPath = (points) => {
+  if (points.length === 0) return "";
+  if (points.length === 1) {
+    return `M ${points[0].x} ${points[0].y}`;
+  }
+
+  return points.reduce((path, point, index) => {
+    if (index === 0) return `M ${point.x} ${point.y}`;
+    const previous = points[index - 1];
+    const middleX = (previous.x + point.x) / 2;
+
+    // Titik kontrol selalu berada di antara dua nilai data.
+    // Kurva tetap halus tanpa melewati nilai minimum/maksimum segmen.
+    return `${path} C ${middleX} ${previous.y}, ${middleX} ${point.y}, ${point.x} ${point.y}`;
+  }, "");
+};
+
 const DashboardTrendChart = ({
   reloadKey = 0,
 }) => {
@@ -52,6 +69,7 @@ const DashboardTrendChart = ({
     useState("");
   const [isTooltipVisible, setIsTooltipVisible] =
     useState(false);
+  const [tooltipX, setTooltipX] = useState(null);
   const [result, setResult] = useState(null);
 
   const requestKey =
@@ -174,6 +192,8 @@ const DashboardTrendChart = ({
       ((event.clientX - rect.left) / rect.width) *
       width;
 
+    setTooltipX(Math.max(left, Math.min(right, pointerX)));
+
     const ratio =
       (pointerX - left) / (right - left);
 
@@ -208,6 +228,7 @@ const DashboardTrendChart = ({
         );
 
     setSelectedPeriod(rows[nextIndex].period);
+    setTooltipX(getX(nextIndex));
     setIsTooltipVisible(true);
   };
 
@@ -342,6 +363,24 @@ const DashboardTrendChart = ({
                 viewBox={`0 0 ${width} ${height}`}
                 aria-hidden="true"
               >
+              <defs>
+                {metrics.map((metric, index) => {
+                  const color = COLORS[index % COLORS.length];
+                  return (
+                    <linearGradient
+                      id={`trend-fill-${index}`}
+                      key={metric.field}
+                      x1="0"
+                      x2="0"
+                      y1="0"
+                      y2="1"
+                    >
+                      <stop offset="0%" stopColor={color} stopOpacity=".2" />
+                      <stop offset="100%" stopColor={color} stopOpacity="0" />
+                    </linearGradient>
+                  );
+                })}
+              </defs>
               {ticks.map((tick, index) => {
                 const y = getY(tick);
 
@@ -352,7 +391,7 @@ const DashboardTrendChart = ({
                       x2={right}
                       y1={y}
                       y2={y}
-                      stroke="#e8edf3"
+                      stroke="var(--sf-border)"
                     />
 
                     <text
@@ -376,7 +415,7 @@ const DashboardTrendChart = ({
                 x2={right}
                 y1={getY(0)}
                 y2={getY(0)}
-                stroke="#b8c7dc"
+                stroke="var(--sf-border-strong)"
               />
 
               {activeRow && (
@@ -385,7 +424,7 @@ const DashboardTrendChart = ({
                   x2={getX(activeIndex)}
                   y1={top}
                   y2={bottom}
-                  stroke="#94a3b8"
+                  stroke="var(--sf-text-soft)"
                   strokeDasharray="4 5"
                 />
               )}
@@ -394,27 +433,31 @@ const DashboardTrendChart = ({
                 const color =
                   COLORS[index % COLORS.length];
 
-                const points = rows
-                  .map(
-                    (row, rowIndex) =>
-                      `${getX(rowIndex)},${getY(
-                        row[metric.field],
-                      )}`,
-                  )
-                  .join(" ");
+                const points = rows.map((row, rowIndex) => ({
+                  x: getX(rowIndex),
+                  y: getY(row[metric.field]),
+                }));
+                const linePath = createSmoothPath(points);
+                const areaPath = points.length
+                  ? `${linePath} L ${points.at(-1).x} ${bottom} L ${points[0].x} ${bottom} Z`
+                  : "";
 
                 return (
                   <g key={metric.field}>
-                    <polyline
-                      points={points}
+                    <path
+                      d={areaPath}
+                      fill={`url(#trend-fill-${index})`}
+                      className="dashboard-trend-area"
+                    />
+
+                    <path
+                      d={linePath}
                       fill="none"
                       stroke={color}
                       strokeWidth="3"
                       strokeLinejoin="round"
                       strokeLinecap="round"
-                      strokeDasharray={
-                        index === 1 ? "7 5" : undefined
-                      }
+                      className="dashboard-trend-line"
                     />
 
                     {rows.map((row, rowIndex) => (
@@ -422,10 +465,11 @@ const DashboardTrendChart = ({
                         key={row.period}
                         cx={getX(rowIndex)}
                         cy={getY(row[metric.field])}
-                        r={index === 0 ? 5 : 3}
-                        fill={color}
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
+                        r={rowIndex === activeIndex ? 5 : 3.5}
+                        fill={rowIndex === activeIndex ? color : "var(--sf-surface)"}
+                        stroke={color}
+                        strokeWidth={rowIndex === activeIndex ? 2.5 : 2}
+                        className={rowIndex === activeIndex ? "is-active" : ""}
                       />
                     ))}
                   </g>
@@ -447,8 +491,8 @@ const DashboardTrendChart = ({
 
               {isTooltipVisible && activeRow && (
                 <div
-                  className={`dashboard-trend-tooltip ${activeIndex === 0 ? "is-start" : ""} ${activeIndex === rows.length - 1 ? "is-end" : ""}`}
-                  style={{ left: `${getX(activeIndex)}px` }}
+                  className={`dashboard-trend-tooltip ${(tooltipX ?? getX(activeIndex)) < left + 110 ? "is-start" : ""} ${(tooltipX ?? getX(activeIndex)) > right - 110 ? "is-end" : ""}`}
+                  style={{ left: `${tooltipX ?? getX(activeIndex)}px` }}
                   role="status"
                   aria-live="polite"
                 >
