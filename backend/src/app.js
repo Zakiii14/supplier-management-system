@@ -30,6 +30,9 @@ const paymentSettingRoutes = require(
 const supplierInvoiceRoutes = require("./routes/supplierInvoiceRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const auditLogRoutes = require("./routes/auditLogRoutes");
+const masterDataImportRoutes = require(
+  "./routes/masterDataImportRoutes"
+);
 const auditMiddleware = require("./middleware/auditMiddleware");
 
 const authenticate = require("./middleware/authMiddleware");
@@ -39,7 +42,7 @@ const app = express();
 // const PORT = Number(process.env.PORT) || 3000;
 
 // Wajib agar Express bisa membaca JSON body
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 app.get("/", (req, res) => {
   res.json({
@@ -96,6 +99,11 @@ app.use("/api/payments", authenticate, paymentRoutes);
 app.use("/api/supplier-invoices", authenticate, supplierInvoiceRoutes);
 app.use("/api/notifications", authenticate, notificationRoutes);
 app.use("/api/audit-logs", authenticate, auditLogRoutes);
+app.use(
+  "/api/master-data-import",
+  authenticate,
+  masterDataImportRoutes
+);
 app.use("/api/users", authenticate, userRoutes);
 app.use(
   "/api/code-number-settings",
@@ -108,6 +116,27 @@ app.use(
   paymentSettingRoutes
 );
 app.use("/api/auth", authRoutes);
+
+app.use((error, req, res, next) => {
+  if (error instanceof require("multer").MulterError) {
+    return res.status(400).json({
+      success: false,
+      message:
+        error.code === "LIMIT_FILE_SIZE"
+          ? "Ukuran file maksimal 2 MB"
+          : "File impor tidak dapat diproses",
+    });
+  }
+
+  if (error?.statusCode) {
+    return res.status(error.statusCode).json({
+      success: false,
+      message: error.message,
+    });
+  }
+
+  return next(error);
+});
 
 app.use((req, res) => {
   res.status(404).json({

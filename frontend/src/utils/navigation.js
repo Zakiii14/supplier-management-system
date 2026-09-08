@@ -9,6 +9,7 @@ import {
   ReceiptText,
   FileText,
   FileClock,
+  FileUp,
   ShoppingCart,
   Tags,
   Truck,
@@ -189,6 +190,12 @@ const navigationGroups = [
   {
     label: "Administration",
     items: [
+      {
+        label: "Impor Master Data",
+        path: "/master-data-import",
+        icon: FileUp,
+        roles: ["ADMIN"],
+      },
       {
         label: "Audit Log",
         path: "/audit-logs",
