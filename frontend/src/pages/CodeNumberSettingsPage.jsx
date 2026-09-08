@@ -151,18 +151,19 @@ const CodeNumberSettingsPage = () => {
 
   return (
     <div className="code-settings-page">
-      <section className="code-settings-heading">
+      <section className="page-heading">
         <div>
-          <span className="page-eyebrow">Administration</span>
-          <h1>Pengaturan Penomoran</h1>
-          <p>
+          <p>Administration</p>
+          <h2>Pengaturan Penomoran</h2>
+          <span>
             Atur format kode otomatis untuk setiap master
             data dan dokumen transaksi.
-          </p>
+          </span>
         </div>
 
         <button
           type="button"
+          className="secondary-action"
           onClick={loadSettings}
           disabled={isLoading || Boolean(savingKey)}
         >
