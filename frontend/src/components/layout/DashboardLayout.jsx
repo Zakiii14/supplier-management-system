@@ -20,6 +20,7 @@ import {
 } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import UserAvatar from "../users/UserAvatar";
+import NotificationCenter from "./NotificationCenter";
 import { navigationGroups } from "../../utils/navigation";
 import "../../styles/dashboard.css";
 
@@ -311,6 +312,8 @@ const DashboardLayout = () => {
             </div>
           </div>
 
+          <div className="dashboard-header-actions">
+          <NotificationCenter />
           <div className="dashboard-user-menu" ref={userMenuRef}>
             <button
               type="button"
@@ -396,6 +399,7 @@ const DashboardLayout = () => {
                 </button>
               </div>
             )}
+          </div>
           </div>
         </header>
 

@@ -24,6 +24,7 @@ import ReportsPage from "./pages/ReportsPage";
 import CodeNumberSettingsPage from "./pages/CodeNumberSettingsPage";
 import PaymentSettingsPage from "./pages/PaymentSettingsPage";
 import SupplierInvoicesPage from "./pages/SupplierInvoicesPage";
+import AuditLogsPage from "./pages/AuditLogsPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { navigationGroups } from "./utils/navigation";
 
@@ -50,6 +51,7 @@ const App = () => {
         item.path !== "/code-number-settings" &&
         item.path !== "/payment-settings" &&
         item.path !== "/supplier-invoices" &&
+        item.path !== "/audit-logs" &&
         item.path !== "/users",
     );
 
@@ -138,6 +140,7 @@ const App = () => {
           />
 
           <Route path="supplier-invoices" element={<SupplierInvoicesPage />} />
+          <Route path="audit-logs" element={<AuditLogsPage />} />
 
           <Route
             path="reports"

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect } from "react";
 import { formatDate } from "../../utils/formatters";
+import UserAvatar from "./UserAvatar";
 
 const rolePresentation = {
   ADMIN: {
@@ -139,12 +140,11 @@ const UserDetailDialog = ({
       >
         <header className="user-detail-header">
           <div className="user-detail-identity">
-            <div className="user-detail-avatar">
-              {user.full_name
-                ?.trim()
-                .charAt(0)
-                .toUpperCase() || "U"}
-            </div>
+            <UserAvatar
+              user={user}
+              className="user-detail-avatar"
+              alt={`Foto profil ${user.full_name || user.username}`}
+            />
 
             <div>
               <span>Pengguna</span>

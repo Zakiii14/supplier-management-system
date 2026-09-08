@@ -28,6 +28,9 @@ const paymentSettingRoutes = require(
   "./routes/paymentSettingRoutes"
 );
 const supplierInvoiceRoutes = require("./routes/supplierInvoiceRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const auditLogRoutes = require("./routes/auditLogRoutes");
+const auditMiddleware = require("./middleware/auditMiddleware");
 
 const authenticate = require("./middleware/authMiddleware");
 
@@ -75,6 +78,8 @@ app.get(
   }
 );
 
+app.use("/api", auditMiddleware);
+
 app.use("/api/dashboard", authenticate, dashboardRoutes);
 app.use("/api/reports", authenticate, reportRoutes);
 app.use("/api/suppliers", authenticate, supplierRoutes);
@@ -89,6 +94,8 @@ app.use("/api/deliveries", authenticate, deliveryRoutes);
 app.use("/api/invoices", authenticate, invoiceRoutes);
 app.use("/api/payments", authenticate, paymentRoutes);
 app.use("/api/supplier-invoices", authenticate, supplierInvoiceRoutes);
+app.use("/api/notifications", authenticate, notificationRoutes);
+app.use("/api/audit-logs", authenticate, auditLogRoutes);
 app.use("/api/users", authenticate, userRoutes);
 app.use(
   "/api/code-number-settings",

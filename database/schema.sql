@@ -622,6 +622,32 @@ CREATE TABLE app.users (
     avatar_updated_at timestamp with time zone
 );
 
+CREATE TABLE app.notification_reads (
+    user_id uuid NOT NULL REFERENCES app.users(id) ON DELETE CASCADE,
+    notification_key character varying(180) NOT NULL,
+    read_at timestamp with time zone DEFAULT now() NOT NULL,
+    PRIMARY KEY (user_id, notification_key)
+);
+
+CREATE TABLE app.audit_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    user_id uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    username character varying(50),
+    user_role character varying(30),
+    action character varying(20) NOT NULL,
+    module character varying(60) NOT NULL,
+    entity_id character varying(120),
+    entity_label character varying(180),
+    request_method character varying(10) NOT NULL,
+    request_path character varying(300) NOT NULL,
+    previous_data jsonb,
+    submitted_data jsonb,
+    result_data jsonb,
+    ip_address character varying(80),
+    user_agent character varying(500),
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
 
 --
 -- Name: v_low_stock_products; Type: VIEW; Schema: app; Owner: -
@@ -1001,6 +1027,10 @@ CREATE INDEX idx_supplier_payments_purchase_order ON app.supplier_payments USING
 CREATE INDEX idx_supplier_payments_invoice ON app.supplier_payments USING btree (supplier_invoice_id) WHERE (supplier_invoice_id IS NOT NULL);
 CREATE INDEX idx_supplier_invoices_po ON app.supplier_invoices USING btree (purchase_order_id, invoice_date DESC);
 CREATE INDEX idx_supplier_invoices_due_date ON app.supplier_invoices USING btree (due_date);
+CREATE INDEX idx_notification_reads_user_time ON app.notification_reads USING btree (user_id, read_at DESC);
+CREATE INDEX idx_audit_logs_created_at ON app.audit_logs USING btree (created_at DESC);
+CREATE INDEX idx_audit_logs_user ON app.audit_logs USING btree (user_id, created_at DESC);
+CREATE INDEX idx_audit_logs_module ON app.audit_logs USING btree (module, created_at DESC);
 
 
 --

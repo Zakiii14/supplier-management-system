@@ -8,6 +8,7 @@ import {
   PackageOpen,
   ReceiptText,
   FileText,
+  FileClock,
   ShoppingCart,
   Tags,
   Truck,
@@ -188,6 +189,12 @@ const navigationGroups = [
   {
     label: "Administration",
     items: [
+      {
+        label: "Audit Log",
+        path: "/audit-logs",
+        icon: FileClock,
+        roles: ["ADMIN", "MANAGER"],
+      },
       {
         label: "Pengaturan Penomoran",
         path: "/code-number-settings",
