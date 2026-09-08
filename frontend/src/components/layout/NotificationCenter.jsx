@@ -87,7 +87,15 @@ const NotificationCenter = () => {
   const openItem = async (item) => {
     if (!item.is_read) await markRead([item.key]);
     setIsOpen(false);
-    navigate(item.path);
+    navigate(item.path, {
+      state: {
+        notificationTarget: {
+          id: item.entity_id,
+          label: item.entity_label,
+          notificationKey: item.key,
+        },
+      },
+    });
   };
 
   return (

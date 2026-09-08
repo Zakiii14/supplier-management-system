@@ -33,6 +33,8 @@ const getNotifications = async (req, res) => {
         title: Number(row.current_stock) === 0 ? "Stok habis" : "Stok menipis",
         description: `${row.product_name} tersisa ${Number(row.current_stock)} ${row.unit}; minimum ${Number(row.minimum_stock)}.`,
         path: "/products",
+        entity_id: row.id,
+        entity_label: row.sku,
         occurred_at: row.updated_at,
       }))));
     }
@@ -50,6 +52,8 @@ const getNotifications = async (req, res) => {
         title: row.status === "PARTIALLY_RECEIVED" ? "Penerimaan PO belum lengkap" : "PO menunggu penerimaan",
         description: `${row.po_number} · ${row.supplier_name}`,
         path: "/purchase-orders",
+        entity_id: row.id,
+        entity_label: row.po_number,
         occurred_at: row.updated_at,
       }))));
     }
@@ -67,6 +71,8 @@ const getNotifications = async (req, res) => {
         title: daysUntil(row.due_date) < 0 ? "Invoice pelanggan terlambat" : "Invoice pelanggan segera jatuh tempo",
         description: `${row.invoice_number} · ${dueDescription(row.due_date, row.customer_name)}`,
         path: "/invoices",
+        entity_id: row.id,
+        entity_label: row.invoice_number,
         occurred_at: row.updated_at,
       }))));
     }
@@ -87,6 +93,8 @@ const getNotifications = async (req, res) => {
         title: daysUntil(row.due_date) < 0 ? "Tagihan supplier terlambat" : "Tagihan supplier segera jatuh tempo",
         description: `${row.invoice_number} · ${dueDescription(row.due_date, row.supplier_name)}`,
         path: "/supplier-invoices",
+        entity_id: row.id,
+        entity_label: row.invoice_number,
         occurred_at: row.updated_at,
       }))));
     }
@@ -104,6 +112,8 @@ const getNotifications = async (req, res) => {
         title: "Penerimaan barang tercatat",
         description: `${row.receipt_number} untuk ${row.po_number}.`,
         path: "/goods-receipts",
+        entity_id: row.id,
+        entity_label: row.receipt_number,
         occurred_at: row.created_at,
       }))));
     }
@@ -120,6 +130,8 @@ const getNotifications = async (req, res) => {
         title: "Pengguna baru ditambahkan",
         description: `${row.full_name} · ${row.role}`,
         path: "/users",
+        entity_id: row.id,
+        entity_label: row.full_name,
         occurred_at: row.created_at,
       }))));
     }

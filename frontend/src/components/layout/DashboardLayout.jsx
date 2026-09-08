@@ -21,6 +21,7 @@ import {
 import useAuth from "../../hooks/useAuth";
 import UserAvatar from "../users/UserAvatar";
 import NotificationCenter from "./NotificationCenter";
+import NotificationTargetFocus from "./NotificationTargetFocus";
 import { navigationGroups } from "../../utils/navigation";
 import "../../styles/dashboard.css";
 
@@ -175,6 +176,7 @@ const DashboardLayout = () => {
         isSidebarCollapsed ? "is-sidebar-collapsed" : ""
       }`}
     >
+      <NotificationTargetFocus />
       <button
         type="button"
         className={`sidebar-overlay ${

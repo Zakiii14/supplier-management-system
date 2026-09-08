@@ -1933,11 +1933,73 @@
   border-radius: 8px;
 }
 
+.dashboard-trend-canvas {
+  position: relative;
+  min-width: 100%;
+}
+
 .dashboard-trend-svg {
   display: block;
   width: 100%;
   height: auto;
   max-width: none;
+}
+
+.dashboard-trend-tooltip {
+  position: absolute;
+  top: 8px;
+  z-index: 4;
+  display: grid;
+  min-width: 190px;
+  gap: 8px;
+  padding: 12px 13px;
+  color: var(--sf-text-muted);
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border);
+  border-radius: 11px;
+  box-shadow: var(--sf-shadow-menu);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.dashboard-trend-tooltip.is-start {
+  transform: translateX(0);
+}
+
+.dashboard-trend-tooltip.is-end {
+  transform: translateX(-100%);
+}
+
+.dashboard-trend-tooltip > strong {
+  color: var(--sf-text-strong);
+  font-size: .78rem;
+}
+
+.dashboard-trend-tooltip > span {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  font-size: .7rem;
+}
+
+.dashboard-trend-tooltip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.dashboard-trend-tooltip em {
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-trend-tooltip b {
+  color: var(--sf-text-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .dashboard-trend-axis {

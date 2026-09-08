@@ -50,6 +50,8 @@ const DashboardTrendChart = ({
   const [retryKey, setRetryKey] = useState(0);
   const [selectedPeriod, setSelectedPeriod] =
     useState("");
+  const [isTooltipVisible, setIsTooltipVisible] =
+    useState(false);
   const [result, setResult] = useState(null);
 
   const requestKey =
@@ -186,6 +188,29 @@ const DashboardTrendChart = ({
     setSelectedPeriod(rows[index].period);
   };
 
+  const handleChartKeyDown = (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    const currentIndex = activeIndex >= 0 ? activeIndex : 0;
+    const nextIndex = event.key === "Home"
+      ? 0
+      : event.key === "End"
+        ? rows.length - 1
+        : Math.max(
+          0,
+          Math.min(
+            rows.length - 1,
+            currentIndex + (event.key === "ArrowRight" ? 1 : -1),
+          ),
+        );
+
+    setSelectedPeriod(rows[nextIndex].period);
+    setIsTooltipVisible(true);
+  };
+
   return (
     <section
       className="dashboard-panel dashboard-trend"
@@ -297,15 +322,26 @@ const DashboardTrendChart = ({
             role="region"
             aria-label="Grafik tren bulanan, dapat digeser ke samping"
             tabIndex={0}
+            onFocus={() => setIsTooltipVisible(true)}
+            onBlur={() => setIsTooltipVisible(false)}
+            onKeyDown={handleChartKeyDown}
           >
-            <svg
-              className="dashboard-trend-svg"
-              viewBox={`0 0 ${width} ${height}`}
-              style={{ minWidth: `${width}px` }}
-              aria-hidden="true"
+            <div
+              className="dashboard-trend-canvas"
+              style={{ width: `${width}px` }}
+              onPointerEnter={(event) => {
+                setIsTooltipVisible(true);
+                selectNearestPeriod(event);
+              }}
               onPointerMove={selectNearestPeriod}
+              onPointerLeave={() => setIsTooltipVisible(false)}
               onClick={selectNearestPeriod}
             >
+              <svg
+                className="dashboard-trend-svg"
+                viewBox={`0 0 ${width} ${height}`}
+                aria-hidden="true"
+              >
               {ticks.map((tick, index) => {
                 const y = getY(tick);
 
@@ -407,7 +443,29 @@ const DashboardTrendChart = ({
                   {formatPeriod(row.period)}
                 </text>
               ))}
-            </svg>
+              </svg>
+
+              {isTooltipVisible && activeRow && (
+                <div
+                  className={`dashboard-trend-tooltip ${activeIndex === 0 ? "is-start" : ""} ${activeIndex === rows.length - 1 ? "is-end" : ""}`}
+                  style={{ left: `${getX(activeIndex)}px` }}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <strong>{formatPeriod(activeRow.period)}</strong>
+                  {metrics.map((metric, index) => (
+                    <span key={metric.field}>
+                      <i
+                        aria-hidden="true"
+                        style={{ background: COLORS[index % COLORS.length] }}
+                      />
+                      <em>{metric.label}</em>
+                      <b>{formatValue(activeRow[metric.field], metric.format)}</b>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="dashboard-trend-detail">
