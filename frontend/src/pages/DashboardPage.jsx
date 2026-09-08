@@ -755,6 +755,16 @@ const DashboardPage = () => {
                     <Link
                       className="dashboard-activity-item"
                       to={presentation.path}
+                      state={{
+                        notificationTarget: {
+                          id: activity.entity_id,
+                          label:
+                            activity.reference_number ||
+                            activity.subject,
+                          notificationKey:
+                            `dashboard-activity-${activity.activity_type}-${activity.entity_id}`,
+                        },
+                      }}
                       key={`${activity.activity_type}-${activity.entity_id}`}
                     >
                       <span
