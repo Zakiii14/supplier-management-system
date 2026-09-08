@@ -16,6 +16,7 @@ const UUID = /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?
 const sanitize = (value, depth=0) => {
   if (depth>5 || value===undefined) return undefined;
   if (value===null || typeof value!=="object") return value;
+  if (value instanceof Date) return value.toISOString();
   if (Buffer.isBuffer(value)) return "[binary]";
   if (Array.isArray(value)) return value.slice(0,100).map((item)=>sanitize(item,depth+1));
   return Object.fromEntries(Object.entries(value).filter(([key])=>!SENSITIVE.test(key)).map(([key,item])=>[key,sanitize(item,depth+1)]));
