@@ -187,7 +187,12 @@ test(
       .set("Authorization", adminAuthorization);
 
     assert.equal(response.status, 200);
-    assert.equal(response.body.data.length, 11);
+    assert.ok(response.body.data.length >= 12);
+    assert.ok(
+      response.body.data.some(
+        (setting) => setting.module_key === "STOCK_OPNAME",
+      ),
+    );
 
     response = await request(app)
       .post("/api/suppliers")

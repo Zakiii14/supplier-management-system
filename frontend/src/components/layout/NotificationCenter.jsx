@@ -3,6 +3,7 @@ import {
   Bell,
   Boxes,
   CheckCheck,
+  ClipboardCheck,
   CircleDollarSign,
   PackageCheck,
   ReceiptText,
@@ -20,6 +21,7 @@ const ICONS = {
   GOODS_RECEIPT: PackageCheck,
   CUSTOMER_INVOICE: ReceiptText,
   SUPPLIER_INVOICE: CircleDollarSign,
+  STOCK_OPNAME_APPROVAL: ClipboardCheck,
   USER: UserRoundPlus,
 };
 

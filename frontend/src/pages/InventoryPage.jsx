@@ -88,6 +88,7 @@ const outboundMovementTypes = new Set([
 const referenceTypeLabels = {
     DELIVERY: "Delivery",
     GOODS_RECEIPT: "Goods receipt",
+    STOCK_OPNAME: "Stock opname",
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat(

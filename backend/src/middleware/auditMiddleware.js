@@ -7,8 +7,9 @@ const TABLES = {
   "sales-orders": "app.sales_orders", deliveries: "app.deliveries",
   invoices: "app.invoices", payments: "app.payments",
   "supplier-invoices": "app.supplier_invoices",
+  "stock-opnames": "app.stock_opnames",
 };
-const LABEL_FIELDS = ["invoice_number","payment_number","po_number","so_number","receipt_number","delivery_number","sku","supplier_code","category_code","customer_code","username","full_name","product_name","supplier_name","customer_name"];
+const LABEL_FIELDS = ["opname_number","invoice_number","payment_number","po_number","so_number","receipt_number","delivery_number","sku","supplier_code","category_code","customer_code","username","full_name","product_name","supplier_name","customer_name"];
 const SENSITIVE = /password|token|secret|authorization|checksum|storage_name/i;
 const METHODS = new Set(["POST","PUT","PATCH","DELETE"]);
 const UUID = /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i;
@@ -48,7 +49,7 @@ const auditMiddleware = async (req,res,next) => {
     const resultRecord=Array.isArray(result)?null:result;
     const rawEntityId=resultRecord?.id??id;
     const entityId=rawEntityId===null||rawEntityId===undefined?null:String(rawEntityId).slice(0,120);
-    pool.query(`INSERT INTO app.audit_logs(user_id,username,user_role,action,module,entity_id,entity_label,request_method,request_path,previous_data,submitted_data,result_data,ip_address,user_agent) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,[
+    pool.query(`INSERT INTO app.audit_logs(user_id,username,user_role,action,module,entity_id,entity_label,request_method,request_path,previous_data,submitted_data,result_data,ip_address,user_agent) VALUES((SELECT id FROM app.users WHERE id=$1),$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,[
       req.user.id,req.user.username,req.user.role,actionName(req.method,req.path),module,entityId,
       findLabel(resultRecord,req.body,previous),req.method,req.originalUrl.slice(0,300),sanitize(previous),sanitize(req.body),sanitize(resultRecord),req.ip?.slice(0,80)||null,req.get("user-agent")?.slice(0,500)||null,
     ]).catch((error)=>console.error("Failed to write audit log:",error));

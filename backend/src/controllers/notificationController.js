@@ -22,6 +22,23 @@ const getNotifications = async (req, res) => {
 
     if (["ADMIN", "MANAGER"].includes(role)) {
       jobs.push(pool.query(`
+        SELECT id,opname_number,submitted_at
+        FROM app.stock_opnames
+        WHERE status='PENDING'
+        ORDER BY submitted_at DESC LIMIT 20
+      `).then(({ rows }) => rows.forEach((row) => notifications.push({
+        key: `STOCK_OPNAME_APPROVAL:${row.id}:${new Date(row.submitted_at).getTime()}`,
+        type: "STOCK_OPNAME_APPROVAL",
+        severity: "WARNING",
+        title: "Stock opname perlu disetujui",
+        description: `${row.opname_number} menunggu pemeriksaan selisih stok.`,
+        path: "/stock-opnames",
+        entity_id: row.id,
+        entity_label: row.opname_number,
+        occurred_at: row.submitted_at,
+      }))));
+
+      jobs.push(pool.query(`
         SELECT po.id,po.po_number,po.submitted_at,s.supplier_name
         FROM app.purchase_orders po JOIN app.suppliers s ON s.id=po.supplier_id
         WHERE po.approval_status='PENDING'

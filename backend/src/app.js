@@ -33,6 +33,7 @@ const auditLogRoutes = require("./routes/auditLogRoutes");
 const masterDataImportRoutes = require(
   "./routes/masterDataImportRoutes"
 );
+const stockOpnameRoutes = require("./routes/stockOpnameRoutes");
 const auditMiddleware = require("./middleware/auditMiddleware");
 
 const authenticate = require("./middleware/authMiddleware");
@@ -91,6 +92,7 @@ app.use("/api/products", authenticate, productRoutes);
 app.use("/api/purchase-orders", authenticate, purchaseOrderRoutes);
 app.use("/api/goods-receipts", authenticate, goodsReceiptRoutes);
 app.use("/api/inventory-movements", authenticate, inventoryMovementRoutes);
+app.use("/api/stock-opnames", authenticate, stockOpnameRoutes);
 app.use("/api/customers", authenticate, customerRoutes);
 app.use("/api/sales-orders", authenticate, salesOrderRoutes);
 app.use("/api/deliveries", authenticate, deliveryRoutes);

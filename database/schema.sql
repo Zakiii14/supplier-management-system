@@ -213,7 +213,8 @@ VALUES
     ('DELIVERY', 'Delivery', 'delivery_number', 'DEL', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
     ('INVOICE', 'Invoice', 'invoice_number', 'INV', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
     ('PAYMENT', 'Pembayaran', 'payment_number', 'PAY', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('SUPPLIER_PAYMENT', 'Pembayaran Supplier', 'payment_number', 'SPAY', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY'));
+    ('SUPPLIER_PAYMENT', 'Pembayaran Supplier', 'payment_number', 'SPAY', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
+    ('STOCK_OPNAME', 'Stock Opname', 'opname_number', 'SOF', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY'));
 
 
 --
@@ -492,6 +493,35 @@ CREATE TABLE app.supplier_invoices (
     CONSTRAINT supplier_invoices_number_supplier_unique UNIQUE (purchase_order_id, invoice_number)
 );
 
+CREATE TABLE app.stock_opnames (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    opname_number character varying(40) NOT NULL UNIQUE,
+    opname_date date DEFAULT CURRENT_DATE NOT NULL,
+    status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
+    notes text,
+    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    submitted_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    submitted_at timestamp with time zone,
+    decided_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    decided_at timestamp with time zone,
+    rejection_reason text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT stock_opnames_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[])))
+);
+
+CREATE TABLE app.stock_opname_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    stock_opname_id uuid NOT NULL REFERENCES app.stock_opnames(id) ON DELETE CASCADE,
+    product_id uuid NOT NULL REFERENCES app.products(id),
+    system_quantity numeric(18,3) NOT NULL,
+    counted_quantity numeric(18,3) NOT NULL,
+    notes character varying(300),
+    CONSTRAINT stock_opname_items_product_unique UNIQUE (stock_opname_id, product_id),
+    CONSTRAINT stock_opname_items_system_quantity_check CHECK ((system_quantity >= (0)::numeric)),
+    CONSTRAINT stock_opname_items_counted_quantity_check CHECK ((counted_quantity >= (0)::numeric))
+);
+
 CREATE TABLE app.supplier_invoice_attachments (
     id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
     supplier_invoice_id uuid NOT NULL REFERENCES app.supplier_invoices(id) ON DELETE CASCADE,
@@ -670,7 +700,7 @@ CREATE TABLE app.transaction_approvals (
     reason text,
     acted_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
     acted_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT transaction_approvals_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['PURCHASE_ORDER'::character varying, 'SALES_ORDER'::character varying])::text[]))),
+    CONSTRAINT transaction_approvals_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['PURCHASE_ORDER'::character varying, 'SALES_ORDER'::character varying, 'STOCK_OPNAME'::character varying])::text[]))),
     CONSTRAINT transaction_approvals_action_check CHECK (((action)::text = ANY ((ARRAY['SUBMITTED'::character varying, 'RESUBMITTED'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying])::text[])))
 );
 
@@ -1139,6 +1169,10 @@ CREATE INDEX idx_so_customer ON app.sales_orders USING btree (customer_id);
 
 CREATE INDEX idx_sales_orders_approval_status ON app.sales_orders USING btree (approval_status);
 
+CREATE INDEX idx_stock_opnames_date ON app.stock_opnames USING btree (opname_date DESC);
+CREATE INDEX idx_stock_opnames_status ON app.stock_opnames USING btree (status);
+CREATE INDEX idx_stock_opname_items_product ON app.stock_opname_items USING btree (product_id);
+
 CREATE INDEX idx_transaction_approvals_transaction ON app.transaction_approvals USING btree (transaction_type, transaction_id, acted_at DESC);
 
 
@@ -1197,6 +1231,7 @@ CREATE TRIGGER trg_payment_settings_updated_at BEFORE UPDATE ON app.payment_sett
 
 CREATE TRIGGER trg_supplier_payments_updated_at BEFORE UPDATE ON app.supplier_payments FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
 CREATE TRIGGER trg_supplier_invoices_updated_at BEFORE UPDATE ON app.supplier_invoices FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+CREATE TRIGGER trg_stock_opnames_updated_at BEFORE UPDATE ON app.stock_opnames FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
 
 
 --

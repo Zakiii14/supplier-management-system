@@ -29,6 +29,13 @@ const ACTION_CONTENT = {
     tone: "is-danger",
     Icon: XCircle,
   },
+  CANCEL: {
+    title: "Batalkan transaksi?",
+    description: "Transaksi akan ditutup dan tidak dapat diajukan kembali.",
+    confirmLabel: "Batalkan transaksi",
+    tone: "is-danger",
+    Icon: XCircle,
+  },
 };
 
 const ApprovalActionDialog = ({
@@ -133,7 +140,7 @@ const ApprovalActionDialog = ({
           </button>
           <button
             type="button"
-            className={`status-dialog-confirm ${action === "REJECT" ? "is-deactivate" : "is-activate"}`}
+            className={`status-dialog-confirm ${["REJECT", "CANCEL"].includes(action) ? "is-deactivate" : "is-activate"}`}
             disabled={isSubmitting || isReasonInvalid}
             onClick={() => onConfirm({ action, reason: normalizedReason })}
           >

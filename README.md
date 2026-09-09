@@ -178,6 +178,8 @@ Authorization is enforced by the backend based on the authenticated user's role.
 * Audit identity
 * Configurable automatic code numbering for master data and transactions
 * Inventory movement tracking
+* Controlled stock opname with approval-based inventory adjustments
+* Separation of duties between stock opname submitters and approvers
 * Remaining delivery quantity calculation
 * Responsive dashboard interface
 * Automated backend testing

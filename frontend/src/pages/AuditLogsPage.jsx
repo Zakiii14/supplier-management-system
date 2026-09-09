@@ -35,6 +35,7 @@ const MODULES = {
   invoices: "Invoice Pelanggan",
   payments: "Pembayaran Pelanggan",
   "supplier-invoices": "Tagihan Supplier",
+  "stock-opnames": "Stock Opname",
   "payment-settings": "Pengaturan Pembayaran",
   "code-number-settings": "Pengaturan Penomoran",
   "master-data-import": "Impor Master Data",
@@ -75,6 +76,8 @@ const FIELD_LABELS = {
   delivery_number: "Nomor pengiriman",
   invoice_number: "Nomor invoice",
   payment_number: "Nomor pembayaran",
+  opname_number: "Nomor stock opname",
+  opname_date: "Tanggal penghitungan",
   order_date: "Tanggal pesanan",
   expected_date: "Tanggal perkiraan",
   delivery_date: "Tanggal pengiriman",
@@ -86,6 +89,9 @@ const FIELD_LABELS = {
   paid_amount: "Sudah dibayar",
   outstanding_amount: "Sisa tagihan",
   quantity: "Jumlah",
+  system_quantity: "Stok sistem",
+  counted_quantity: "Stok fisik",
+  variance: "Selisih stok",
   items: "Daftar item",
   is_automatic: "Penomoran otomatis",
   prefix: "Awalan kode",
@@ -102,6 +108,8 @@ const FIELD_LABELS = {
   decision: "Keputusan",
   reason: "Alasan",
   rejection_reason: "Alasan penolakan",
+  submitted_at: "Waktu pengajuan",
+  decided_at: "Waktu keputusan",
 };
 const VALUE_LABELS = {
   ACTIVE: "Aktif",
@@ -133,6 +141,8 @@ const TECHNICAL_FIELDS = new Set([
   "updated_at",
   "created_by",
   "updated_by",
+  "submitted_by",
+  "decided_by",
 ]);
 const isTechnicalField = (key) =>
   TECHNICAL_FIELDS.has(key) || key.endsWith("_id");
