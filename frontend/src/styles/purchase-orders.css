@@ -65,9 +65,11 @@
 
 .purchase-order-status {
   display: inline-flex;
+  width: max-content;
   min-height: 27px;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   padding: 3px 9px;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -75,6 +77,7 @@
   font-weight: 750;
   line-height: 1.25;
   text-align: center;
+  white-space: nowrap;
 }
 
 .purchase-order-status.is-draft {
@@ -1430,6 +1433,10 @@
   width: 270px;
 }
 
+.purchase-order-table th:nth-child(7) {
+  width: 168px;
+}
+
 .purchase-order-table .table-action-cell {
   min-width: 270px;
 }
@@ -1439,6 +1446,13 @@
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.purchase-order-action-buttons
+  .purchase-order-detail-action {
+  width: auto;
+  min-width: 92px;
+  flex: 0 0 auto;
 }
 
 .purchase-order-action-buttons > button {
@@ -1458,6 +1472,13 @@
   .purchase-order-action-buttons > button {
     flex: 1 1 110px;
     justify-content: center;
+  }
+
+  .purchase-order-action-buttons
+    .purchase-order-detail-action {
+    width: 100%;
+    min-width: 0;
+    flex: 1 1 110px;
   }
 }
 
