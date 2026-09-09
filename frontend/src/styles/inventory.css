@@ -316,23 +316,33 @@
 }
 
 .inventory-detail-summary article.is-inbound {
-  border-color: transparent;
-  background: var(--sf-status-success-bg);
+  border-color: var(--sf-summary-success-border);
+  background: var(--sf-summary-success-bg);
 }
 
 .inventory-detail-summary article.is-inbound > svg,
 .inventory-detail-summary article.is-inbound strong {
-  color: var(--sf-status-success-text);
+  color: var(--sf-summary-success-strong);
+}
+
+.inventory-detail-summary article.is-inbound > div > span,
+.inventory-detail-summary article.is-inbound small {
+  color: var(--sf-summary-success-text);
 }
 
 .inventory-detail-summary article.is-outbound {
-  border-color: transparent;
-  background: var(--sf-status-danger-bg);
+  border-color: var(--sf-summary-danger-border);
+  background: var(--sf-summary-danger-bg);
 }
 
 .inventory-detail-summary article.is-outbound > svg,
 .inventory-detail-summary article.is-outbound strong {
-  color: var(--sf-status-danger-text);
+  color: var(--sf-summary-danger-strong);
+}
+
+.inventory-detail-summary article.is-outbound > div > span,
+.inventory-detail-summary article.is-outbound small {
+  color: var(--sf-summary-danger-text);
 }
 
 .inventory-detail-reference,

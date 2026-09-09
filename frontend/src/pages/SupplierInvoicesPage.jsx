@@ -20,6 +20,7 @@ import {
   saveSupplierInvoiceRequest,
 } from "../api/supplierInvoices";
 import StatusFilter from "../components/filters/StatusFilter";
+import FilePickerButton from "../components/forms/FilePickerButton";
 import FormDatePicker from "../components/forms/FormDatePicker";
 import FormSelect from "../components/forms/FormSelect";
 import PaginationBar from "../components/tables/PaginationBar";
@@ -227,27 +228,44 @@ const InvoiceForm = ({
               />
             </label>
 
-            <label className="supplier-invoice-files is-full">
-              <span>
+            <div className="supplier-invoice-files is-full">
+              <span className="supplier-invoice-files-label">
                 Lampiran invoice (PDF/JPG/PNG/WebP,
                 maksimal 3 file)
               </span>
-              <input
-                type="file"
-                multiple
-                accept="application/pdf,image/jpeg,image/png,image/webp"
-                onChange={(event) =>
-                  setAttachments(
-                    [...event.target.files].slice(0, 3),
-                  )
-                }
-              />
+
+              <div className="supplier-invoice-file-picker">
+                <FilePickerButton
+                  multiple
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  buttonText={
+                    attachments.length
+                      ? "Ganti pilihan"
+                      : "Pilih file"
+                  }
+                  disabled={busy}
+                  onChange={(event) =>
+                    setAttachments(
+                      [...event.target.files].slice(0, 3),
+                    )
+                  }
+                />
+
+                <span title={attachments.map((file) => file.name).join(", ")}>
+                  {attachments.length
+                    ? attachments
+                        .map((file) => file.name)
+                        .join(", ")
+                    : "Tidak ada file yang dipilih"}
+                </span>
+              </div>
+
               <small>
                 {attachments.length
                   ? `${attachments.length} file dipilih`
                   : "Belum ada file baru dipilih"}
               </small>
-            </label>
+            </div>
 
             {error && (
               <div className="supplier-invoice-error is-full">
@@ -256,17 +274,17 @@ const InvoiceForm = ({
             )}
           </div>
 
-          <footer>
+          <footer className="purchase-order-form-actions supplier-invoice-form-actions">
             <button
               type="button"
-              className="is-cancel"
+              className="purchase-order-form-cancel"
               onClick={onClose}
             >
               Batal
             </button>
             <button
               type="submit"
-              className="is-save"
+              className="purchase-order-form-submit"
               disabled={busy}
             >
               <Save aria-hidden="true" />

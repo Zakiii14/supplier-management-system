@@ -7,10 +7,11 @@ import {
   Pencil,
   Plus,
   Trash2,
-  Upload,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import FilePickerButton from "../forms/FilePickerButton";
 
 const MAX_FILES = 3;
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -39,6 +40,8 @@ const PaymentProofPreviewDialog = ({
   mimeType,
   onClose,
 }) => {
+  const previewContentRef = useRef(null);
+  const dragPositionRef = useRef(null);
   const [previewUrl] = useState(() =>
     source ? URL.createObjectURL(source) : "",
   );
@@ -63,7 +66,53 @@ const PaymentProofPreviewDialog = ({
     normalizedMimeType === "application/pdf" ||
     String(name).toLowerCase().endsWith(".pdf");
 
-  return (
+  const handlePointerDown = (event) => {
+    if (
+      isPdf ||
+      event.pointerType !== "mouse" ||
+      event.button !== 0
+    ) {
+      return;
+    }
+
+    const content = previewContentRef.current;
+    if (!content) return;
+
+    dragPositionRef.current = {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      scrollLeft: content.scrollLeft,
+      scrollTop: content.scrollTop,
+    };
+    content.classList.add("is-dragging");
+    content.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  };
+
+  const handlePointerMove = (event) => {
+    const content = previewContentRef.current;
+    const start = dragPositionRef.current;
+
+    if (!content || !start) return;
+
+    content.scrollLeft =
+      start.scrollLeft - (event.clientX - start.clientX);
+    content.scrollTop =
+      start.scrollTop - (event.clientY - start.clientY);
+  };
+
+  const stopPointerDrag = (event) => {
+    const content = previewContentRef.current;
+
+    if (content?.hasPointerCapture(event.pointerId)) {
+      content.releasePointerCapture(event.pointerId);
+    }
+
+    content?.classList.remove("is-dragging");
+    dragPositionRef.current = null;
+  };
+
+  return createPortal(
     <div
       className="payment-proof-preview-backdrop"
       role="presentation"
@@ -87,7 +136,14 @@ const PaymentProofPreviewDialog = ({
           </button>
         </header>
 
-        <div className="payment-proof-preview-content">
+        <div
+          ref={previewContentRef}
+          className={`payment-proof-preview-content ${isPdf ? "is-pdf" : "is-image"}`}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={stopPointerDrag}
+          onPointerCancel={stopPointerDrag}
+        >
           {!previewUrl ? (
             <div className="payment-proof-preview-loading">
               Memuat pratinjau...
@@ -95,7 +151,11 @@ const PaymentProofPreviewDialog = ({
           ) : isPdf ? (
             <iframe src={previewUrl} title={`Pratinjau ${name}`} />
           ) : (
-            <img src={previewUrl} alt={`Pratinjau ${name}`} />
+            <img
+              src={previewUrl}
+              alt={`Pratinjau ${name}`}
+              draggable="false"
+            />
           )}
         </div>
 
@@ -108,7 +168,8 @@ const PaymentProofPreviewDialog = ({
           </a>
         </footer>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 };
 
@@ -140,17 +201,13 @@ const PaymentProofPicker = ({
           <span>Bukti pembayaran{required ? " *" : ""}</span>
           <small>PDF, JPG, PNG, atau WebP · maksimal 5 MB</small>
         </div>
-        <label className="payment-proof-upload-button">
-          <Upload aria-hidden="true" />
-          Pilih file
-          <input
-            type="file"
-            multiple
-            accept={ACCEPT}
-            disabled={disabled}
-            onChange={handleFiles}
-          />
-        </label>
+        <FilePickerButton
+          multiple
+          accept={ACCEPT}
+          buttonText={files.length ? "Tambah file" : "Pilih file"}
+          disabled={disabled}
+          onChange={handleFiles}
+        />
       </div>
 
       {files.length > 0 && (
@@ -261,6 +318,7 @@ const PaymentProofManager = ({
         {canManage && proofs.length < MAX_FILES && (
           <button
             type="button"
+            className="file-picker-button"
             disabled={Boolean(busyKey)}
             onClick={() => addInputRef.current?.click()}
           >

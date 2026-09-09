@@ -25,6 +25,76 @@
   flex: 0 0 auto;
 }
 
+.supplier-invoice-files {
+  display: grid;
+  gap: 8px;
+}
+
+.supplier-invoice-files-label {
+  color: var(--sf-text-strong);
+  font-weight: 700;
+}
+
+.supplier-invoice-file-picker {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border);
+  border-radius: 11px;
+}
+
+.supplier-invoice-file-picker > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--sf-text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.supplier-invoice-modal
+  .supplier-invoice-form-actions {
+  display: grid;
+  grid-template-columns:
+    minmax(120px, auto)
+    minmax(190px, auto);
+  justify-content: end;
+  gap: 10px;
+  padding: 15px 24px;
+  background: var(--sf-surface);
+  border-top: 1px solid var(--sf-border);
+}
+
+.supplier-invoice-modal
+  .supplier-invoice-form-actions button {
+  min-height: 42px;
+  gap: 8px;
+  padding: 0 16px;
+  border-radius: 11px;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.supplier-invoice-modal
+  .supplier-invoice-form-actions
+  .purchase-order-form-cancel {
+  color: var(--sf-text-muted);
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border);
+}
+
+.supplier-invoice-modal
+  .supplier-invoice-form-actions
+  .purchase-order-form-submit {
+  color: #ffffff;
+  background: #2563eb;
+  border: 1px solid #2563eb;
+}
+
 .supplier-invoices-page .table-summary {
   gap: 0;
 }
@@ -78,5 +148,34 @@
 
   .supplier-invoice-filters .reset-filter {
     flex: 0 0 auto;
+  }
+
+  .supplier-invoice-file-picker {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .supplier-invoice-file-picker
+    .file-picker-button {
+    width: 100%;
+  }
+
+  .supplier-invoice-file-picker > span {
+    padding: 2px 3px;
+    text-align: center;
+  }
+
+  .supplier-invoice-modal
+    .supplier-invoice-form-actions {
+    grid-template-columns: 1fr 1.4fr;
+    padding: 13px 14px
+      calc(13px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-width: 420px) {
+  .supplier-invoice-modal
+    .supplier-invoice-form-actions {
+    grid-template-columns: 1fr;
   }
 }

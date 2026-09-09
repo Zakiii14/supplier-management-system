@@ -11,6 +11,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import FilePickerButton from "../forms/FilePickerButton";
 import FormSelect from "../forms/FormSelect";
 import UserAvatar from "./UserAvatar";
 
@@ -319,10 +320,12 @@ const UserFormModal = ({
                 <strong>Foto profil</strong>
                 <span>JPG, PNG, atau WebP. Maksimal 2 MB.</span>
                 <div>
-                  <label className="user-avatar-upload">
-                    <Camera aria-hidden="true" />
-                    <span>{user?.has_avatar || avatarFile ? "Ganti foto" : "Pilih foto"}</span>
-                    <input type="file" accept="image/jpeg,image/png,image/webp" disabled={isSubmitting} onChange={(event) => {
+                  <FilePickerButton
+                    icon={Camera}
+                    accept="image/jpeg,image/png,image/webp"
+                    buttonText={user?.has_avatar || avatarFile ? "Ganti foto" : "Pilih foto"}
+                    disabled={isSubmitting}
+                    onChange={(event) => {
                       const file = event.target.files?.[0];
                       if (!file) return;
                       if (file.size > 2 * 1024 * 1024) {
@@ -334,8 +337,8 @@ const UserFormModal = ({
                       setRemoveAvatar(false);
                       setAvatarPreview(URL.createObjectURL(file));
                       setValidationError("");
-                    }} />
-                  </label>
+                    }}
+                  />
                   {(user?.has_avatar || avatarFile) && !removeAvatar && (
                     <button type="button" className="user-avatar-remove" disabled={isSubmitting} onClick={() => {
                       setAvatarFile(null);

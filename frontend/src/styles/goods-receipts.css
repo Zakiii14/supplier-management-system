@@ -351,21 +351,23 @@
 }
 
 .goods-receipt-detail-totals .is-damaged {
-  border-color: transparent;
-  background: var(--sf-status-danger-bg);
+  color: var(--sf-summary-danger-text);
+  border-color: var(--sf-summary-danger-border);
+  background: var(--sf-summary-danger-bg);
 }
 
 .goods-receipt-detail-totals .is-damaged strong {
-  color: var(--sf-status-danger-text);
+  color: var(--sf-summary-danger-strong);
 }
 
 .goods-receipt-detail-totals .is-stock {
-  border-color: transparent;
-  background: var(--sf-status-success-bg);
+  color: var(--sf-summary-success-text);
+  border-color: var(--sf-summary-success-border);
+  background: var(--sf-summary-success-bg);
 }
 
 .goods-receipt-detail-totals .is-stock strong {
-  color: var(--sf-status-success-text);
+  color: var(--sf-summary-success-strong);
 }
 
 .goods-receipt-detail-notes {
@@ -1015,21 +1017,23 @@
 }
 
 .goods-receipt-form-totals .is-damaged {
-  border-color: transparent;
-  background: var(--sf-status-danger-bg);
+  color: var(--sf-summary-danger-text);
+  border-color: var(--sf-summary-danger-border);
+  background: var(--sf-summary-danger-bg);
 }
 
 .goods-receipt-form-totals .is-damaged strong {
-  color: var(--sf-status-danger-text);
+  color: var(--sf-summary-danger-strong);
 }
 
 .goods-receipt-form-totals .is-stock {
-  border-color: transparent;
-  background: var(--sf-status-success-bg);
+  color: var(--sf-summary-success-text);
+  border-color: var(--sf-summary-success-border);
+  background: var(--sf-summary-success-bg);
 }
 
 .goods-receipt-form-totals .is-stock strong {
-  color: var(--sf-status-success-text);
+  color: var(--sf-summary-success-strong);
 }
 
 .goods-receipt-form-error {
