@@ -18,7 +18,23 @@
 
 .report-trend-chart {
   --report-value-space: 26px;
-  height: 300px;
+  height: 340px;
+}
+
+.report-chart-scroll {
+  padding-bottom: 8px;
+}
+
+.report-trend-chart.is-all {
+  --report-axis-footer-space: 92px;
+}
+
+.report-trend-chart.is-all .report-trend-bars {
+  box-sizing: border-box;
+  padding-bottom: max(
+    0px,
+    calc(var(--report-axis-footer-space) - 92px)
+  );
 }
 
 .report-trend-chart::before {
@@ -46,10 +62,17 @@
 
 .report-trend-bar-item {
   width: 72px;
+  grid-template-rows: minmax(0, 1fr) 60px;
 }
 
 .report-trend-bar-item small {
+  display: block;
   width: 68px;
+  min-height: 48px;
+  overflow: visible;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: unset;
 }
 
 .report-trend-period.is-active {
@@ -70,6 +93,12 @@
 
 .report-trend-bar-fill {
   width: 18px;
+}
+
+.report-trend-bar-track {
+  height: calc(100% - var(--report-value-space));
+  align-self: end;
+  padding-top: 0;
 }
 
 .report-trend-bar {
@@ -153,6 +182,14 @@
 }
 
 @media (max-width: 720px) {
+  .report-trend-chart {
+    height: 350px;
+  }
+
+  .report-trend-chart.is-all {
+    --report-axis-footer-space: 104px;
+  }
+
   .report-trend-periods {
     gap: 34px;
   }

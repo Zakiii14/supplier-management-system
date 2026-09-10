@@ -11,6 +11,15 @@
   color: var(--sf-accent);
 }
 
+.stock-opname-table th:last-child {
+  width: 104px;
+}
+
+.stock-opname-detail-action {
+  width: 100%;
+  min-width: 0;
+}
+
 .stock-opname-status {
   display: inline-flex;
   max-width: 100%;
@@ -343,12 +352,20 @@
 
 .stock-opname-detail {
   width: min(980px, 100%);
+  max-width: calc(100vw - 48px);
 }
 
 .stock-opname-detail-body {
   display: grid;
   gap: 20px;
   padding: 22px 24px;
+  overflow-x: hidden;
+}
+
+.stock-opname-detail-body > *,
+.stock-opname-detail .approval-history,
+.stock-opname-detail .approval-history-heading > div {
+  min-width: 0;
 }
 
 .stock-opname-summary {
@@ -393,10 +410,42 @@
 }
 
 .stock-opname-detail-table {
+  width: 100%;
+  max-width: 100%;
   margin-top: 10px;
-  overflow: auto;
+  overflow-x: hidden;
   border: 1px solid var(--sf-border);
   border-radius: 12px;
+}
+
+.stock-opname-detail-table .data-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.stock-opname-detail-table th,
+.stock-opname-detail-table td {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.stock-opname-detail-table th:first-child {
+  width: 28%;
+}
+
+.stock-opname-detail-table th:nth-child(2),
+.stock-opname-detail-table th:nth-child(3) {
+  width: 17%;
+}
+
+.stock-opname-detail-table th:nth-child(4) {
+  width: 12%;
+}
+
+.stock-opname-detail-table th:last-child {
+  width: 26%;
 }
 
 .stock-opname-detail-table small {
@@ -453,6 +502,7 @@
   }
 
   .stock-opname-modal {
+    max-width: calc(100vw - 16px);
     max-height: calc(100dvh - 16px);
     border-radius: 14px;
   }
