@@ -767,7 +767,7 @@ const SupplierInvoicesPage = () => {
                 )}
               </section>
             </div>
-            <footer className="supplier-invoice-detail-footer">
+            <footer className="supplier-invoice-detail-footer modal-detail-footer">
               <button type="button" className="modal-detail-close-action" onClick={() => setDetail(null)}>Tutup</button>
             </footer>
           </section>

@@ -300,9 +300,10 @@ const InventoryMovementDetailDialog = ({
           </section>
         </div>
 
-        <footer className="inventory-detail-footer">
+        <footer className="inventory-detail-footer modal-detail-footer">
           <button
             type="button"
+            className="modal-detail-close-action"
             onClick={onClose}
           >
             Tutup

@@ -310,9 +310,10 @@ const GoodsReceiptDetailDialog = ({
           </section>
         </div>
 
-        <footer className="goods-receipt-detail-footer">
+        <footer className="goods-receipt-detail-footer modal-detail-footer">
           <button
             type="button"
+            className="modal-detail-close-action"
             onClick={onClose}
           >
             Tutup

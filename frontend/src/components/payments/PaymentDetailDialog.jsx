@@ -392,9 +392,10 @@ const PaymentDetailDialog = ({
           </section>
         </div>
 
-        <footer className="purchase-order-detail-footer">
+        <footer className="purchase-order-detail-footer modal-detail-footer">
           <button
             type="button"
+            className="modal-detail-close-action"
             onClick={onClose}
           >
             Tutup

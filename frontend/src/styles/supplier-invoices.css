@@ -15,13 +15,13 @@
 }
 
 .supplier-invoice-table .table-action-cell {
-  width: 210px;
+  width: 180px;
 }
 
 .supplier-invoice-table .supplier-invoice-actions {
   width: 100%;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
 }
 
@@ -172,7 +172,7 @@
 }
 
 .supplier-invoice-table th:nth-child(7) {
-  width: 210px;
+  width: 180px;
 }
 
 @media (max-width: 900px) {

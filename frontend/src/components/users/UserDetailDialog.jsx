@@ -319,8 +319,12 @@ const UserDetailDialog = ({
           </section>
         </div>
 
-        <footer className="user-detail-footer">
-          <button type="button" onClick={onClose}>
+        <footer className="user-detail-footer modal-detail-footer">
+          <button
+            type="button"
+            className="modal-detail-close-action"
+            onClick={onClose}
+          >
             Tutup
           </button>
         </footer>

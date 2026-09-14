@@ -98,7 +98,7 @@
 
 .payment-action-buttons {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .payment-action-buttons > button {
@@ -505,7 +505,7 @@
   line-height: 1.5;
 }
 
-@container (max-width: 1049px) {
+@container (max-width: 700px) {
   .payment-table .table-action-cell {
     min-width: 0;
   }
@@ -518,23 +518,6 @@
   .payment-action-buttons > button {
     width: 100%;
     justify-content: center;
-  }
-}
-
-@media (min-width: 701px) and (max-width: 1024px) {
-  @container (min-width: 701px) {
-    .payment-table .table-action-cell {
-      min-width: 110px;
-    }
-
-    .payment-action-buttons {
-      width: auto;
-      justify-content: flex-end;
-    }
-
-    .payment-action-buttons > button {
-      width: auto;
-    }
   }
 }
 

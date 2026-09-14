@@ -302,8 +302,12 @@ const SalesOrderDetailDialog = ({
           </section>
         </div>
 
-        <footer className="purchase-order-detail-footer">
-          <button type="button" onClick={onClose}>
+        <footer className="purchase-order-detail-footer modal-detail-footer">
+          <button
+            type="button"
+            className="modal-detail-close-action"
+            onClick={onClose}
+          >
             Tutup
           </button>
         </footer>

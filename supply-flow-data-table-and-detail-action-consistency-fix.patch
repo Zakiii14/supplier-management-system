@@ -1,0 +1,903 @@
+diff --git a/frontend/src/components/deliveries/DeliveryDetailDialog.jsx b/frontend/src/components/deliveries/DeliveryDetailDialog.jsx
+index 1894f23..545826e 100644
+--- a/frontend/src/components/deliveries/DeliveryDetailDialog.jsx
++++ b/frontend/src/components/deliveries/DeliveryDetailDialog.jsx
+@@ -368,9 +368,10 @@ const DeliveryDetailDialog = ({
+           </section>
+         </div>
+ 
+-        <footer className="goods-receipt-detail-footer">
++        <footer className="goods-receipt-detail-footer modal-detail-footer">
+           <button
+             type="button"
++            className="modal-detail-close-action"
+             onClick={onClose}
+           >
+             Tutup
+@@ -381,4 +382,4 @@ const DeliveryDetailDialog = ({
+   );
+ };
+ 
+-export default DeliveryDetailDialog;
+\ No newline at end of file
++export default DeliveryDetailDialog;
+diff --git a/frontend/src/components/goods-receipts/GoodsReceiptDetailDialog.jsx b/frontend/src/components/goods-receipts/GoodsReceiptDetailDialog.jsx
+index 33a35e8..9a88da2 100644
+--- a/frontend/src/components/goods-receipts/GoodsReceiptDetailDialog.jsx
++++ b/frontend/src/components/goods-receipts/GoodsReceiptDetailDialog.jsx
+@@ -310,9 +310,10 @@ const GoodsReceiptDetailDialog = ({
+           </section>
+         </div>
+ 
+-        <footer className="goods-receipt-detail-footer">
++        <footer className="goods-receipt-detail-footer modal-detail-footer">
+           <button
+             type="button"
++            className="modal-detail-close-action"
+             onClick={onClose}
+           >
+             Tutup
+@@ -323,4 +324,4 @@ const GoodsReceiptDetailDialog = ({
+   );
+ };
+ 
+-export default GoodsReceiptDetailDialog;
+\ No newline at end of file
++export default GoodsReceiptDetailDialog;
+diff --git a/frontend/src/components/inventory/InventoryMovementDetailDialog.jsx b/frontend/src/components/inventory/InventoryMovementDetailDialog.jsx
+index 4d04cbf..7cd0d4d 100644
+--- a/frontend/src/components/inventory/InventoryMovementDetailDialog.jsx
++++ b/frontend/src/components/inventory/InventoryMovementDetailDialog.jsx
+@@ -300,9 +300,10 @@ const InventoryMovementDetailDialog = ({
+           </section>
+         </div>
+ 
+-        <footer className="inventory-detail-footer">
++        <footer className="inventory-detail-footer modal-detail-footer">
+           <button
+             type="button"
++            className="modal-detail-close-action"
+             onClick={onClose}
+           >
+             Tutup
+diff --git a/frontend/src/components/invoices/InvoiceDetailDialog.jsx b/frontend/src/components/invoices/InvoiceDetailDialog.jsx
+index 01a5435..4c0da98 100644
+--- a/frontend/src/components/invoices/InvoiceDetailDialog.jsx
++++ b/frontend/src/components/invoices/InvoiceDetailDialog.jsx
+@@ -493,9 +493,10 @@ const InvoiceDetailDialog = ({
+           </section>
+         </div>
+ 
+-        <footer className="purchase-order-detail-footer">
++        <footer className="purchase-order-detail-footer modal-detail-footer">
+           <button
+             type="button"
++            className="modal-detail-close-action"
+             onClick={onClose}
+           >
+             Tutup
+@@ -506,4 +507,4 @@ const InvoiceDetailDialog = ({
+   );
+ };
+ 
+-export default InvoiceDetailDialog;
+\ No newline at end of file
++export default InvoiceDetailDialog;
+diff --git a/frontend/src/components/payments/PaymentDetailDialog.jsx b/frontend/src/components/payments/PaymentDetailDialog.jsx
+index 9ed6609..5f31043 100644
+--- a/frontend/src/components/payments/PaymentDetailDialog.jsx
++++ b/frontend/src/components/payments/PaymentDetailDialog.jsx
+@@ -392,9 +392,10 @@ const PaymentDetailDialog = ({
+           </section>
+         </div>
+ 
+-        <footer className="purchase-order-detail-footer">
++        <footer className="purchase-order-detail-footer modal-detail-footer">
+           <button
+             type="button"
++            className="modal-detail-close-action"
+             onClick={onClose}
+           >
+             Tutup
+diff --git a/frontend/src/components/purchase-orders/PurchaseOrderDetailDialog.jsx b/frontend/src/components/purchase-orders/PurchaseOrderDetailDialog.jsx
+index c692873..afca33c 100644
+--- a/frontend/src/components/purchase-orders/PurchaseOrderDetailDialog.jsx
++++ b/frontend/src/components/purchase-orders/PurchaseOrderDetailDialog.jsx
+@@ -421,8 +421,12 @@ const PurchaseOrderDetailDialog = ({
+           )}
+         </div>
+ 
+-        <footer className="purchase-order-detail-footer">
+-          <button type="button" onClick={onClose}>
++        <footer className="purchase-order-detail-footer modal-detail-footer">
++          <button
++            type="button"
++            className="modal-detail-close-action"
++            onClick={onClose}
++          >
+             Tutup
+           </button>
+         </footer>
+diff --git a/frontend/src/components/sales-orders/SalesOrderDetailDialog.jsx b/frontend/src/components/sales-orders/SalesOrderDetailDialog.jsx
+index 4a21570..c43d7ee 100644
+--- a/frontend/src/components/sales-orders/SalesOrderDetailDialog.jsx
++++ b/frontend/src/components/sales-orders/SalesOrderDetailDialog.jsx
+@@ -302,8 +302,12 @@ const SalesOrderDetailDialog = ({
+           </section>
+         </div>
+ 
+-        <footer className="purchase-order-detail-footer">
+-          <button type="button" onClick={onClose}>
++        <footer className="purchase-order-detail-footer modal-detail-footer">
++          <button
++            type="button"
++            className="modal-detail-close-action"
++            onClick={onClose}
++          >
+             Tutup
+           </button>
+         </footer>
+diff --git a/frontend/src/components/users/UserDetailDialog.jsx b/frontend/src/components/users/UserDetailDialog.jsx
+index b112596..dde3f56 100644
+--- a/frontend/src/components/users/UserDetailDialog.jsx
++++ b/frontend/src/components/users/UserDetailDialog.jsx
+@@ -319,8 +319,12 @@ const UserDetailDialog = ({
+           </section>
+         </div>
+ 
+-        <footer className="user-detail-footer">
+-          <button type="button" onClick={onClose}>
++        <footer className="user-detail-footer modal-detail-footer">
++          <button
++            type="button"
++            className="modal-detail-close-action"
++            onClick={onClose}
++          >
+             Tutup
+           </button>
+         </footer>
+diff --git a/frontend/src/pages/AuditLogsPage.jsx b/frontend/src/pages/AuditLogsPage.jsx
+index c846bb4..88c8b57 100644
+--- a/frontend/src/pages/AuditLogsPage.jsx
++++ b/frontend/src/pages/AuditLogsPage.jsx
+@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
+ import { getAuditLogRequest, getAuditLogsRequest } from "../api/auditLogs";
+ import FormSelect from "../components/forms/FormSelect";
+ import PaginationBar from "../components/tables/PaginationBar";
++import useModalDismiss from "../hooks/useModalDismiss";
+ import { formatDate } from "../utils/formatters";
+ import "../styles/audit-logs.css";
+ import "../styles/audit-log-readable-detail.css";
+@@ -317,6 +318,7 @@ const AuditLogsPage = () => {
+     [error, setError] = useState(""),
+     [reload, setReload] = useState(0),
+     [detail, setDetail] = useState(null);
++  useModalDismiss(Boolean(detail), () => setDetail(null));
+   useEffect(() => {
+     let cancelled = false;
+     (async () => {
+@@ -495,12 +497,13 @@ const AuditLogsPage = () => {
+                       <strong>{getEntityLabel(row)}</strong>
+                       <small>{getActivityDescription(row)}</small>
+                     </td>
+-                    <td data-label="Detail">
++                    <td data-label="Detail" className="table-action-cell">
+                       <button
+-                        className="audit-detail-button"
++                        type="button"
++                        className="table-edit-action"
+                         onClick={() => openDetail(row.id)}
+                       >
+-                        <Eye />
++                        <Eye aria-hidden="true" />
+                         Lihat
+                       </button>
+                     </td>
+@@ -526,11 +529,12 @@ const AuditLogsPage = () => {
+             className="audit-detail-dialog"
+             role="dialog"
+             aria-modal="true"
++            aria-labelledby="audit-detail-title"
+           >
+             <header>
+               <div>
+                 <span>{MODULES[detail.module] || detail.module}</span>
+-                <h2>
++                <h2 id="audit-detail-title">
+                   {ACTIONS[detail.action] || detail.action} ·{" "}
+                   {getEntityLabel(detail)}
+                 </h2>
+@@ -539,8 +543,12 @@ const AuditLogsPage = () => {
+                   {formatDateTime(detail.created_at)}
+                 </p>
+               </div>
+-              <button onClick={() => setDetail(null)}>
+-                <X />
++              <button
++                type="button"
++                aria-label="Tutup detail audit"
++                onClick={() => setDetail(null)}
++              >
++                <X aria-hidden="true" />
+               </button>
+             </header>
+             <div className="audit-detail-body">
+@@ -587,6 +595,15 @@ const AuditLogsPage = () => {
+               </section>
+ 
+             </div>
++            <footer className="modal-detail-footer">
++              <button
++                type="button"
++                className="modal-detail-close-action"
++                onClick={() => setDetail(null)}
++              >
++                Tutup
++              </button>
++            </footer>
+           </section>
+         </div>
+       )}
+diff --git a/frontend/src/pages/CustomersPage.jsx b/frontend/src/pages/CustomersPage.jsx
+index 75d4eef..80cafc1 100644
+--- a/frontend/src/pages/CustomersPage.jsx
++++ b/frontend/src/pages/CustomersPage.jsx
+@@ -407,7 +407,6 @@ const CustomersPage = () => {
+                                 <th>Termin</th>
+                                 <th>Batas kredit</th>
+                                 <th>Status</th>
+-                                <th>Status</th>
+                                 {canManageCustomers && <th>Aksi</th>}
+                             </tr>
+                         </thead>
+@@ -606,4 +605,4 @@ const CustomersPage = () => {
+     );
+ };
+ 
+-export default CustomersPage;
+\ No newline at end of file
++export default CustomersPage;
+diff --git a/frontend/src/pages/PurchaseReturnsPage.jsx b/frontend/src/pages/PurchaseReturnsPage.jsx
+index 8326af7..5222610 100644
+--- a/frontend/src/pages/PurchaseReturnsPage.jsx
++++ b/frontend/src/pages/PurchaseReturnsPage.jsx
+@@ -280,7 +280,7 @@ const PurchaseReturnDetail = ({ detail, user, busy, error, dismissDisabled, onCl
+           {detail.status === "PENDING" && detail.submitted_by === user?.id && <div className="purchase-return-info">Retur sedang menunggu keputusan pengguna lain yang berwenang.</div>}
+           {error && <div className="purchase-return-form-error" role="alert"><AlertTriangle aria-hidden="true" />{error}</div>}
+         </div>
+-        <footer>{canCancel && <button type="button" className="purchase-return-danger-action" disabled={busy} onClick={() => onAction("CANCEL")}><XCircle aria-hidden="true" /> Batalkan</button>}{canSettle && <button type="button" className="primary-action" disabled={busy} onClick={onSettle}><HandCoins aria-hidden="true" /> Catat penyelesaian</button>}{canDecide && <><button type="button" className="purchase-return-reject-action" disabled={busy} onClick={() => onAction("REJECT")}><XCircle aria-hidden="true" /> Tolak</button><button type="button" className="primary-action" disabled={busy} onClick={() => onAction("APPROVE")}><CheckCircle2 aria-hidden="true" /> Setujui</button></>}{canSubmit && <button type="button" className="primary-action" disabled={busy} onClick={() => onAction("SUBMIT")}><Send aria-hidden="true" /> Ajukan</button>}<button type="button" className="modal-detail-close-action" disabled={busy} onClick={onClose}>Tutup</button></footer>
++        <footer className="modal-detail-footer">{canCancel && <button type="button" className="purchase-return-danger-action" disabled={busy} onClick={() => onAction("CANCEL")}><XCircle aria-hidden="true" /> Batalkan</button>}{canSettle && <button type="button" className="primary-action" disabled={busy} onClick={onSettle}><HandCoins aria-hidden="true" /> Catat penyelesaian</button>}{canDecide && <><button type="button" className="purchase-return-reject-action" disabled={busy} onClick={() => onAction("REJECT")}><XCircle aria-hidden="true" /> Tolak</button><button type="button" className="primary-action" disabled={busy} onClick={() => onAction("APPROVE")}><CheckCircle2 aria-hidden="true" /> Setujui</button></>}{canSubmit && <button type="button" className="primary-action" disabled={busy} onClick={() => onAction("SUBMIT")}><Send aria-hidden="true" /> Ajukan</button>}<button type="button" className="modal-detail-close-action" disabled={busy} onClick={onClose}>Tutup</button></footer>
+       </section>
+     </div>
+   );
+diff --git a/frontend/src/pages/StockOpnamesPage.jsx b/frontend/src/pages/StockOpnamesPage.jsx
+index 7e46804..c1f5790 100644
+--- a/frontend/src/pages/StockOpnamesPage.jsx
++++ b/frontend/src/pages/StockOpnamesPage.jsx
+@@ -134,7 +134,7 @@ const StockOpnameDetail = ({ detail, user, busy, error, dismissDisabled, onClose
+           {detail.status === "PENDING" && detail.submitted_by === user?.id && <div className="stock-opname-info">Stock opname sedang menunggu keputusan pengguna lain yang berwenang.</div>}
+           {error && <div className="stock-opname-form-error" role="alert"><AlertTriangle aria-hidden="true" />{error}</div>}
+         </div>
+-        <footer>{canCancel && <button type="button" className="stock-opname-danger-action" disabled={busy} onClick={() => onAction("CANCEL")}><XCircle aria-hidden="true" /> Batalkan</button>}{canDecide && <><button type="button" className="stock-opname-reject-action" disabled={busy} onClick={() => onAction("REJECT")}><XCircle aria-hidden="true" /> Tolak</button><button type="button" className="primary-action" disabled={busy} onClick={() => onAction("APPROVE")}><CheckCircle2 aria-hidden="true" /> Setujui</button></>}{canSubmit && <button type="button" className="primary-action" disabled={busy} onClick={() => onAction("SUBMIT")}><Send aria-hidden="true" /> Ajukan</button>}<button type="button" className="modal-detail-close-action" disabled={busy} onClick={onClose}>Tutup</button></footer>
++        <footer className="modal-detail-footer">{canCancel && <button type="button" className="stock-opname-danger-action" disabled={busy} onClick={() => onAction("CANCEL")}><XCircle aria-hidden="true" /> Batalkan</button>}{canDecide && <><button type="button" className="stock-opname-reject-action" disabled={busy} onClick={() => onAction("REJECT")}><XCircle aria-hidden="true" /> Tolak</button><button type="button" className="primary-action" disabled={busy} onClick={() => onAction("APPROVE")}><CheckCircle2 aria-hidden="true" /> Setujui</button></>}{canSubmit && <button type="button" className="primary-action" disabled={busy} onClick={() => onAction("SUBMIT")}><Send aria-hidden="true" /> Ajukan</button>}<button type="button" className="modal-detail-close-action" disabled={busy} onClick={onClose}>Tutup</button></footer>
+       </section>
+     </div>
+   );
+diff --git a/frontend/src/pages/SupplierInvoicesPage.jsx b/frontend/src/pages/SupplierInvoicesPage.jsx
+index 2effa1b..d4ef27b 100644
+--- a/frontend/src/pages/SupplierInvoicesPage.jsx
++++ b/frontend/src/pages/SupplierInvoicesPage.jsx
+@@ -767,7 +767,7 @@ const SupplierInvoicesPage = () => {
+                 )}
+               </section>
+             </div>
+-            <footer className="supplier-invoice-detail-footer">
++            <footer className="supplier-invoice-detail-footer modal-detail-footer">
+               <button type="button" className="modal-detail-close-action" onClick={() => setDetail(null)}>Tutup</button>
+             </footer>
+           </section>
+diff --git a/frontend/src/styles/components.css b/frontend/src/styles/components.css
+index 759d04c..fdc1729 100644
+--- a/frontend/src/styles/components.css
++++ b/frontend/src/styles/components.css
+@@ -583,13 +583,13 @@
+   @container (min-width: 701px) {
+     .data-table-wrapper {
+       max-width: 100%;
+-      max-height: min(52dvh, 520px);
+-      overflow: auto;
+-      overscroll-behavior: contain;
++      max-height: none;
++      overflow-x: auto;
++      overflow-y: visible;
++      overscroll-behavior-inline: contain;
+       scrollbar-color:
+         var(--sf-border-strong)
+         var(--sf-surface-muted);
+-      scrollbar-gutter: stable;
+       scrollbar-width: thin;
+       -webkit-overflow-scrolling: touch;
+     }
+@@ -635,20 +635,6 @@
+       font-size: 0.77rem;
+     }
+ 
+-    .table-action-buttons {
+-      flex-wrap: nowrap;
+-      justify-content: flex-end;
+-    }
+-
+-    .table-edit-action,
+-    .table-status-action {
+-      width: auto;
+-      min-width: 36px;
+-      flex: 0 0 auto;
+-      padding-right: 9px;
+-      padding-left: 9px;
+-      white-space: nowrap;
+-    }
+   }
+ }
+ .data-table td {
+@@ -1007,6 +993,10 @@
+   white-space: nowrap;
+ }
+ 
++.audit-table th:last-child {
++  width: 112px;
++}
++
+ .table-edit-action {
+   display: inline-flex;
+   min-height: 34px;
+@@ -1065,6 +1055,35 @@
+   opacity: 0.6;
+ }
+ 
++.modal-detail-footer.modal-detail-footer {
++  display: flex;
++  flex: 0 0 auto;
++  align-items: center;
++  justify-content: flex-end;
++  gap: 10px;
++  padding: 15px 24px;
++  background: var(--sf-surface);
++  border-top: 1px solid var(--sf-border);
++}
++
++.modal-detail-footer .modal-detail-close-action {
++  min-width: 110px;
++  min-height: 40px;
++  padding: 0 18px;
++  color: var(--sf-text-strong);
++  background: var(--sf-surface);
++  border: 1px solid var(--sf-border);
++  border-radius: 11px;
++  font-size: 0.78rem;
++}
++
++.modal-detail-footer
++  .modal-detail-close-action:hover:not(:disabled) {
++  color: var(--sf-accent);
++  background: var(--sf-surface-muted);
++  border-color: var(--sf-border-strong);
++}
++
+ @media (max-width: 700px) {
+     .table-edit-action {
+       justify-self: end;
+@@ -1076,6 +1095,12 @@
+       padding: 0 15px;
+       font-size: 0.78rem;
+     }
++
++    .modal-detail-footer.modal-detail-footer {
++      flex-wrap: wrap;
++      padding: 13px 14px
++        calc(13px + env(safe-area-inset-bottom));
++    }
+ }
+ 
+ /* Product status confirmation */
+@@ -1321,11 +1346,134 @@
+   opacity: 0.6;
+ }
+ 
++/*
++ * Canonical data-table actions. The doubled .data-table selector deliberately
++ * wins over legacy module styles so every table uses the same dimensions.
++ */
++.data-table.data-table .table-action-buttons {
++  display: flex;
++  width: 100%;
++  align-items: center;
++  justify-content: flex-start;
++  flex-wrap: wrap;
++  gap: 8px;
++}
++
++.data-table.data-table
++  .table-action-buttons
++  > .table-edit-action,
++.data-table.data-table
++  .table-action-buttons
++  > .table-status-action,
++.data-table.data-table
++  .table-action-cell
++  > .table-edit-action,
++.data-table.data-table
++  .table-action-cell
++  > .table-status-action {
++  box-sizing: border-box;
++  width: auto;
++  min-width: 92px;
++  min-height: 36px;
++  height: 36px;
++  flex: 0 0 auto;
++  align-items: center;
++  justify-content: center;
++  gap: 6px;
++  padding: 0 10px;
++  border-radius: 9px;
++  font: inherit;
++  font-size: 0.72rem;
++  font-weight: 700;
++  line-height: 1;
++  white-space: nowrap;
++}
++
++.data-table.data-table
++  .table-action-buttons
++  > .table-edit-action,
++.data-table.data-table
++  .table-action-cell
++  > .table-edit-action {
++  color: var(--sf-accent);
++  background: var(--sf-accent-soft);
++  border: 1px solid var(--sf-border);
++}
++
++.data-table.data-table
++  .table-action-buttons
++  > .table-edit-action:hover:not(:disabled),
++.data-table.data-table
++  .table-action-cell
++  > .table-edit-action:hover:not(:disabled) {
++  color: #ffffff;
++  background: #2563eb;
++  border-color: var(--sf-accent);
++}
++
++.data-table.data-table
++  .table-action-buttons
++  > .table-status-action.is-deactivate,
++.data-table.data-table
++  .table-action-cell
++  > .table-status-action.is-deactivate {
++  color: var(--sf-status-danger-text);
++  background: var(--sf-status-danger-bg);
++  border: 1px solid transparent;
++}
++
++.data-table.data-table
++  .table-action-buttons
++  > .table-status-action.is-activate,
++.data-table.data-table
++  .table-action-cell
++  > .table-status-action.is-activate {
++  color: var(--sf-status-success-text);
++  background: var(--sf-status-success-bg);
++  border: 1px solid transparent;
++}
++
++.data-table.data-table
++  .table-action-buttons
++  > :is(.table-edit-action, .table-status-action)
++  svg,
++.data-table.data-table
++  .table-action-cell
++  > :is(.table-edit-action, .table-status-action)
++  svg {
++  width: 15px;
++  height: 15px;
++  flex: 0 0 auto;
++}
++
+ @media (max-width: 700px) {
+-    .table-action-buttons {
+-      flex-wrap: wrap;
+-      justify-content: flex-end;
+-    }
++  .data-table.data-table .table-action-buttons {
++    display: grid;
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++    justify-self: stretch;
++    gap: 8px;
++  }
++
++  .data-table.data-table
++    .table-action-buttons
++    > :is(.table-edit-action, .table-status-action) {
++    width: 100%;
++    min-width: 0;
++  }
++
++  .data-table.data-table
++    .table-action-buttons
++    > :only-child {
++    grid-column: 1 / -1;
++  }
++
++  .data-table.data-table
++    .table-action-cell
++    > :is(.table-edit-action, .table-status-action) {
++    width: 100%;
++    min-width: 0;
++    justify-self: stretch;
++  }
+ }
+ 
+ /* Reusable status filter */
+diff --git a/frontend/src/styles/customers.css b/frontend/src/styles/customers.css
+index 9e92444..09fb59d 100644
+--- a/frontend/src/styles/customers.css
++++ b/frontend/src/styles/customers.css
+@@ -117,5 +117,17 @@
+ }
+ 
+ .customer-table.has-actions th:nth-child(8) {
+-  width: 16%;
+-}
+\ No newline at end of file
++  width: 200px;
++}
++
++.customer-table.has-actions .table-action-cell {
++  width: 200px;
++  min-width: 200px;
++}
++
++@media (max-width: 700px) {
++  .customer-table.has-actions .table-action-cell {
++    width: auto;
++    min-width: 0;
++  }
++}
+diff --git a/frontend/src/styles/deliveries.css b/frontend/src/styles/deliveries.css
+index 164fa1a..742fc29 100644
+--- a/frontend/src/styles/deliveries.css
++++ b/frontend/src/styles/deliveries.css
+@@ -173,17 +173,17 @@
+ }
+ 
+ .delivery-table th:last-child {
+-  width: 270px;
++  width: 220px;
+ }
+ 
+ .delivery-table .table-action-cell {
+-  min-width: 270px;
++  min-width: 220px;
+ }
+ 
+ .delivery-action-buttons {
+   display: flex;
+   flex-wrap: wrap;
+-  justify-content: flex-end;
++  justify-content: flex-start;
+   gap: 8px;
+ }
+ 
+@@ -191,7 +191,7 @@
+   white-space: nowrap;
+ }
+ 
+-@container (max-width: 1049px) {
++@container (max-width: 700px) {
+   .delivery-table .table-action-cell {
+     min-width: 0;
+   }
+@@ -207,24 +207,6 @@
+   }
+ }
+ 
+-@media (min-width: 701px) and (max-width: 1024px) {
+-  @container (min-width: 701px) {
+-    .delivery-table .table-action-cell {
+-      min-width: 270px;
+-    }
+-
+-    .delivery-action-buttons {
+-      width: auto;
+-      flex-wrap: nowrap;
+-      justify-content: flex-end;
+-    }
+-
+-    .delivery-action-buttons > button {
+-      flex: 0 0 auto;
+-    }
+-  }
+-}
+-
+ @media (max-width: 850px) {
+   .delivery-form-item-grid {
+     grid-template-columns:
+diff --git a/frontend/src/styles/invoices.css b/frontend/src/styles/invoices.css
+index d400168..6f864ac 100644
+--- a/frontend/src/styles/invoices.css
++++ b/frontend/src/styles/invoices.css
+@@ -403,17 +403,17 @@
+ }
+ 
+ .invoice-table th:last-child {
+-  width: 210px;
++  width: 190px;
+ }
+ 
+ .invoice-table .table-action-cell {
+-  min-width: 210px;
++  min-width: 190px;
+ }
+ 
+ .invoice-action-buttons {
+   display: flex;
+   flex-wrap: wrap;
+-  justify-content: flex-end;
++  justify-content: flex-start;
+   gap: 8px;
+ }
+ 
+@@ -421,7 +421,7 @@
+   white-space: nowrap;
+ }
+ 
+-@container (max-width: 1049px) {
++@container (max-width: 700px) {
+   .invoice-table .table-action-cell {
+     min-width: 0;
+   }
+@@ -437,25 +437,6 @@
+   }
+ }
+ 
+-@media (min-width: 701px) and (max-width: 1024px) {
+-  @container (min-width: 701px) {
+-    .invoice-table .table-action-cell {
+-      min-width: 210px;
+-    }
+-
+-    .invoice-action-buttons {
+-      width: auto;
+-      flex-wrap: nowrap;
+-      justify-content: flex-end;
+-    }
+-
+-    .invoice-action-buttons > button {
+-      width: auto;
+-      flex: 0 0 auto;
+-    }
+-  }
+-}
+-
+ @media (max-width: 850px) {
+   .invoice-form-order-summary {
+     grid-template-columns:
+diff --git a/frontend/src/styles/payments.css b/frontend/src/styles/payments.css
+index e3345e6..0967ac8 100644
+--- a/frontend/src/styles/payments.css
++++ b/frontend/src/styles/payments.css
+@@ -98,7 +98,7 @@
+ 
+ .payment-action-buttons {
+   display: flex;
+-  justify-content: flex-end;
++  justify-content: flex-start;
+ }
+ 
+ .payment-action-buttons > button {
+@@ -505,7 +505,7 @@
+   line-height: 1.5;
+ }
+ 
+-@container (max-width: 1049px) {
++@container (max-width: 700px) {
+   .payment-table .table-action-cell {
+     min-width: 0;
+   }
+@@ -521,23 +521,6 @@
+   }
+ }
+ 
+-@media (min-width: 701px) and (max-width: 1024px) {
+-  @container (min-width: 701px) {
+-    .payment-table .table-action-cell {
+-      min-width: 110px;
+-    }
+-
+-    .payment-action-buttons {
+-      width: auto;
+-      justify-content: flex-end;
+-    }
+-
+-    .payment-action-buttons > button {
+-      width: auto;
+-    }
+-  }
+-}
+-
+ @media (max-width: 850px) {
+   .payment-form-invoice-summary {
+     grid-template-columns:
+diff --git a/frontend/src/styles/purchase-orders.css b/frontend/src/styles/purchase-orders.css
+index 3f445e5..5297e89 100644
+--- a/frontend/src/styles/purchase-orders.css
++++ b/frontend/src/styles/purchase-orders.css
+@@ -1430,21 +1430,21 @@
+ }
+ 
+ .purchase-order-table th:last-child {
+-  width: 270px;
++  width: 240px;
+ }
+ 
+ .purchase-order-table th:nth-child(7) {
+-  width: 168px;
++  width: 130px;
+ }
+ 
+ .purchase-order-table .table-action-cell {
+-  min-width: 270px;
++  min-width: 240px;
+ }
+ 
+ .purchase-order-action-buttons {
+   display: flex;
+   flex-wrap: wrap;
+-  justify-content: flex-end;
++  justify-content: flex-start;
+   gap: 8px;
+ }
+ 
+@@ -1459,7 +1459,7 @@
+   white-space: nowrap;
+ }
+ 
+-@container (max-width: 1049px) {
++@container (max-width: 700px) {
+   .purchase-order-table .table-action-cell {
+     min-width: 0;
+   }
+@@ -1482,28 +1482,6 @@
+   }
+ }
+ 
+-@media (min-width: 701px) and (max-width: 1024px) {
+-  @container (min-width: 701px) {
+-    .purchase-order-table .table-action-cell {
+-      min-width: 270px;
+-    }
+-
+-    .purchase-order-action-buttons {
+-      width: auto;
+-      flex-wrap: nowrap;
+-      justify-content: flex-end;
+-    }
+-
+-    .purchase-order-action-buttons > button,
+-    .purchase-order-action-buttons
+-      .purchase-order-detail-action {
+-      width: auto;
+-      min-width: 0;
+-      flex: 0 0 auto;
+-    }
+-  }
+-}
+-
+ @media (max-width: 480px) {
+   .purchase-order-action-buttons {
+     display: grid;
+diff --git a/frontend/src/styles/supplier-invoices.css b/frontend/src/styles/supplier-invoices.css
+index 847d728..1ccd137 100644
+--- a/frontend/src/styles/supplier-invoices.css
++++ b/frontend/src/styles/supplier-invoices.css
+@@ -15,39 +15,17 @@
+ }
+ 
+ .supplier-invoice-table .table-action-cell {
+-  width: 210px;
++  width: 200px;
++  min-width: 200px;
+ }
+ 
+ .supplier-invoice-table .supplier-invoice-actions {
+   width: 100%;
+   flex-wrap: wrap;
+-  justify-content: flex-end;
++  justify-content: flex-start;
+   gap: 8px;
+ }
+ 
+-.supplier-invoice-table
+-  .supplier-invoice-actions
+-  .table-edit-action {
+-  min-width: 80px;
+-  min-height: 34px;
+-  justify-content: center;
+-  padding: 0 11px;
+-  color: var(--sf-accent);
+-  background: var(--sf-accent-soft);
+-  border: 1px solid var(--sf-border);
+-  border-radius: 9px;
+-  font-size: 0.75rem;
+-  white-space: nowrap;
+-}
+-
+-.supplier-invoice-table
+-  .supplier-invoice-actions
+-  .table-edit-action:hover:not(:disabled) {
+-  color: #ffffff;
+-  background: #2563eb;
+-  border-color: var(--sf-accent);
+-}
+-
+ .supplier-invoice-detail-footer {
+   display: flex;
+   flex: 0 0 auto;
+@@ -172,7 +150,7 @@
+ }
+ 
+ .supplier-invoice-table th:nth-child(7) {
+-  width: 210px;
++  width: 180px;
+ }
+ 
+ @media (max-width: 900px) {
+@@ -210,13 +188,7 @@
+   .supplier-invoice-table th:last-child,
+   .supplier-invoice-table .table-action-cell {
+     width: auto;
+-  }
+-
+-  .supplier-invoice-table
+-    .supplier-invoice-actions
+-    .table-edit-action {
+     min-width: 0;
+-    flex: 1 1 100px;
+   }
+ 
+   .supplier-invoice-file-picker {
+diff --git a/frontend/src/styles/users.css b/frontend/src/styles/users.css
+index 75b1f41..472291e 100644
+--- a/frontend/src/styles/users.css
++++ b/frontend/src/styles/users.css
+@@ -74,7 +74,11 @@
+ }
+ 
+ .user-table .table-action-cell {
+-  min-width: 390px;
++  min-width: 260px;
++}
++
++.user-table th:last-child {
++  width: 260px;
+ }
+ 
+ .user-identity-cell {
+@@ -195,7 +199,7 @@
+ .user-action-buttons {
+   display: flex;
+   flex-wrap: wrap;
+-  justify-content: flex-end;
++  justify-content: flex-start;
+   gap: 7px;
+ }
+ 
+@@ -853,7 +857,7 @@
+   border-color: var(--sf-accent);
+ }
+ 
+-@container (max-width: 1180px) {
++@container (max-width: 700px) {
+   .user-table .table-action-cell {
+     min-width: 0;
+   }

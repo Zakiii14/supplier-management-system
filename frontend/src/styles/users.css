@@ -74,7 +74,11 @@
 }
 
 .user-table .table-action-cell {
-  min-width: 390px;
+  min-width: 260px;
+}
+
+.user-table th:last-child {
+  width: 260px;
 }
 
 .user-identity-cell {
@@ -195,7 +199,7 @@
 .user-action-buttons {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 7px;
 }
 
@@ -853,7 +857,7 @@
   border-color: var(--sf-accent);
 }
 
-@container (max-width: 1180px) {
+@container (max-width: 700px) {
   .user-table .table-action-cell {
     min-width: 0;
   }

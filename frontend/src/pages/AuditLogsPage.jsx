@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { getAuditLogRequest, getAuditLogsRequest } from "../api/auditLogs";
 import FormSelect from "../components/forms/FormSelect";
 import PaginationBar from "../components/tables/PaginationBar";
+import useModalDismiss from "../hooks/useModalDismiss";
 import { formatDate } from "../utils/formatters";
 import "../styles/audit-logs.css";
 import "../styles/audit-log-readable-detail.css";
@@ -317,6 +318,7 @@ const AuditLogsPage = () => {
     [error, setError] = useState(""),
     [reload, setReload] = useState(0),
     [detail, setDetail] = useState(null);
+  useModalDismiss(Boolean(detail), () => setDetail(null));
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -495,12 +497,13 @@ const AuditLogsPage = () => {
                       <strong>{getEntityLabel(row)}</strong>
                       <small>{getActivityDescription(row)}</small>
                     </td>
-                    <td data-label="Detail">
+                    <td data-label="Detail" className="table-action-cell">
                       <button
-                        className="audit-detail-button"
+                        type="button"
+                        className="table-edit-action"
                         onClick={() => openDetail(row.id)}
                       >
-                        <Eye />
+                        <Eye aria-hidden="true" />
                         Lihat
                       </button>
                     </td>
@@ -526,11 +529,12 @@ const AuditLogsPage = () => {
             className="audit-detail-dialog"
             role="dialog"
             aria-modal="true"
+            aria-labelledby="audit-detail-title"
           >
             <header>
               <div>
                 <span>{MODULES[detail.module] || detail.module}</span>
-                <h2>
+                <h2 id="audit-detail-title">
                   {ACTIONS[detail.action] || detail.action} ·{" "}
                   {getEntityLabel(detail)}
                 </h2>
@@ -539,8 +543,12 @@ const AuditLogsPage = () => {
                   {formatDateTime(detail.created_at)}
                 </p>
               </div>
-              <button onClick={() => setDetail(null)}>
-                <X />
+              <button
+                type="button"
+                aria-label="Tutup detail audit"
+                onClick={() => setDetail(null)}
+              >
+                <X aria-hidden="true" />
               </button>
             </header>
             <div className="audit-detail-body">
@@ -587,6 +595,15 @@ const AuditLogsPage = () => {
               </section>
 
             </div>
+            <footer className="modal-detail-footer">
+              <button
+                type="button"
+                className="modal-detail-close-action"
+                onClick={() => setDetail(null)}
+              >
+                Tutup
+              </button>
+            </footer>
           </section>
         </div>
       )}
