@@ -128,8 +128,9 @@ const getFinanceReport = async (req, res) => {
           i.tax_amount,
           i.grand_total,
           i.paid_amount,
+          i.credit_amount,
           GREATEST(
-            i.grand_total - i.paid_amount,
+            i.grand_total - i.paid_amount - i.credit_amount,
             0
           ) AS outstanding_amount,
           so.id AS sales_order_id,
@@ -210,6 +211,18 @@ const getFinanceReport = async (req, res) => {
             0
           ) AS total_paid_amount,
           COALESCE(
+            SUM(credit_amount) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS total_return_credit,
+          COALESCE(
+            SUM(grand_total - credit_amount) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS net_invoice_value,
+          COALESCE(
             SUM(outstanding_amount) FILTER (
               WHERE status IN (
                 'UNPAID',
@@ -250,7 +263,7 @@ const getFinanceReport = async (req, res) => {
           DATE_TRUNC('month', i.invoice_date)
             AS period,
           COALESCE(
-            SUM(i.grand_total) FILTER (
+            SUM(i.grand_total - i.credit_amount) FILTER (
               WHERE i.status <> 'CANCELLED'
             ),
             0

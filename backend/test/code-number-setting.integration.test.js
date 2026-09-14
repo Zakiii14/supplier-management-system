@@ -198,6 +198,11 @@ test(
         (setting) => setting.module_key === "PURCHASE_RETURN",
       ),
     );
+    assert.ok(
+      response.body.data.some(
+        (setting) => setting.module_key === "SALES_RETURN",
+      ),
+    );
 
     response = await request(app)
       .post("/api/suppliers")

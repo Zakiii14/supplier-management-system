@@ -82,6 +82,10 @@ const REPORT_FIELD_LABELS = {
         "Total nilai penjualan",
     delivered_quantity:
         "Jumlah barang terkirim",
+    returned_quantity:
+        "Jumlah barang diretur",
+    returned_amount:
+        "Nilai retur penjualan",
     pending_delivery_quantity:
         "Jumlah barang belum terkirim",
     delivered_value:
@@ -99,6 +103,12 @@ const REPORT_FIELD_LABELS = {
         "Total nilai invoice",
     total_paid_amount:
         "Total nilai terbayar",
+    total_return_credit:
+        "Kredit retur customer",
+    net_invoice_value:
+        "Nilai invoice setelah retur",
+    credit_amount:
+        "Kredit retur",
     outstanding_amount:
         "Sisa tagihan",
     total_payments:

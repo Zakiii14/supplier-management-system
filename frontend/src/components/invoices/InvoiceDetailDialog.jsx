@@ -227,6 +227,16 @@ const InvoiceDetailDialog = ({
               </strong>
             </article>
 
+            <article className="is-credit">
+              <span>Kredit retur</span>
+
+              <strong>
+                {formatCurrency(
+                  invoice.credit_amount,
+                )}
+              </strong>
+            </article>
+
             <article className="is-outstanding">
               <span>Sisa tagihan</span>
 
@@ -311,6 +321,16 @@ const InvoiceDetailDialog = ({
                 )}
               </strong>
             </div>
+
+            {Number(invoice.credit_amount) > 0 && (
+              <div>
+                <span>Kredit retur</span>
+
+                <strong>
+                  - {formatCurrency(invoice.credit_amount)}
+                </strong>
+              </div>
+            )}
           </section>
 
           <section className="purchase-order-detail-items">

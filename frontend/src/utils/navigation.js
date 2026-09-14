@@ -160,6 +160,12 @@ const navigationGroups = [
           "MANAGER",
         ],
       },
+      {
+        label: "Retur Penjualan",
+        path: "/sales-returns",
+        icon: PackageX,
+        roles: ["ADMIN", "SALES", "WAREHOUSE", "FINANCE", "MANAGER"],
+      },
     ],
   },
   {

@@ -646,7 +646,8 @@ const InvoicesPage = () => {
                     ["UNPAID", "OVERDUE"].includes(
                       invoice.status,
                     ) &&
-                    Number(invoice.paid_amount) === 0;
+                    Number(invoice.paid_amount) === 0 &&
+                    Number(invoice.credit_amount) === 0;
 
                   return (
                     <tr key={invoice.id}>
@@ -693,6 +694,12 @@ const InvoicesPage = () => {
                             invoice.grand_total,
                           )}
                         </strong>
+
+                        {Number(invoice.credit_amount) > 0 && (
+                          <span className="invoice-subtext">
+                            Kredit retur -{formatCurrency(invoice.credit_amount)}
+                          </span>
+                        )}
                       </td>
 
                       <td data-label="Sisa tagihan">

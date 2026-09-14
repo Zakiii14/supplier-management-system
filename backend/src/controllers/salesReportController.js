@@ -120,6 +120,17 @@ const getSalesReport = async (req, res) => {
           ON d.id = di.delivery_id
         GROUP BY soi.sales_order_id
       ),
+      return_totals AS (
+        SELECT
+          d.sales_order_id,
+          COALESCE(SUM(sri.quantity), 0) AS returned_quantity,
+          COALESCE(SUM(sri.quantity * sri.unit_price), 0) AS returned_amount
+        FROM app.sales_returns sr
+        JOIN app.deliveries d ON d.id = sr.delivery_id
+        JOIN app.sales_return_items sri ON sri.sales_return_id = sr.id
+        WHERE sr.status = 'APPROVED'
+        GROUP BY d.sales_order_id
+      ),
       report_rows AS (
         SELECT
           so.id,
@@ -135,12 +146,14 @@ const getSalesReport = async (req, res) => {
             AS ordered_quantity,
           COALESCE(dt.delivered_quantity, 0)
             AS delivered_quantity,
+          COALESCE(rt.returned_quantity, 0)
+            AS returned_quantity,
           GREATEST(
             COALESCE(SUM(soi.quantity), 0)
               - COALESCE(dt.delivered_quantity, 0),
             0
           ) AS pending_delivery_quantity,
-          COALESCE(
+          GREATEST(COALESCE(
             SUM(
               GREATEST(
                 soi.quantity * soi.unit_price
@@ -149,7 +162,8 @@ const getSalesReport = async (req, res) => {
               )
             ),
             0
-          ) AS total_amount
+          ) - COALESCE(rt.returned_amount, 0), 0) AS total_amount,
+          COALESCE(rt.returned_amount, 0) AS returned_amount
         FROM app.sales_orders so
         JOIN app.customers c
           ON c.id = so.customer_id
@@ -157,8 +171,10 @@ const getSalesReport = async (req, res) => {
           ON soi.sales_order_id = so.id
         LEFT JOIN delivered_totals dt
           ON dt.sales_order_id = so.id
+        LEFT JOIN return_totals rt
+          ON rt.sales_order_id = so.id
         ${whereClause}
-        GROUP BY so.id, c.id, dt.delivered_quantity
+        GROUP BY so.id, c.id, dt.delivered_quantity, rt.returned_quantity, rt.returned_amount
       )
     `;
 
@@ -195,6 +211,18 @@ const getSalesReport = async (req, res) => {
             ),
             0
           ) AS delivered_quantity,
+          COALESCE(
+            SUM(returned_quantity) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS returned_quantity,
+          COALESCE(
+            SUM(returned_amount) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS returned_amount,
           COALESCE(
             SUM(pending_delivery_quantity) FILTER (
               WHERE status <> 'CANCELLED'

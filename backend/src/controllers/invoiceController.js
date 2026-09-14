@@ -220,8 +220,9 @@ const getAllInvoices = async (req, res) => {
         i.tax_amount,
         i.grand_total,
         i.paid_amount,
+        i.credit_amount,
         (
-          i.grand_total - i.paid_amount
+          i.grand_total - i.paid_amount - i.credit_amount
         ) AS outstanding_amount,
         CASE
           WHEN
@@ -404,8 +405,9 @@ const getInvoiceById = async (req, res) => {
         i.tax_amount,
         i.grand_total,
         i.paid_amount,
+        i.credit_amount,
         (
-          i.grand_total - i.paid_amount
+          i.grand_total - i.paid_amount - i.credit_amount
         ) AS outstanding_amount,
         CASE
           WHEN
@@ -744,7 +746,8 @@ const cancelInvoice = async (req, res) => {
       SELECT
         id,
         status,
-        paid_amount
+        paid_amount,
+        credit_amount
       FROM app.invoices
       WHERE id = $1
       FOR UPDATE
@@ -771,6 +774,12 @@ const cancelInvoice = async (req, res) => {
     if (Number(invoice.paid_amount) > 0) {
       throw new Error(
         "Invoice with payment cannot be cancelled"
+      );
+    }
+
+    if (Number(invoice.credit_amount) > 0) {
+      throw new Error(
+        "Invoice with sales return credit cannot be cancelled"
       );
     }
 

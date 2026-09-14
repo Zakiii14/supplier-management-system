@@ -245,6 +245,10 @@
   color: var(--sf-status-success-text);
 }
 
+.invoice-detail-totals .is-credit strong {
+  color: var(--sf-accent-strong);
+}
+
 .invoice-detail-totals
   .is-outstanding strong {
   color: var(--sf-status-warning-text);

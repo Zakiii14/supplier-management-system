@@ -64,6 +64,11 @@ const MODULE_DEFINITIONS = Object.freeze({
     column: "return_number",
     maxLength: 40,
   },
+  SALES_RETURN: {
+    table: "sales_returns",
+    column: "return_number",
+    maxLength: 40,
+  },
 });
 
 const normalizeModuleKey = (value) =>

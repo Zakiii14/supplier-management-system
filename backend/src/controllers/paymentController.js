@@ -268,7 +268,7 @@ const getAllPayments = async (req, res) => {
         i.grand_total,
         i.paid_amount,
         (
-          i.grand_total - i.paid_amount
+          i.grand_total - i.paid_amount - i.credit_amount
         ) AS outstanding_amount,
         CASE
           WHEN
@@ -356,7 +356,7 @@ const getPaymentEligibleInvoices = async (
         i.grand_total,
         i.paid_amount,
         (
-          i.grand_total - i.paid_amount
+          i.grand_total - i.paid_amount - i.credit_amount
         ) AS outstanding_amount,
         CASE
           WHEN
@@ -384,7 +384,7 @@ const getPaymentEligibleInvoices = async (
         'UNPAID',
         'PARTIAL'
       )
-        AND i.grand_total > i.paid_amount
+        AND i.grand_total > i.paid_amount + i.credit_amount
       ORDER BY
         i.due_date ASC,
         i.invoice_number ASC
@@ -445,7 +445,7 @@ const getPaymentById = async (req, res) => {
         i.grand_total,
         i.paid_amount,
         (
-          i.grand_total - i.paid_amount
+          i.grand_total - i.paid_amount - i.credit_amount
         ) AS outstanding_amount,
         CASE
           WHEN
@@ -675,6 +675,7 @@ const createPayment = async (req, res) => {
         invoice_date,
         grand_total,
         paid_amount,
+        credit_amount,
         status
       FROM app.invoices
       WHERE id = $1
@@ -706,7 +707,8 @@ const createPayment = async (req, res) => {
 
 		const outstandingAmount =
 			Number(invoice.grand_total) -
-			Number(invoice.paid_amount);
+			Number(invoice.paid_amount) -
+			Number(invoice.credit_amount);
 
 		if (outstandingAmount <= 0) {
 			throw createRequestError(
@@ -781,7 +783,7 @@ const createPayment = async (req, res) => {
         SET
           paid_amount = paid_amount + $1,
           status = CASE
-            WHEN paid_amount + $1 >= grand_total
+            WHEN paid_amount + credit_amount + $1 >= grand_total
               THEN 'PAID'::app.invoice_status
             ELSE 'PARTIAL'::app.invoice_status
           END,
@@ -792,8 +794,9 @@ const createPayment = async (req, res) => {
           invoice_number,
           grand_total,
           paid_amount,
+          credit_amount,
           (
-            grand_total - paid_amount
+            grand_total - paid_amount - credit_amount
           ) AS outstanding_amount,
           status
         `,

@@ -22,6 +22,26 @@ const getNotifications = async (req, res) => {
 
     if (["ADMIN", "MANAGER"].includes(role)) {
       jobs.push(pool.query(`
+        SELECT sr.id,sr.return_number,sr.submitted_at,c.customer_name
+        FROM app.sales_returns sr
+        JOIN app.deliveries d ON d.id=sr.delivery_id
+        JOIN app.sales_orders so ON so.id=d.sales_order_id
+        JOIN app.customers c ON c.id=so.customer_id
+        WHERE sr.status='PENDING'
+        ORDER BY sr.submitted_at DESC LIMIT 20
+      `).then(({ rows }) => rows.forEach((row) => notifications.push({
+        key: `SALES_RETURN_APPROVAL:${row.id}:${new Date(row.submitted_at).getTime()}`,
+        type: "SALES_RETURN_APPROVAL",
+        severity: "WARNING",
+        title: "Retur penjualan perlu disetujui",
+        description: `${row.return_number} · ${row.customer_name}`,
+        path: "/sales-returns",
+        entity_id: row.id,
+        entity_label: row.return_number,
+        occurred_at: row.submitted_at,
+      }))));
+
+      jobs.push(pool.query(`
         SELECT pr.id,pr.return_number,pr.submitted_at,s.supplier_name
         FROM app.purchase_returns pr
         JOIN app.goods_receipts gr ON gr.id=pr.goods_receipt_id
@@ -133,9 +153,9 @@ const getNotifications = async (req, res) => {
 
     if (["ADMIN", "FINANCE", "SALES", "MANAGER"].includes(role)) {
       jobs.push(pool.query(`
-        SELECT i.id,i.invoice_number,i.due_date,i.grand_total-i.paid_amount outstanding,i.updated_at,c.customer_name
+        SELECT i.id,i.invoice_number,i.due_date,i.grand_total-i.paid_amount-i.credit_amount outstanding,i.updated_at,c.customer_name
         FROM app.invoices i JOIN app.customers c ON c.id=i.customer_id
-        WHERE i.grand_total>i.paid_amount AND i.due_date<=CURRENT_DATE+7
+        WHERE i.grand_total>i.paid_amount+i.credit_amount AND i.due_date<=CURRENT_DATE+7
         ORDER BY i.due_date LIMIT 20
       `).then(({ rows }) => rows.forEach((row) => notifications.push({
         key: `CUSTOMER_INVOICE_DUE:${row.id}:${String(row.due_date).slice(0,10)}`,
@@ -174,6 +194,29 @@ const getNotifications = async (req, res) => {
     }
 
     if (["ADMIN", "FINANCE"].includes(role)) {
+      jobs.push(pool.query(`
+        SELECT sr.id,sr.return_number,sr.decided_at,c.customer_name,
+               COALESCE(items.total_amount,0)-COALESCE(settlements.settled_amount,0) AS remaining_amount
+        FROM app.sales_returns sr
+        JOIN app.deliveries d ON d.id=sr.delivery_id
+        JOIN app.sales_orders so ON so.id=d.sales_order_id
+        JOIN app.customers c ON c.id=so.customer_id
+        LEFT JOIN LATERAL (SELECT SUM(sri.quantity*sri.unit_price) total_amount FROM app.sales_return_items sri WHERE sri.sales_return_id=sr.id) items ON TRUE
+        LEFT JOIN LATERAL (SELECT SUM(srs.amount) settled_amount FROM app.sales_return_settlements srs WHERE srs.sales_return_id=sr.id) settlements ON TRUE
+        WHERE sr.status='APPROVED' AND COALESCE(items.total_amount,0)>COALESCE(settlements.settled_amount,0)
+        ORDER BY sr.decided_at DESC LIMIT 20
+      `).then(({ rows }) => rows.forEach((row) => notifications.push({
+        key: `SALES_RETURN_SETTLEMENT:${row.id}:${new Date(row.decided_at).getTime()}`,
+        type: "SALES_RETURN_SETTLEMENT",
+        severity: "WARNING",
+        title: "Retur customer belum diselesaikan",
+        description: `${row.return_number} · ${row.customer_name} · sisa Rp ${new Intl.NumberFormat("id-ID").format(Number(row.remaining_amount))}`,
+        path: "/sales-returns",
+        entity_id: row.id,
+        entity_label: row.return_number,
+        occurred_at: row.decided_at,
+      }))));
+
       jobs.push(pool.query(`
         SELECT pr.id,pr.return_number,pr.decided_at,s.supplier_name,
                COALESCE(items.total_amount,0)-COALESCE(settlements.settled_amount,0) AS remaining_amount

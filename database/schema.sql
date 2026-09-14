@@ -1669,6 +1669,86 @@ ALTER TABLE ONLY app.sales_orders
 
 
 --
+-- Sales return workflow
+
+ALTER TABLE app.invoices ADD COLUMN IF NOT EXISTS credit_amount numeric(18,2) DEFAULT 0 NOT NULL;
+ALTER TABLE app.invoices DROP CONSTRAINT IF EXISTS invoices_credit_amount_check;
+ALTER TABLE app.invoices ADD CONSTRAINT invoices_credit_amount_check CHECK (credit_amount >= 0 AND credit_amount <= grand_total);
+ALTER TABLE app.invoices DROP CONSTRAINT IF EXISTS invoices_settlement_amount_check;
+ALTER TABLE app.invoices ADD CONSTRAINT invoices_settlement_amount_check CHECK (paid_amount + credit_amount <= grand_total);
+
+CREATE OR REPLACE VIEW app.v_outstanding_invoices AS
+ SELECT i.id,i.invoice_number,i.customer_id,c.customer_name,i.invoice_date,i.due_date,
+        i.grand_total,i.paid_amount,
+        (i.grand_total-i.paid_amount-i.credit_amount) AS outstanding_amount,
+        CASE
+          WHEN i.paid_amount+i.credit_amount>=i.grand_total THEN 'PAID'::text
+          WHEN CURRENT_DATE>i.due_date THEN 'OVERDUE'::text
+          WHEN i.paid_amount+i.credit_amount>0 THEN 'PARTIAL'::text
+          ELSE 'UNPAID'::text
+        END AS calculated_status
+ FROM app.invoices i JOIN app.customers c ON c.id=i.customer_id
+ WHERE i.status<>'CANCELLED'::app.invoice_status
+   AND i.paid_amount+i.credit_amount<i.grand_total;
+
+CREATE TABLE IF NOT EXISTS app.sales_returns (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    return_number character varying(40) NOT NULL UNIQUE,
+    delivery_id uuid NOT NULL REFERENCES app.deliveries(id) ON DELETE RESTRICT,
+    return_date date DEFAULT CURRENT_DATE NOT NULL,
+    status character varying(20) DEFAULT 'DRAFT' NOT NULL CHECK (status IN ('DRAFT','PENDING','APPROVED','REJECTED','CANCELLED')),
+    reason character varying(50) NOT NULL CHECK (reason IN ('DAMAGED','WRONG_ITEM','QUALITY_ISSUE','CUSTOMER_REQUEST','OTHER')),
+    notes text,
+    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    submitted_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    submitted_at timestamp with time zone,
+    decided_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    decided_at timestamp with time zone,
+    rejection_reason text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS app.sales_return_items (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    sales_return_id uuid NOT NULL REFERENCES app.sales_returns(id) ON DELETE CASCADE,
+    product_id uuid NOT NULL REFERENCES app.products(id) ON DELETE RESTRICT,
+    quantity numeric(18,3) NOT NULL CHECK (quantity > 0),
+    unit_price numeric(18,2) NOT NULL CHECK (unit_price >= 0),
+    item_condition character varying(20) DEFAULT 'SALEABLE' NOT NULL CHECK (item_condition IN ('SALEABLE','DAMAGED','QUARANTINE')),
+    notes character varying(300),
+    UNIQUE (sales_return_id,product_id)
+);
+
+CREATE TABLE IF NOT EXISTS app.sales_return_settlements (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    sales_return_id uuid NOT NULL REFERENCES app.sales_returns(id) ON DELETE RESTRICT,
+    invoice_id uuid REFERENCES app.invoices(id) ON DELETE RESTRICT,
+    settlement_type character varying(30) NOT NULL CHECK (settlement_type IN ('INVOICE_DEDUCTION','REFUND','REPLACEMENT','CUSTOMER_CREDIT')),
+    settlement_date date DEFAULT CURRENT_DATE NOT NULL,
+    amount numeric(18,2) NOT NULL CHECK (amount > 0),
+    reference_number character varying(100),
+    notes text,
+    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CHECK ((settlement_type IN ('INVOICE_DEDUCTION','CUSTOMER_CREDIT') AND invoice_id IS NOT NULL) OR (settlement_type IN ('REFUND','REPLACEMENT') AND invoice_id IS NULL))
+);
+
+ALTER TABLE app.transaction_approvals DROP CONSTRAINT IF EXISTS transaction_approvals_type_check;
+ALTER TABLE app.transaction_approvals ADD CONSTRAINT transaction_approvals_type_check CHECK (transaction_type IN ('PURCHASE_ORDER','SALES_ORDER','STOCK_OPNAME','PURCHASE_RETURN','SALES_RETURN'));
+
+INSERT INTO app.code_number_settings (module_key,module_label,field_name,is_automatic,prefix,separator,digit_length,include_year,include_month,reset_rule,last_number,last_period)
+VALUES ('SALES_RETURN','Retur Penjualan','return_number',TRUE,'SRT','-',4,TRUE,FALSE,'YEARLY',0,TO_CHAR(CURRENT_DATE,'YYYY'))
+ON CONFLICT (module_key) DO NOTHING;
+
+CREATE INDEX IF NOT EXISTS idx_sales_returns_date ON app.sales_returns(return_date DESC);
+CREATE INDEX IF NOT EXISTS idx_sales_returns_status ON app.sales_returns(status);
+CREATE INDEX IF NOT EXISTS idx_sales_returns_delivery ON app.sales_returns(delivery_id);
+CREATE INDEX IF NOT EXISTS idx_sales_return_items_product ON app.sales_return_items(product_id);
+CREATE INDEX IF NOT EXISTS idx_sales_return_settlements_return ON app.sales_return_settlements(sales_return_id,settlement_date DESC);
+DROP TRIGGER IF EXISTS trg_sales_returns_updated_at ON app.sales_returns;
+CREATE TRIGGER trg_sales_returns_updated_at BEFORE UPDATE ON app.sales_returns FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
 -- PostgreSQL database dump complete
 --
 

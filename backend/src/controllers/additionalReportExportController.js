@@ -427,7 +427,7 @@ const exportFinanceReport = async (req, res) => {
         i.tax_amount,
         i.grand_total,
         i.paid_amount,
-        GREATEST(i.grand_total - i.paid_amount, 0) AS outstanding_amount,
+        GREATEST(i.grand_total - i.paid_amount - i.credit_amount, 0) AS outstanding_amount,
         i.notes AS invoice_notes,
         so.so_number,
         c.customer_code,
