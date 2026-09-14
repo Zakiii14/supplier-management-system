@@ -568,6 +568,14 @@ const ProductsPage = () => {
                           {product.unit}
                         </strong>
 
+                        {(Number(product.quarantine_stock) > 0 || Number(product.damaged_stock) > 0) && (
+                          <span className="stock-bucket-summary">
+                            {Number(product.quarantine_stock) > 0 && `Karantina ${formatNumber(product.quarantine_stock)}`}
+                            {Number(product.quarantine_stock) > 0 && Number(product.damaged_stock) > 0 && " · "}
+                            {Number(product.damaged_stock) > 0 && `Rusak ${formatNumber(product.damaged_stock)}`}
+                          </span>
+                        )}
+
                         {product.is_low_stock && (
                           <span className="stock-warning">
                             Low stock

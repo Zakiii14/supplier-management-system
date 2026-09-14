@@ -46,9 +46,16 @@ const outboundMovementTypes = new Set([
 
 const referenceTypeLabels = {
   DELIVERY: "Delivery",
-  GOODS_RECEIPT: "Goods receipt",
-  STOCK_OPNAME: "Stock opname",
+  GOODS_RECEIPT: "Penerimaan barang",
+  STOCK_OPNAME: "Stok opname",
   PURCHASE_RETURN: "Retur pembelian",
+  SALES_RETURN: "Retur penjualan",
+};
+
+const stockBucketLabels = {
+  AVAILABLE: "Stok tersedia",
+  QUARANTINE: "Stok karantina",
+  DAMAGED: "Stok rusak",
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat(
@@ -204,9 +211,9 @@ const InventoryMovementDetailDialog = ({
                   {movement.unit}
                 </strong>
                 <small>
-                  {isOutbound
+                  {stockBucketLabels[movement.stock_bucket] || (isOutbound
                     ? "Stok keluar"
-                    : "Stok masuk"}
+                    : "Stok masuk")}
                 </small>
               </div>
             </article>

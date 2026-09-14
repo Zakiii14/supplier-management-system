@@ -1393,10 +1393,29 @@
 .data-table.data-table .table-action-buttons {
   display: flex;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   align-items: center;
   justify-content: flex-start;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.data-table.data-table td > :is(
+  .status-badge,
+  .record-status,
+  .purchase-order-status,
+  .sales-order-status,
+  .delivery-status,
+  .invoice-status,
+  .purchase-return-status,
+  .stock-opname-status,
+  .supplier-invoice-status
+) {
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .data-table.data-table

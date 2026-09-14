@@ -7,6 +7,8 @@ const authorizeRoles = require(
 const {
   getAllInventoryMovements,
   getInventoryMovementById,
+  getQuarantineStocks,
+  createStockInspection,
 } = require(
   "../controllers/inventoryMovementController"
 );
@@ -23,6 +25,18 @@ router.get(
     "MANAGER"
   ),
   getAllInventoryMovements
+);
+
+router.get(
+  "/quarantine-stocks",
+  authorizeRoles("ADMIN", "WAREHOUSE", "MANAGER"),
+  getQuarantineStocks
+);
+
+router.post(
+  "/stock-inspections",
+  authorizeRoles("ADMIN", "WAREHOUSE", "MANAGER"),
+  createStockInspection
 );
 
 router.get(

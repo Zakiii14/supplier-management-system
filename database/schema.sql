@@ -383,10 +383,12 @@ CREATE TABLE app.inventory_movements (
     quantity numeric(18,3) NOT NULL,
     reference_type character varying(50),
     reference_id uuid,
+    stock_bucket character varying(20) DEFAULT 'AVAILABLE'::character varying NOT NULL,
     movement_date timestamp with time zone DEFAULT now() NOT NULL,
     notes text,
     created_by uuid,
-    CONSTRAINT inventory_movements_quantity_check CHECK ((quantity > (0)::numeric))
+    CONSTRAINT inventory_movements_quantity_check CHECK ((quantity > (0)::numeric)),
+    CONSTRAINT inventory_movements_stock_bucket_check CHECK (((stock_bucket)::text = ANY ((ARRAY['AVAILABLE'::character varying, 'QUARANTINE'::character varying, 'DAMAGED'::character varying])::text[])))
 );
 
 
@@ -453,11 +455,15 @@ CREATE TABLE app.products (
     selling_price numeric(18,2) DEFAULT 0 NOT NULL,
     minimum_stock numeric(18,3) DEFAULT 0 NOT NULL,
     current_stock numeric(18,3) DEFAULT 0 NOT NULL,
+    quarantine_stock numeric(18,3) DEFAULT 0 NOT NULL,
+    damaged_stock numeric(18,3) DEFAULT 0 NOT NULL,
     status app.record_status DEFAULT 'ACTIVE'::app.record_status NOT NULL,
     description text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT products_current_stock_check CHECK ((current_stock >= (0)::numeric)),
+    CONSTRAINT products_quarantine_stock_check CHECK ((quarantine_stock >= (0)::numeric)),
+    CONSTRAINT products_damaged_stock_check CHECK ((damaged_stock >= (0)::numeric)),
     CONSTRAINT products_minimum_stock_check CHECK ((minimum_stock >= (0)::numeric)),
     CONSTRAINT products_purchase_price_check CHECK ((purchase_price >= (0)::numeric)),
     CONSTRAINT products_selling_price_check CHECK ((selling_price >= (0)::numeric))
@@ -1684,7 +1690,7 @@ CREATE OR REPLACE VIEW app.v_outstanding_invoices AS
         CASE
           WHEN i.paid_amount+i.credit_amount>=i.grand_total THEN 'PAID'::text
           WHEN CURRENT_DATE>i.due_date THEN 'OVERDUE'::text
-          WHEN i.paid_amount+i.credit_amount>0 THEN 'PARTIAL'::text
+          WHEN i.paid_amount>0 THEN 'PARTIAL'::text
           ELSE 'UNPAID'::text
         END AS calculated_status
  FROM app.invoices i JOIN app.customers c ON c.id=i.customer_id
@@ -1733,6 +1739,22 @@ CREATE TABLE IF NOT EXISTS app.sales_return_settlements (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CHECK ((settlement_type IN ('INVOICE_DEDUCTION','CUSTOMER_CREDIT') AND invoice_id IS NOT NULL) OR (settlement_type IN ('REFUND','REPLACEMENT') AND invoice_id IS NULL))
 );
+
+CREATE TABLE IF NOT EXISTS app.inventory_stock_inspections (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    inspection_number character varying(40) NOT NULL UNIQUE,
+    product_id uuid NOT NULL REFERENCES app.products(id) ON DELETE RESTRICT,
+    source_bucket character varying(20) DEFAULT 'QUARANTINE' NOT NULL CHECK (source_bucket = 'QUARANTINE'),
+    target_bucket character varying(20) NOT NULL CHECK (target_bucket IN ('AVAILABLE','DAMAGED')),
+    quantity numeric(18,3) NOT NULL CHECK (quantity > 0),
+    inspection_date date DEFAULT CURRENT_DATE NOT NULL,
+    notes text,
+    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_stock_inspections_product
+    ON app.inventory_stock_inspections(product_id,inspection_date DESC);
 
 ALTER TABLE app.transaction_approvals DROP CONSTRAINT IF EXISTS transaction_approvals_type_check;
 ALTER TABLE app.transaction_approvals ADD CONSTRAINT transaction_approvals_type_check CHECK (transaction_type IN ('PURCHASE_ORDER','SALES_ORDER','STOCK_OPNAME','PURCHASE_RETURN','SALES_RETURN'));

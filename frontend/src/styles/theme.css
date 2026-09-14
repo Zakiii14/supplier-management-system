@@ -637,6 +637,9 @@ html[data-theme="dark"] .report-trend-scale-note {
 .sales-order-status,
 .delivery-status,
 .invoice-status,
+.purchase-return-status,
+.stock-opname-status,
+.supplier-invoice-status,
 .payment-method-badge,
 .user-role-badge,
 .inventory-movement-badge,
@@ -645,7 +648,9 @@ html[data-theme="dark"] .report-trend-scale-note {
 .dashboard-activity-status,
 .record-status {
   display: inline-flex;
+  box-sizing: border-box;
   width: fit-content;
+  max-width: 100%;
   min-height: 22px;
   align-items: center;
   justify-content: center;
@@ -659,7 +664,8 @@ html[data-theme="dark"] .report-trend-scale-note {
   line-height: 1.2;
   letter-spacing: -0.005em;
   text-align: center;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .status-badge.is-active,

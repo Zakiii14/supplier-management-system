@@ -65,6 +65,11 @@ const conditionOptions = [
   { value: "QUARANTINE", label: "Perlu pemeriksaan/karantina" },
 ];
 const conditionLabels = Object.fromEntries(conditionOptions.map((item) => [item.value, item.label]));
+const conditionStockLabels = {
+  SALEABLE: "Masuk stok tersedia",
+  QUARANTINE: "Masuk stok karantina",
+  DAMAGED: "Masuk stok rusak",
+};
 const settlementTypeOptions = [
   { value: "INVOICE_DEDUCTION", label: "Potong tagihan asal" },
   { value: "CUSTOMER_CREDIT", label: "Gunakan kredit ke tagihan lain" },
@@ -261,6 +266,10 @@ const SalesReturnDetail = ({ detail, user, busy, error, dismissDisabled, onClose
   const canDecide = ["ADMIN", "MANAGER"].includes(user?.role) && detail.status === "PENDING" && detail.submitted_by !== user?.id;
   const canCancel = ["ADMIN", "SALES", "WAREHOUSE"].includes(user?.role) && ["DRAFT", "REJECTED"].includes(detail.status);
   const canSettle = ["ADMIN", "FINANCE"].includes(user?.role) && detail.status === "APPROVED" && Number(detail.settlement_remaining) > 0;
+  const stockDistribution = detail.items.reduce((totals, item) => ({
+    ...totals,
+    [item.item_condition]: (totals[item.item_condition] || 0) + Number(item.quantity),
+  }), { SALEABLE: 0, QUARANTINE: 0, DAMAGED: 0 });
   useModalDismiss(true, onClose, busy || dismissDisabled);
   return (
     <div className="purchase-return-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy && !dismissDisabled) onClose(); }}>
@@ -274,7 +283,8 @@ const SalesReturnDetail = ({ detail, user, busy, error, dismissDisabled, onClose
             <article><span>Penyelesaian customer</span><strong>{settlementStatusLabels[detail.settlement_status]}</strong><small>{formatCurrency(detail.settled_amount)} dari {formatCurrency(detail.total_amount)}</small></article>
           </div>
           <div className="purchase-return-notes"><span>Alasan retur</span><strong>{reasonLabels[detail.reason] || detail.reason}</strong>{detail.notes && <p>{detail.notes}</p>}</div>
-          <section><h3>Rincian barang</h3><div className="purchase-return-detail-table"><table className="data-table"><thead><tr><th>Produk</th><th>Kondisi</th><th>Jumlah</th><th>Harga</th><th>Subtotal</th><th>Keterangan</th></tr></thead><tbody>{detail.items.map((item) => <tr key={item.id}><td data-label="Produk"><strong>{item.product_name}</strong><small>{item.sku}</small></td><td data-label="Kondisi">{conditionLabels[item.item_condition] || item.item_condition}</td><td data-label="Jumlah">{formatNumber(item.quantity)} {item.unit}</td><td data-label="Harga">{formatCurrency(item.unit_price)}</td><td data-label="Subtotal"><strong>{formatCurrency(item.subtotal)}</strong></td><td data-label="Keterangan">{item.notes || "-"}</td></tr>)}</tbody></table></div></section>
+          <section className="purchase-return-stock-impact"><div><h3>Dampak inventory</h3><p>Barang dialokasikan otomatis berdasarkan kondisi saat retur disetujui.</p></div><div className="purchase-return-stock-grid"><article><span>Stok tersedia</span><strong>{formatNumber(stockDistribution.SALEABLE)} unit</strong></article><article><span>Stok karantina</span><strong>{formatNumber(stockDistribution.QUARANTINE)} unit</strong></article><article><span>Stok rusak</span><strong>{formatNumber(stockDistribution.DAMAGED)} unit</strong></article></div></section>
+          <section><h3>Rincian barang</h3><div className="purchase-return-detail-table"><table className="data-table"><thead><tr><th>Produk</th><th>Kondisi</th><th>Jumlah</th><th>Harga</th><th>Subtotal</th><th>Keterangan</th></tr></thead><tbody>{detail.items.map((item) => <tr key={item.id}><td data-label="Produk"><strong>{item.product_name}</strong><small>{item.sku}</small></td><td data-label="Kondisi"><span className="purchase-return-condition">{conditionLabels[item.item_condition] || item.item_condition}<small>{conditionStockLabels[item.item_condition] || "Tidak mengubah stok tersedia"}</small></span></td><td data-label="Jumlah">{formatNumber(item.quantity)} {item.unit}</td><td data-label="Harga">{formatCurrency(item.unit_price)}</td><td data-label="Subtotal"><strong>{formatCurrency(item.subtotal)}</strong></td><td data-label="Keterangan">{item.notes || "-"}</td></tr>)}</tbody></table></div></section>
           <ApprovalHistory approvalStatus={detail.status} rejectionReason={detail.rejection_reason} history={detail.approval_history} />
           <section className="purchase-return-settlements"><h3>Riwayat penyelesaian customer</h3>{detail.settlements.length ? detail.settlements.map((item) => <article key={item.id}><div><strong>{settlementTypeLabels[item.settlement_type] || item.settlement_type}</strong><span>{formatDate(item.settlement_date)}{item.invoice_number ? ` · ${item.invoice_number}` : ""}{item.reference_number ? ` · ${item.reference_number}` : ""}</span></div><strong>{formatCurrency(item.amount)}</strong>{item.notes && <p>{item.notes}</p>}</article>) : <p>Belum ada penyelesaian finansial atau penggantian yang dicatat.</p>}</section>
           {detail.status === "PENDING" && detail.submitted_by === user?.id && <div className="purchase-return-info">Retur sedang menunggu keputusan pengguna lain yang berwenang.</div>}

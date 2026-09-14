@@ -49,9 +49,14 @@
 }
 
 .product-name-cell span,
-.product-relation-cell span {
+.product-relation-cell span,
+.stock-bucket-summary {
   color: var(--sf-text-soft);
   font-size: 0.73rem;
+}
+
+.stock-bucket-summary {
+  line-height: 1.4;
 }
 
 .stock-warning {
