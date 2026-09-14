@@ -492,7 +492,7 @@ const ProductsPage = () => {
         </div>
 
         <div className="data-table-wrapper">
-          <table className="data-table">
+          <table className="data-table product-table">
             <thead>
               <tr>
                 <th>SKU</th>

@@ -377,9 +377,48 @@
 }
 
 .data-table {
+  --data-table-action-column-width: 132px;
+
   width: 100%;
   min-width: 1050px;
   border-collapse: collapse;
+}
+
+.purchase-order-table,
+.sales-order-table,
+.product-table {
+  --data-table-action-column-width: 240px;
+}
+
+.category-table,
+.supplier-table,
+.customer-table,
+.supplier-invoice-table,
+.invoice-table,
+.delivery-table {
+  --data-table-action-column-width: 220px;
+}
+
+.user-table {
+  --data-table-action-column-width: 260px;
+}
+
+.payment-table,
+.audit-table,
+.goods-receipt-table,
+.inventory-table,
+.stock-opname-table,
+.purchase-return-table,
+.report-table {
+  --data-table-action-column-width: 132px;
+}
+
+.data-table:has(.table-action-cell) th:last-child,
+.data-table.data-table:has(.table-action-cell)
+  .table-action-cell {
+  box-sizing: border-box;
+  width: var(--data-table-action-column-width);
+  min-width: var(--data-table-action-column-width);
 }
 
 .data-table th,
@@ -583,13 +622,14 @@
   @container (min-width: 701px) {
     .data-table-wrapper {
       max-width: 100%;
-      max-height: none;
-      overflow-x: auto;
-      overflow-y: visible;
-      overscroll-behavior-inline: contain;
+      max-height: min(52dvh, 520px);
+      overflow: auto;
+      overscroll-behavior-x: contain;
+      overscroll-behavior-y: auto;
       scrollbar-color:
         var(--sf-border-strong)
         var(--sf-surface-muted);
+      scrollbar-gutter: stable;
       scrollbar-width: thin;
       -webkit-overflow-scrolling: touch;
     }
@@ -994,7 +1034,7 @@
 }
 
 .audit-table th:last-child {
-  width: 112px;
+  width: var(--data-table-action-column-width);
 }
 
 .table-edit-action {
@@ -1447,6 +1487,13 @@
 }
 
 @media (max-width: 700px) {
+  .data-table:has(.table-action-cell) th:last-child,
+  .data-table.data-table:has(.table-action-cell)
+    .table-action-cell {
+    width: auto;
+    min-width: 0;
+  }
+
   .data-table.data-table .table-action-buttons {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

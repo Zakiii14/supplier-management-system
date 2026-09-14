@@ -12,7 +12,7 @@
 }
 
 .stock-opname-table th:last-child {
-  width: 104px;
+  width: var(--data-table-action-column-width);
 }
 
 .stock-opname-detail-action {

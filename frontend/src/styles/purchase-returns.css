@@ -12,7 +12,7 @@
 }
 
 .purchase-return-table th:last-child {
-  width: 104px;
+  width: var(--data-table-action-column-width);
 }
 
 .purchase-return-detail-action {
