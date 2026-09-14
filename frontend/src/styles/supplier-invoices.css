@@ -15,7 +15,8 @@
 }
 
 .supplier-invoice-table .table-action-cell {
-  width: 180px;
+  width: 200px;
+  min-width: 200px;
 }
 
 .supplier-invoice-table .supplier-invoice-actions {
@@ -23,29 +24,6 @@
   flex-wrap: wrap;
   justify-content: flex-start;
   gap: 8px;
-}
-
-.supplier-invoice-table
-  .supplier-invoice-actions
-  .table-edit-action {
-  min-width: 80px;
-  min-height: 34px;
-  justify-content: center;
-  padding: 0 11px;
-  color: var(--sf-accent);
-  background: var(--sf-accent-soft);
-  border: 1px solid var(--sf-border);
-  border-radius: 9px;
-  font-size: 0.75rem;
-  white-space: nowrap;
-}
-
-.supplier-invoice-table
-  .supplier-invoice-actions
-  .table-edit-action:hover:not(:disabled) {
-  color: #ffffff;
-  background: #2563eb;
-  border-color: var(--sf-accent);
 }
 
 .supplier-invoice-detail-footer {
@@ -210,13 +188,7 @@
   .supplier-invoice-table th:last-child,
   .supplier-invoice-table .table-action-cell {
     width: auto;
-  }
-
-  .supplier-invoice-table
-    .supplier-invoice-actions
-    .table-edit-action {
     min-width: 0;
-    flex: 1 1 100px;
   }
 
   .supplier-invoice-file-picker {

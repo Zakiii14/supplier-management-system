@@ -407,7 +407,6 @@ const CustomersPage = () => {
                                 <th>Termin</th>
                                 <th>Batas kredit</th>
                                 <th>Status</th>
-                                <th>Status</th>
                                 {canManageCustomers && <th>Aksi</th>}
                             </tr>
                         </thead>

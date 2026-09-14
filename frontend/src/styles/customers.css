@@ -117,5 +117,17 @@
 }
 
 .customer-table.has-actions th:nth-child(8) {
-  width: 16%;
+  width: 200px;
+}
+
+.customer-table.has-actions .table-action-cell {
+  width: 200px;
+  min-width: 200px;
+}
+
+@media (max-width: 700px) {
+  .customer-table.has-actions .table-action-cell {
+    width: auto;
+    min-width: 0;
+  }
 }
