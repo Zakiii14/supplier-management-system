@@ -125,6 +125,49 @@
   }
 }
 
+/* Keep the compact desktop table readable when the sidebar narrows its container. */
+@media (min-width: 1025px) {
+  .goods-receipt-table {
+    --data-table-action-column-width: 120px;
+  }
+
+  .goods-receipt-table th,
+  .goods-receipt-table td {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .goods-receipt-table th {
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .goods-receipt-table th:nth-child(3) {
+    width: 15%;
+  }
+
+  .goods-receipt-table th:nth-child(6) {
+    width: 9%;
+    white-space: nowrap;
+  }
+
+  .goods-receipt-table th:nth-child(7) {
+    width: 7%;
+    white-space: nowrap;
+  }
+
+  .goods-receipt-table th:nth-child(8) {
+    width: 15%;
+  }
+
+  .goods-receipt-table th:nth-child(9),
+  .goods-receipt-table .table-action-cell {
+    padding-right: 12px;
+    padding-left: 12px;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 700px) {
   .goods-receipt-filters .search-control {
     flex-basis: 100%;
