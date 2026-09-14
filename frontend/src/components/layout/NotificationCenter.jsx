@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   CircleDollarSign,
   PackageCheck,
+  PackageX,
   ReceiptText,
   RefreshCw,
   ShoppingCart,
@@ -22,6 +23,8 @@ const ICONS = {
   CUSTOMER_INVOICE: ReceiptText,
   SUPPLIER_INVOICE: CircleDollarSign,
   STOCK_OPNAME_APPROVAL: ClipboardCheck,
+  PURCHASE_RETURN_APPROVAL: PackageX,
+  PURCHASE_RETURN_SETTLEMENT: PackageX,
   USER: UserRoundPlus,
 };
 

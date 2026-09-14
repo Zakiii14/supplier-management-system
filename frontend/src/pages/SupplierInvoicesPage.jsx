@@ -25,6 +25,7 @@ import FormDatePicker from "../components/forms/FormDatePicker";
 import FormSelect from "../components/forms/FormSelect";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
+import useModalDismiss from "../hooks/useModalDismiss";
 import {
   formatCurrency,
   formatDate,
@@ -47,6 +48,12 @@ const statusOptions = [
     ([value, label]) => ({ value, label }),
   ),
 ];
+
+const returnSettlementLabels = {
+  INVOICE_DEDUCTION: "Potongan tagihan asal",
+  SUPPLIER_CREDIT: "Kredit supplier",
+  REFUND: "Pengembalian dana dari supplier",
+};
 
 const InvoiceForm = ({
   invoice,
@@ -205,13 +212,9 @@ const InvoiceForm = ({
                 min="0.01"
                 step="0.01"
                 value={values.total_amount}
-                onChange={(event) =>
-                  setValues({
-                    ...values,
-                    total_amount: event.target.value,
-                  })
-                }
+                readOnly
               />
+              <small>Total mengikuti nilai purchase order.</small>
             </label>
 
             <label className="is-full">
@@ -320,6 +323,8 @@ const SupplierInvoicesPage = () => {
   const [pos, setPos] = useState([]);
   const [detail, setDetail] = useState(null);
 
+  useModalDismiss(Boolean(detail), () => setDetail(null));
+
   const hasActiveFilters = Boolean(
     search.trim() || query || status,
   );
@@ -388,7 +393,12 @@ const SupplierInvoicesPage = () => {
         limit: 100,
       });
       setPos(
-        result.data.filter((po) => po.status !== "DRAFT"),
+        result.data.filter(
+          (po) =>
+            po.status !== "DRAFT" &&
+            (!po.has_supplier_invoice ||
+              po.id === invoice?.purchase_order_id),
+        ),
       );
       setForm(invoice || {});
     } catch {
@@ -568,7 +578,8 @@ const SupplierInvoicesPage = () => {
                       </small>
                     </td>
                     <td data-label="Total">
-                      {formatCurrency(row.total_amount)}
+                      <strong>{formatCurrency(row.adjusted_total_amount)}</strong>
+                      {Number(row.return_credit_amount) > 0 && <small>Awal {formatCurrency(row.total_amount)} · kredit retur {formatCurrency(row.return_credit_amount)}</small>}
                     </td>
                     <td data-label="Sisa">
                       {formatCurrency(row.outstanding_amount)}
@@ -580,10 +591,11 @@ const SupplierInvoicesPage = () => {
                         {statusLabels[row.effective_status]}
                       </span>
                     </td>
-                    <td data-label="Aksi">
-                      <div className="supplier-invoice-actions">
+                    <td data-label="Aksi" className="table-action-cell">
+                      <div className="table-action-buttons supplier-invoice-actions">
                         <button
                           type="button"
+                          className="table-edit-action"
                           onClick={() => openDetail(row.id)}
                         >
                           <Eye aria-hidden="true" />
@@ -592,6 +604,7 @@ const SupplierInvoicesPage = () => {
                         {canEdit && (
                           <button
                             type="button"
+                            className="table-edit-action"
                             onClick={() => openForm(row)}
                           >
                             <Pencil aria-hidden="true" />
@@ -627,12 +640,12 @@ const SupplierInvoicesPage = () => {
       )}
 
       {detail && (
-        <div className="supplier-invoice-backdrop">
-          <section className="supplier-invoice-detail">
+        <div className="supplier-invoice-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetail(null); }}>
+          <section className="supplier-invoice-detail" role="dialog" aria-modal="true" aria-labelledby="supplier-invoice-detail-title">
             <header>
               <div>
                 <span>TAGIHAN SUPPLIER</span>
-                <h2>{detail.invoice_number}</h2>
+                <h2 id="supplier-invoice-detail-title">{detail.invoice_number}</h2>
                 <p>
                   {detail.supplier_name} · {detail.po_number}
                 </p>
@@ -649,9 +662,27 @@ const SupplierInvoicesPage = () => {
             <div className="supplier-invoice-detail-body">
               <div className="supplier-invoice-summary-grid">
                 <article>
-                  <span>Total</span>
+                  <span>Total awal</span>
                   <strong>
                     {formatCurrency(detail.total_amount)}
+                  </strong>
+                </article>
+                <article>
+                  <span>Kredit retur</span>
+                  <strong>
+                    {formatCurrency(detail.return_credit_amount)}
+                  </strong>
+                </article>
+                <article>
+                  <span>Dana kembali dari supplier</span>
+                  <strong>
+                    {formatCurrency(detail.supplier_refund_amount)}
+                  </strong>
+                </article>
+                <article>
+                  <span>Nilai pembelian bersih</span>
+                  <strong>
+                    {formatCurrency(detail.net_purchase_amount)}
                   </strong>
                 </article>
                 <article>
@@ -721,7 +752,24 @@ const SupplierInvoicesPage = () => {
                   <p>Belum ada pembayaran yang dikaitkan.</p>
                 )}
               </section>
+
+              <section>
+                <h3>Penyelesaian retur pembelian</h3>
+                {detail.return_settlements?.length ? (
+                  detail.return_settlements.map((item) => (
+                    <div className="supplier-invoice-payment" key={item.id}>
+                      <span>{item.return_number} · {returnSettlementLabels[item.settlement_type] || item.settlement_type} · {formatDate(item.settlement_date)}</span>
+                      <strong>{item.settlement_type === "REFUND" ? "+" : "-"}{formatCurrency(item.amount)}</strong>
+                    </div>
+                  ))
+                ) : (
+                  <p>Belum ada potongan atau pengembalian dana retur.</p>
+                )}
+              </section>
             </div>
+            <footer className="supplier-invoice-detail-footer">
+              <button type="button" className="modal-detail-close-action" onClick={() => setDetail(null)}>Tutup</button>
+            </footer>
           </section>
         </div>
       )}

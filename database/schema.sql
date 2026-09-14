@@ -143,6 +143,70 @@ BEGIN
 END;
 $$;
 
+CREATE FUNCTION app.enforce_single_supplier_invoice_per_po() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    po_total numeric(18,2);
+BEGIN
+    SELECT COALESCE(SUM(quantity * unit_price), 0)::numeric(18,2)
+    INTO po_total
+    FROM app.purchase_order_items
+    WHERE purchase_order_id = NEW.purchase_order_id;
+
+    IF NEW.total_amount <> po_total THEN
+        RAISE EXCEPTION 'Total tagihan supplier harus sama dengan total purchase order (%)', po_total
+            USING ERRCODE = '23514', CONSTRAINT = 'supplier_invoices_total_matches_po';
+    END IF;
+
+    IF TG_OP = 'INSERT'
+       OR NEW.purchase_order_id IS DISTINCT FROM OLD.purchase_order_id THEN
+        IF EXISTS (
+            SELECT 1 FROM app.supplier_invoices si
+            WHERE si.purchase_order_id = NEW.purchase_order_id
+              AND si.id <> NEW.id
+        ) THEN
+            RAISE EXCEPTION 'Purchase order sudah memiliki tagihan supplier'
+                USING ERRCODE = '23505', CONSTRAINT = 'supplier_invoices_purchase_order_unique';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+CREATE FUNCTION app.enforce_supplier_payment_invoice_link() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    invoice_po_id uuid;
+    invoice_number_value varchar(100);
+BEGIN
+    IF NEW.supplier_invoice_id IS NULL THEN
+        RAISE EXCEPTION 'Pembayaran supplier harus terhubung ke tagihan supplier'
+            USING ERRCODE = '23502', COLUMN = 'supplier_invoice_id';
+    END IF;
+
+    SELECT purchase_order_id, invoice_number
+    INTO invoice_po_id, invoice_number_value
+    FROM app.supplier_invoices
+    WHERE id = NEW.supplier_invoice_id;
+
+    IF invoice_po_id IS NULL THEN
+        RAISE EXCEPTION 'Tagihan supplier tidak ditemukan'
+            USING ERRCODE = '23503', CONSTRAINT = 'supplier_payments_supplier_invoice_id_fkey';
+    END IF;
+
+    IF invoice_po_id <> NEW.purchase_order_id THEN
+        RAISE EXCEPTION 'Tagihan supplier tidak berasal dari purchase order yang dipilih'
+            USING ERRCODE = '23514', CONSTRAINT = 'supplier_payments_invoice_po_match';
+    END IF;
+
+    NEW.supplier_invoice_number := invoice_number_value;
+    RETURN NEW;
+END;
+$$;
+
 
 SET default_tablespace = '';
 
@@ -214,7 +278,8 @@ VALUES
     ('INVOICE', 'Invoice', 'invoice_number', 'INV', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
     ('PAYMENT', 'Pembayaran', 'payment_number', 'PAY', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
     ('SUPPLIER_PAYMENT', 'Pembayaran Supplier', 'payment_number', 'SPAY', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('STOCK_OPNAME', 'Stock Opname', 'opname_number', 'SOF', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY'));
+    ('STOCK_OPNAME', 'Stock Opname', 'opname_number', 'SOF', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
+    ('PURCHASE_RETURN', 'Retur Pembelian', 'return_number', 'PRT', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY'));
 
 
 --
@@ -490,7 +555,7 @@ CREATE TABLE app.supplier_invoices (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT supplier_invoices_total_check CHECK (total_amount > 0),
     CONSTRAINT supplier_invoices_due_date_check CHECK (due_date >= invoice_date),
-    CONSTRAINT supplier_invoices_number_supplier_unique UNIQUE (purchase_order_id, invoice_number)
+    CONSTRAINT supplier_invoices_purchase_order_unique UNIQUE (purchase_order_id)
 );
 
 CREATE TABLE app.stock_opnames (
@@ -520,6 +585,56 @@ CREATE TABLE app.stock_opname_items (
     CONSTRAINT stock_opname_items_product_unique UNIQUE (stock_opname_id, product_id),
     CONSTRAINT stock_opname_items_system_quantity_check CHECK ((system_quantity >= (0)::numeric)),
     CONSTRAINT stock_opname_items_counted_quantity_check CHECK ((counted_quantity >= (0)::numeric))
+);
+
+CREATE TABLE app.purchase_returns (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    return_number character varying(40) NOT NULL UNIQUE,
+    goods_receipt_id uuid NOT NULL REFERENCES app.goods_receipts(id) ON DELETE RESTRICT,
+    return_date date DEFAULT CURRENT_DATE NOT NULL,
+    status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
+    reason character varying(50) NOT NULL,
+    notes text,
+    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    submitted_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    submitted_at timestamp with time zone,
+    decided_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    decided_at timestamp with time zone,
+    rejection_reason text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT purchase_returns_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[]))),
+    CONSTRAINT purchase_returns_reason_check CHECK (((reason)::text = ANY ((ARRAY['DAMAGED'::character varying, 'WRONG_ITEM'::character varying, 'QUALITY_ISSUE'::character varying, 'EXCESS'::character varying, 'OTHER'::character varying])::text[])))
+);
+
+CREATE TABLE app.purchase_return_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    purchase_return_id uuid NOT NULL REFERENCES app.purchase_returns(id) ON DELETE CASCADE,
+    product_id uuid NOT NULL REFERENCES app.products(id) ON DELETE RESTRICT,
+    quantity numeric(18,3) NOT NULL,
+    unit_price numeric(18,2) NOT NULL,
+    item_condition character varying(30) DEFAULT 'DAMAGED'::character varying NOT NULL,
+    notes character varying(300),
+    CONSTRAINT purchase_return_items_product_unique UNIQUE (purchase_return_id, product_id),
+    CONSTRAINT purchase_return_items_quantity_check CHECK ((quantity > (0)::numeric)),
+    CONSTRAINT purchase_return_items_unit_price_check CHECK ((unit_price >= (0)::numeric)),
+    CONSTRAINT purchase_return_items_condition_check CHECK (((item_condition)::text = ANY ((ARRAY['DAMAGED'::character varying, 'WRONG_ITEM'::character varying, 'QUALITY_ISSUE'::character varying, 'UNOPENED'::character varying, 'OTHER'::character varying])::text[])))
+);
+
+CREATE TABLE app.purchase_return_settlements (
+    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
+    purchase_return_id uuid NOT NULL REFERENCES app.purchase_returns(id) ON DELETE RESTRICT,
+    supplier_invoice_id uuid REFERENCES app.supplier_invoices(id) ON DELETE RESTRICT,
+    settlement_type character varying(30) NOT NULL,
+    settlement_date date DEFAULT CURRENT_DATE NOT NULL,
+    amount numeric(18,2) NOT NULL,
+    reference_number character varying(100),
+    notes text,
+    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT purchase_return_settlements_type_check CHECK (((settlement_type)::text = ANY ((ARRAY['INVOICE_DEDUCTION'::character varying, 'REFUND'::character varying, 'REPLACEMENT'::character varying, 'SUPPLIER_CREDIT'::character varying])::text[]))),
+    CONSTRAINT purchase_return_settlements_amount_check CHECK ((amount > (0)::numeric)),
+    CONSTRAINT purchase_return_settlements_invoice_check CHECK ((((settlement_type)::text = ANY ((ARRAY['INVOICE_DEDUCTION'::character varying, 'SUPPLIER_CREDIT'::character varying])::text[])) AND (supplier_invoice_id IS NOT NULL)) OR (((settlement_type)::text = ANY ((ARRAY['REFUND'::character varying, 'REPLACEMENT'::character varying])::text[])) AND (supplier_invoice_id IS NULL)))
 );
 
 CREATE TABLE app.supplier_invoice_attachments (
@@ -700,7 +815,7 @@ CREATE TABLE app.transaction_approvals (
     reason text,
     acted_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
     acted_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT transaction_approvals_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['PURCHASE_ORDER'::character varying, 'SALES_ORDER'::character varying, 'STOCK_OPNAME'::character varying])::text[]))),
+    CONSTRAINT transaction_approvals_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['PURCHASE_ORDER'::character varying, 'SALES_ORDER'::character varying, 'STOCK_OPNAME'::character varying, 'PURCHASE_RETURN'::character varying])::text[]))),
     CONSTRAINT transaction_approvals_action_check CHECK (((action)::text = ANY ((ARRAY['SUBMITTED'::character varying, 'RESUBMITTED'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying])::text[])))
 );
 
@@ -1172,6 +1287,12 @@ CREATE INDEX idx_sales_orders_approval_status ON app.sales_orders USING btree (a
 CREATE INDEX idx_stock_opnames_date ON app.stock_opnames USING btree (opname_date DESC);
 CREATE INDEX idx_stock_opnames_status ON app.stock_opnames USING btree (status);
 CREATE INDEX idx_stock_opname_items_product ON app.stock_opname_items USING btree (product_id);
+CREATE INDEX idx_purchase_returns_date ON app.purchase_returns USING btree (return_date DESC);
+CREATE INDEX idx_purchase_returns_status ON app.purchase_returns USING btree (status);
+CREATE INDEX idx_purchase_returns_receipt ON app.purchase_returns USING btree (goods_receipt_id);
+CREATE INDEX idx_purchase_return_items_product ON app.purchase_return_items USING btree (product_id);
+CREATE INDEX idx_purchase_return_settlements_return ON app.purchase_return_settlements USING btree (purchase_return_id, settlement_date DESC);
+CREATE INDEX idx_purchase_return_settlements_invoice ON app.purchase_return_settlements USING btree (supplier_invoice_id) WHERE (supplier_invoice_id IS NOT NULL);
 
 CREATE INDEX idx_transaction_approvals_transaction ON app.transaction_approvals USING btree (transaction_type, transaction_id, acted_at DESC);
 
@@ -1231,7 +1352,10 @@ CREATE TRIGGER trg_payment_settings_updated_at BEFORE UPDATE ON app.payment_sett
 
 CREATE TRIGGER trg_supplier_payments_updated_at BEFORE UPDATE ON app.supplier_payments FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
 CREATE TRIGGER trg_supplier_invoices_updated_at BEFORE UPDATE ON app.supplier_invoices FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+CREATE TRIGGER trg_supplier_invoices_finance_rules BEFORE INSERT OR UPDATE OF purchase_order_id, total_amount ON app.supplier_invoices FOR EACH ROW EXECUTE FUNCTION app.enforce_single_supplier_invoice_per_po();
+CREATE TRIGGER trg_supplier_payments_invoice_link BEFORE INSERT OR UPDATE OF purchase_order_id, supplier_invoice_id, supplier_invoice_number ON app.supplier_payments FOR EACH ROW EXECUTE FUNCTION app.enforce_supplier_payment_invoice_link();
 CREATE TRIGGER trg_stock_opnames_updated_at BEFORE UPDATE ON app.stock_opnames FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+CREATE TRIGGER trg_purchase_returns_updated_at BEFORE UPDATE ON app.purchase_returns FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
 
 
 --

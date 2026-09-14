@@ -1482,6 +1482,28 @@
   }
 }
 
+@media (min-width: 701px) and (max-width: 1024px) {
+  @container (min-width: 701px) {
+    .purchase-order-table .table-action-cell {
+      min-width: 270px;
+    }
+
+    .purchase-order-action-buttons {
+      width: auto;
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+    }
+
+    .purchase-order-action-buttons > button,
+    .purchase-order-action-buttons
+      .purchase-order-detail-action {
+      width: auto;
+      min-width: 0;
+      flex: 0 0 auto;
+    }
+  }
+}
+
 @media (max-width: 480px) {
   .purchase-order-action-buttons {
     display: grid;

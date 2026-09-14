@@ -207,6 +207,24 @@
   }
 }
 
+@media (min-width: 701px) and (max-width: 1024px) {
+  @container (min-width: 701px) {
+    .delivery-table .table-action-cell {
+      min-width: 270px;
+    }
+
+    .delivery-action-buttons {
+      width: auto;
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+    }
+
+    .delivery-action-buttons > button {
+      flex: 0 0 auto;
+    }
+  }
+}
+
 @media (max-width: 850px) {
   .delivery-form-item-grid {
     grid-template-columns:

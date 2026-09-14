@@ -191,21 +191,29 @@ const getAllPurchaseOrders = async (req, res) => {
         s.id AS supplier_id,
         s.supplier_code,
         s.supplier_name,
+        EXISTS (
+          SELECT 1 FROM app.supplier_invoices si
+          WHERE si.purchase_order_id = po.id
+        ) AS has_supplier_invoice,
         COALESCE(summary.total_amount, 0)
           AS total_amount,
         COALESCE(summary.total_items, 0)
           AS total_items,
         COALESCE(payment_summary.paid_amount, 0)
           AS paid_amount,
+        COALESCE(credit_summary.credit_amount,0)
+          AS return_credit_amount,
         GREATEST(
           COALESCE(summary.total_amount, 0) -
-          COALESCE(payment_summary.paid_amount, 0),
+          COALESCE(payment_summary.paid_amount, 0) -
+          COALESCE(credit_summary.credit_amount,0),
           0
         ) AS outstanding_amount,
         CASE
           WHEN COALESCE(payment_summary.payment_count, 0) = 0
+            AND COALESCE(credit_summary.credit_amount,0)=0
             THEN 'NOT_RECORDED'
-          WHEN COALESCE(payment_summary.paid_amount, 0) >=
+          WHEN COALESCE(payment_summary.paid_amount, 0)+COALESCE(credit_summary.credit_amount,0) >=
             COALESCE(summary.total_amount, 0)
             THEN 'PAID'
           ELSE 'PARTIAL'
@@ -233,6 +241,13 @@ const getAllPurchaseOrders = async (req, res) => {
         FROM app.supplier_payments sp
         WHERE sp.purchase_order_id = po.id
       ) payment_summary ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT COALESCE(SUM(prs.amount),0) AS credit_amount
+        FROM app.purchase_return_settlements prs
+        JOIN app.supplier_invoices si ON si.id=prs.supplier_invoice_id
+        WHERE si.purchase_order_id=po.id
+          AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')
+      ) credit_summary ON TRUE
       ${whereClause}
       ORDER BY po.created_at DESC
       LIMIT $${limitPosition}
@@ -358,7 +373,8 @@ const getPurchaseOrderById = async (req, res) => {
         sp.amount,
         sp.method,
         sp.reference_number,
-        sp.supplier_invoice_number,
+        sp.supplier_invoice_id,
+        COALESCE(si.invoice_number, sp.supplier_invoice_number) AS supplier_invoice_number,
         sp.notes,
         sp.paid_by,
         u.full_name AS paid_by_name,
@@ -380,20 +396,23 @@ const getPurchaseOrderById = async (req, res) => {
           '[]'::json
         ) AS proofs
       FROM app.supplier_payments sp
+      LEFT JOIN app.supplier_invoices si
+        ON si.id = sp.supplier_invoice_id
       LEFT JOIN app.users u ON u.id = sp.paid_by
       LEFT JOIN app.payment_proofs pp
         ON pp.supplier_payment_id = sp.id
       LEFT JOIN app.users proof_user
         ON proof_user.id = pp.uploaded_by
       WHERE sp.purchase_order_id = $1
-      GROUP BY sp.id, u.full_name
+      GROUP BY sp.id, u.full_name, si.invoice_number
       ORDER BY sp.payment_date DESC, sp.created_at DESC
 		      `, [id])
 			: { rows: [] };
 		const supplierInvoicesResult = canViewSupplierPayments
 			? await pool.query(`
 				SELECT si.id,si.invoice_number,si.invoice_date,si.due_date,si.total_amount,
-					(si.total_amount-COALESCE(SUM(sp.amount),0)) AS outstanding_amount
+					COALESCE((SELECT SUM(prs.amount) FROM app.purchase_return_settlements prs WHERE prs.supplier_invoice_id=si.id AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')),0) AS return_credit_amount,
+					GREATEST(si.total_amount-COALESCE(SUM(sp.amount),0)-COALESCE((SELECT SUM(prs.amount) FROM app.purchase_return_settlements prs WHERE prs.supplier_invoice_id=si.id AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')),0),0) AS outstanding_amount
 				FROM app.supplier_invoices si
 				LEFT JOIN app.supplier_payments sp ON sp.supplier_invoice_id=si.id
 				WHERE si.purchase_order_id=$1
@@ -403,9 +422,13 @@ const getPurchaseOrderById = async (req, res) => {
 			(total, payment) => total + Number(payment.amount),
 			0,
 		);
-		const paymentStatus = paymentsResult.rows.length === 0
+		const returnCreditAmount = supplierInvoicesResult.rows.reduce(
+			(total, invoice) => total + Number(invoice.return_credit_amount),
+			0,
+		);
+		const paymentStatus = paymentsResult.rows.length === 0 && returnCreditAmount === 0
 			? "NOT_RECORDED"
-			: paidAmount >= totalAmount
+			: paidAmount + returnCreditAmount >= totalAmount
 				? "PAID"
 				: "PARTIAL";
 		res.status(200).json({
@@ -418,7 +441,8 @@ const getPurchaseOrderById = async (req, res) => {
 				...(canViewSupplierPayments
 					? {
 							paid_amount: paidAmount,
-							outstanding_amount: Math.max(totalAmount - paidAmount, 0),
+							return_credit_amount: returnCreditAmount,
+							outstanding_amount: Math.max(totalAmount - paidAmount - returnCreditAmount, 0),
 							payment_status: paymentStatus,
 							supplier_payments: paymentsResult.rows,
 							supplier_invoices: supplierInvoicesResult.rows,

@@ -22,6 +22,26 @@ const getNotifications = async (req, res) => {
 
     if (["ADMIN", "MANAGER"].includes(role)) {
       jobs.push(pool.query(`
+        SELECT pr.id,pr.return_number,pr.submitted_at,s.supplier_name
+        FROM app.purchase_returns pr
+        JOIN app.goods_receipts gr ON gr.id=pr.goods_receipt_id
+        JOIN app.purchase_orders po ON po.id=gr.purchase_order_id
+        JOIN app.suppliers s ON s.id=po.supplier_id
+        WHERE pr.status='PENDING'
+        ORDER BY pr.submitted_at DESC LIMIT 20
+      `).then(({ rows }) => rows.forEach((row) => notifications.push({
+        key: `PURCHASE_RETURN_APPROVAL:${row.id}:${new Date(row.submitted_at).getTime()}`,
+        type: "PURCHASE_RETURN_APPROVAL",
+        severity: "WARNING",
+        title: "Retur pembelian perlu disetujui",
+        description: `${row.return_number} · ${row.supplier_name}`,
+        path: "/purchase-returns",
+        entity_id: row.id,
+        entity_label: row.return_number,
+        occurred_at: row.submitted_at,
+      }))));
+
+      jobs.push(pool.query(`
         SELECT id,opname_number,submitted_at
         FROM app.stock_opnames
         WHERE status='PENDING'
@@ -137,7 +157,8 @@ const getNotifications = async (req, res) => {
         JOIN app.purchase_orders po ON po.id=si.purchase_order_id
         JOIN app.suppliers s ON s.id=po.supplier_id
         LEFT JOIN LATERAL (SELECT COALESCE(SUM(amount),0) paid FROM app.supplier_payments sp WHERE sp.supplier_invoice_id=si.id) p ON TRUE
-        WHERE si.total_amount>p.paid AND si.due_date<=CURRENT_DATE+7
+        LEFT JOIN LATERAL (SELECT COALESCE(SUM(amount),0) credited FROM app.purchase_return_settlements prs WHERE prs.supplier_invoice_id=si.id AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')) c ON TRUE
+        WHERE si.total_amount>p.paid+c.credited AND si.due_date<=CURRENT_DATE+7
         ORDER BY si.due_date LIMIT 20
       `).then(({ rows }) => rows.forEach((row) => notifications.push({
         key: `SUPPLIER_INVOICE_DUE:${row.id}:${String(row.due_date).slice(0,10)}`,
@@ -149,6 +170,31 @@ const getNotifications = async (req, res) => {
         entity_id: row.id,
         entity_label: row.invoice_number,
         occurred_at: row.updated_at,
+      }))));
+    }
+
+    if (["ADMIN", "FINANCE"].includes(role)) {
+      jobs.push(pool.query(`
+        SELECT pr.id,pr.return_number,pr.decided_at,s.supplier_name,
+               COALESCE(items.total_amount,0)-COALESCE(settlements.settled_amount,0) AS remaining_amount
+        FROM app.purchase_returns pr
+        JOIN app.goods_receipts gr ON gr.id=pr.goods_receipt_id
+        JOIN app.purchase_orders po ON po.id=gr.purchase_order_id
+        JOIN app.suppliers s ON s.id=po.supplier_id
+        LEFT JOIN LATERAL (SELECT SUM(pri.quantity*pri.unit_price) total_amount FROM app.purchase_return_items pri WHERE pri.purchase_return_id=pr.id) items ON TRUE
+        LEFT JOIN LATERAL (SELECT SUM(prs.amount) settled_amount FROM app.purchase_return_settlements prs WHERE prs.purchase_return_id=pr.id) settlements ON TRUE
+        WHERE pr.status='APPROVED' AND COALESCE(items.total_amount,0)>COALESCE(settlements.settled_amount,0)
+        ORDER BY pr.decided_at DESC LIMIT 20
+      `).then(({ rows }) => rows.forEach((row) => notifications.push({
+        key: `PURCHASE_RETURN_SETTLEMENT:${row.id}:${new Date(row.decided_at).getTime()}`,
+        type: "PURCHASE_RETURN_SETTLEMENT",
+        severity: "WARNING",
+        title: "Retur supplier belum diselesaikan",
+        description: `${row.return_number} · ${row.supplier_name} · sisa Rp ${new Intl.NumberFormat("id-ID").format(Number(row.remaining_amount))}`,
+        path: "/purchase-returns",
+        entity_id: row.id,
+        entity_label: row.return_number,
+        occurred_at: row.decided_at,
       }))));
     }
 

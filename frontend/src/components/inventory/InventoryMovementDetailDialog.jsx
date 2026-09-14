@@ -48,6 +48,7 @@ const referenceTypeLabels = {
   DELIVERY: "Delivery",
   GOODS_RECEIPT: "Goods receipt",
   STOCK_OPNAME: "Stock opname",
+  PURCHASE_RETURN: "Retur pembelian",
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat(

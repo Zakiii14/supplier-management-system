@@ -521,6 +521,23 @@
   }
 }
 
+@media (min-width: 701px) and (max-width: 1024px) {
+  @container (min-width: 701px) {
+    .payment-table .table-action-cell {
+      min-width: 110px;
+    }
+
+    .payment-action-buttons {
+      width: auto;
+      justify-content: flex-end;
+    }
+
+    .payment-action-buttons > button {
+      width: auto;
+    }
+  }
+}
+
 @media (max-width: 850px) {
   .payment-form-invoice-summary {
     grid-template-columns:

@@ -8,8 +8,9 @@ const TABLES = {
   invoices: "app.invoices", payments: "app.payments",
   "supplier-invoices": "app.supplier_invoices",
   "stock-opnames": "app.stock_opnames",
+  "purchase-returns": "app.purchase_returns",
 };
-const LABEL_FIELDS = ["opname_number","invoice_number","payment_number","po_number","so_number","receipt_number","delivery_number","sku","supplier_code","category_code","customer_code","username","full_name","product_name","supplier_name","customer_name"];
+const LABEL_FIELDS = ["return_number","opname_number","invoice_number","payment_number","po_number","so_number","receipt_number","delivery_number","sku","supplier_code","category_code","customer_code","username","full_name","product_name","supplier_name","customer_name"];
 const SENSITIVE = /password|token|secret|authorization|checksum|storage_name/i;
 const METHODS = new Set(["POST","PUT","PATCH","DELETE"]);
 const UUID = /\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i;

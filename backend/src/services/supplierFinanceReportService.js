@@ -57,8 +57,8 @@ const SUPPLIER_FINANCE_CTE = `
     ) item_summary ON TRUE
     LEFT JOIN LATERAL (
       SELECT COUNT(si.id)::INTEGER AS invoice_count,
-        COALESCE(SUM(si.total_amount),0) AS invoiced_amount,
-        MIN(si.due_date) FILTER (WHERE si.total_amount > COALESCE((SELECT SUM(spi.amount) FROM app.supplier_payments spi WHERE spi.supplier_invoice_id=si.id),0)) AS due_date
+        COALESCE(SUM(si.total_amount-COALESCE((SELECT SUM(prs.amount) FROM app.purchase_return_settlements prs WHERE prs.supplier_invoice_id=si.id AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')),0)),0) AS invoiced_amount,
+        MIN(si.due_date) FILTER (WHERE si.total_amount > COALESCE((SELECT SUM(spi.amount) FROM app.supplier_payments spi WHERE spi.supplier_invoice_id=si.id),0)+COALESCE((SELECT SUM(prs.amount) FROM app.purchase_return_settlements prs WHERE prs.supplier_invoice_id=si.id AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')),0)) AS due_date
       FROM app.supplier_invoices si
       WHERE si.purchase_order_id=po.id
     ) invoice_summary ON TRUE

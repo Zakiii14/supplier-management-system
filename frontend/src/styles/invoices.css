@@ -437,6 +437,25 @@
   }
 }
 
+@media (min-width: 701px) and (max-width: 1024px) {
+  @container (min-width: 701px) {
+    .invoice-table .table-action-cell {
+      min-width: 210px;
+    }
+
+    .invoice-action-buttons {
+      width: auto;
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+    }
+
+    .invoice-action-buttons > button {
+      width: auto;
+      flex: 0 0 auto;
+    }
+  }
+}
+
 @media (max-width: 850px) {
   .invoice-form-order-summary {
     grid-template-columns:

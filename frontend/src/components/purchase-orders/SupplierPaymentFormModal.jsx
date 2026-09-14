@@ -23,13 +23,17 @@ const SupplierPaymentFormModal = ({
   onClose,
   onSubmit,
 }) => {
+  const availableInvoices = (purchaseOrder?.supplier_invoices || []).filter(
+    (invoice) => Number(invoice.outstanding_amount) > 0,
+  );
+  const initialInvoiceId = availableInvoices.length === 1 ? availableInvoices[0].id : "";
   const [values, setValues] = useState({
     payment_number: "",
     payment_date: today(),
     amount: "",
     method: "BANK_TRANSFER",
     reference_number: "",
-    supplier_invoice_number: "",
+    supplier_invoice_id: initialInvoiceId,
     notes: "",
   });
   const [proofs, setProofs] = useState([]);
@@ -41,15 +45,18 @@ const SupplierPaymentFormModal = ({
     errorMessage: numberingError,
   } = useCodeNumberSetting("SUPPLIER_PAYMENT", isOpen);
 
-  if (!isOpen) return null;
-
-  const outstanding = Number(purchaseOrder.outstanding_amount) || 0;
-  const invoiceOptions = (purchaseOrder.supplier_invoices || [])
-    .filter((invoice) => Number(invoice.outstanding_amount) > 0)
+  const invoiceOptions = availableInvoices
     .map((invoice) => ({
-      value: invoice.invoice_number,
+      value: invoice.id,
+      code: invoice.invoice_number,
       label: `${invoice.invoice_number} · sisa ${formatCurrency(invoice.outstanding_amount)}`,
     }));
+  const selectedInvoice = availableInvoices.find(
+    (invoice) => invoice.id === values.supplier_invoice_id,
+  );
+  const outstanding = Number(selectedInvoice?.outstanding_amount) || 0;
+
+  if (!isOpen) return null;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -65,6 +72,10 @@ const SupplierPaymentFormModal = ({
     const amount = Number(values.amount);
     if ((!setting?.is_automatic && !values.payment_number.trim()) || !values.payment_date) {
       setErrorMessage("Nomor pembayaran manual dan tanggal wajib diisi.");
+      return;
+    }
+    if (!values.supplier_invoice_id) {
+      setErrorMessage("Pilih tagihan supplier yang akan dibayar.");
       return;
     }
     if (!Number.isFinite(amount) || amount <= 0 || amount > outstanding) {
@@ -89,8 +100,7 @@ const SupplierPaymentFormModal = ({
         amount,
         method: values.method,
         reference_number: values.reference_number.trim() || null,
-        supplier_invoice_number:
-          values.supplier_invoice_number.trim() || null,
+        supplier_invoice_id: values.supplier_invoice_id,
         notes: values.notes.trim() || null,
         proofs,
       });
@@ -133,14 +143,15 @@ const SupplierPaymentFormModal = ({
             <section className="supplier-payment-summary">
               <WalletCards aria-hidden="true" />
               <div>
-                <span>Sisa pembayaran kepada {purchaseOrder.supplier_name}</span>
-                <strong>{formatCurrency(outstanding)}</strong>
+                <span>{selectedInvoice ? `Sisa ${selectedInvoice.invoice_number}` : `Tagihan ${purchaseOrder.supplier_name}`}</span>
+                <strong>{selectedInvoice ? formatCurrency(outstanding) : "Pilih tagihan terlebih dahulu"}</strong>
               </div>
               <button
                 type="button"
                 onClick={() =>
                   setValues((current) => ({ ...current, amount: String(outstanding) }))
                 }
+                disabled={!selectedInvoice}
               >
                 Bayar penuh
               </button>
@@ -188,7 +199,7 @@ const SupplierPaymentFormModal = ({
                     type="number"
                     name="amount"
                     min="0.01"
-                    max={outstanding}
+                    max={outstanding || undefined}
                     step="0.01"
                     value={values.amount}
                     disabled={isSubmitting}
@@ -208,23 +219,23 @@ const SupplierPaymentFormModal = ({
                 <div className="purchase-order-form-field">
                   <FormSelect
                     label="Invoice supplier"
-                    value={values.supplier_invoice_number}
+                    value={values.supplier_invoice_id}
                     options={invoiceOptions}
                     placeholder="Pilih invoice terdaftar"
                     searchable={false}
                     disabled={isSubmitting || invoiceOptions.length === 0}
                     onChange={(value) => {
-                      const invoice = (purchaseOrder.supplier_invoices || []).find(
-                        (item) => item.invoice_number === value,
+                      const invoice = availableInvoices.find(
+                        (item) => item.id === value,
                       );
                       setValues((current) => ({
                         ...current,
-                        supplier_invoice_number: value,
+                        supplier_invoice_id: value,
                         amount: invoice ? String(invoice.outstanding_amount) : current.amount,
                       }));
                     }}
                   />
-                  {invoiceOptions.length === 0 && <small>Buat tagihan supplier terlebih dahulu.</small>}
+                  {invoiceOptions.length === 0 && <small>Buat tagihan supplier terlebih dahulu. Pembayaran PO harus terhubung ke tagihan.</small>}
                 </div>
                 <label className="purchase-order-form-field is-full">
                   <span>Catatan</span>
@@ -264,7 +275,7 @@ const SupplierPaymentFormModal = ({
             <button
               type="submit"
               className="purchase-order-form-submit"
-              disabled={isSubmitting || isNumberingLoading}
+              disabled={isSubmitting || isNumberingLoading || !selectedInvoice}
             >
               <Save aria-hidden="true" />
               {isSubmitting ? "Menyimpan..." : "Simpan pembayaran"}

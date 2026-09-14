@@ -8,6 +8,7 @@ const {
 
 const PAYMENT_METHODS = ["CASH", "BANK_TRANSFER", "GIRO", "OTHER"];
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const isValidDate = (value) => {
   if (!DATE_PATTERN.test(value)) return false;
@@ -60,6 +61,10 @@ const createSupplierPayment = async (req, res) => {
       typeof req.body.supplier_invoice_number === "string"
         ? req.body.supplier_invoice_number.trim()
         : "";
+    const requestedSupplierInvoiceId =
+      typeof req.body.supplier_invoice_id === "string"
+        ? req.body.supplier_invoice_id.trim()
+        : "";
     const notes =
       typeof req.body.notes === "string" ? req.body.notes.trim() : "";
     const amount = Number(req.body.amount);
@@ -83,6 +88,13 @@ const createSupplierPayment = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Tanggal pembayaran tidak valid",
+      });
+    }
+
+    if (requestedSupplierInvoiceId && !UUID_PATTERN.test(requestedSupplierInvoiceId)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID tagihan supplier tidak valid",
       });
     }
 
@@ -152,27 +164,52 @@ const createSupplierPayment = async (req, res) => {
       throw error;
     }
 
-    let supplierInvoiceId = null;
-    let invoiceOutstanding = null;
-    if (supplierInvoiceNumber) {
-      const invoiceResult = await client.query(
-        `SELECT si.id, si.total_amount-COALESCE((
+    const invoiceResult = await client.query(
+      `SELECT si.id,si.invoice_number, GREATEST(si.total_amount-COALESCE((
            SELECT SUM(sp.amount) FROM app.supplier_payments sp
            WHERE sp.supplier_invoice_id=si.id
-         ),0) AS outstanding
+         ),0)-COALESCE((
+           SELECT SUM(prs.amount) FROM app.purchase_return_settlements prs
+           WHERE prs.supplier_invoice_id=si.id
+             AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')
+         ),0),0) AS outstanding
          FROM app.supplier_invoices si
-         WHERE si.purchase_order_id=$1 AND LOWER(si.invoice_number)=LOWER($2)
-         FOR UPDATE`,
-        [purchaseOrderId, supplierInvoiceNumber],
-      );
-      if (!invoiceResult.rows.length) {
-        const error = new Error("Invoice supplier belum terdaftar pada purchase order ini");
-        error.statusCode = 400;
-        throw error;
-      }
-      supplierInvoiceId = invoiceResult.rows[0].id;
-      invoiceOutstanding = Number(invoiceResult.rows[0].outstanding);
+         WHERE si.purchase_order_id=$1
+         FOR UPDATE OF si`,
+      [purchaseOrderId],
+    );
+    if (!invoiceResult.rows.length) {
+      const error = new Error("Buat tagihan supplier untuk purchase order ini sebelum mencatat pembayaran");
+      error.statusCode = 409;
+      throw error;
     }
+
+    let selectedInvoice;
+    if (requestedSupplierInvoiceId) {
+      selectedInvoice = invoiceResult.rows.find(
+        (invoice) => invoice.id === requestedSupplierInvoiceId,
+      );
+    } else if (supplierInvoiceNumber) {
+      selectedInvoice = invoiceResult.rows.find(
+        (invoice) => invoice.invoice_number.toLowerCase() === supplierInvoiceNumber.toLowerCase(),
+      );
+    } else if (invoiceResult.rows.length === 1) {
+      [selectedInvoice] = invoiceResult.rows;
+    }
+
+    if (!selectedInvoice) {
+      const error = new Error(
+        invoiceResult.rows.length > 1
+          ? "Pilih tagihan supplier yang akan dibayar"
+          : "Tagihan supplier tidak sesuai dengan purchase order ini",
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const supplierInvoiceId = selectedInvoice.id;
+    const resolvedSupplierInvoiceNumber = selectedInvoice.invoice_number;
+    const invoiceOutstanding = Number(selectedInvoice.outstanding);
 
     const totalsResult = await client.query(
       `
@@ -186,23 +223,31 @@ const createSupplierPayment = async (req, res) => {
           SELECT SUM(amount)
           FROM app.supplier_payments
           WHERE purchase_order_id = $1
-        ), 0) AS paid_amount
+        ), 0) AS paid_amount,
+        COALESCE((
+          SELECT SUM(prs.amount)
+          FROM app.purchase_return_settlements prs
+          JOIN app.supplier_invoices si ON si.id=prs.supplier_invoice_id
+          WHERE si.purchase_order_id=$1
+            AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')
+        ),0) AS return_credit_amount
       `,
       [purchaseOrderId],
     );
 
     const totalAmount = Number(totalsResult.rows[0].total_amount);
     const paidAmount = Number(totalsResult.rows[0].paid_amount);
+    const returnCreditAmount = Number(totalsResult.rows[0].return_credit_amount);
 
-    if (invoiceOutstanding !== null && amount > invoiceOutstanding) {
+    if (amount > invoiceOutstanding) {
       const error = new Error(`Nominal pembayaran melebihi sisa invoice (${invoiceOutstanding})`);
       error.statusCode = 400;
       throw error;
     }
 
-    if (amount > totalAmount - paidAmount) {
+    if (amount > totalAmount - paidAmount - returnCreditAmount) {
       const error = new Error(
-        `Nominal pembayaran melebihi sisa tagihan (${totalAmount - paidAmount})`,
+        `Nominal pembayaran melebihi sisa tagihan (${totalAmount - paidAmount - returnCreditAmount})`,
       );
       error.statusCode = 400;
       throw error;
@@ -249,7 +294,7 @@ const createSupplierPayment = async (req, res) => {
         amount,
         method,
         referenceNumber || null,
-        supplierInvoiceNumber || null,
+        resolvedSupplierInvoiceNumber,
         supplierInvoiceId,
         notes || null,
         req.user.id,

@@ -46,6 +46,7 @@ const testData = {
   invoiceNumber: "RPT-INV-0001",
   paymentNumber: "RPT-PAY-0001",
   supplierPaymentNumber: "RPT-SPAY-0001",
+  supplierInvoiceNumber: "RPT-SINV-0001",
 };
 
 const testPassword =
@@ -66,6 +67,11 @@ const cleanupTestData = async () => {
     WHERE payment_number = $1
     `,
     [testData.supplierPaymentNumber],
+  );
+
+  await pool.query(
+    `DELETE FROM app.supplier_invoices WHERE invoice_number = $1`,
+    [testData.supplierInvoiceNumber],
   );
 
   await pool.query(
@@ -377,6 +383,13 @@ before(async () => {
     [purchaseOrderResult.rows[0].id, productId],
   );
 
+  const supplierInvoiceResult = await pool.query(
+    `INSERT INTO app.supplier_invoices(
+       invoice_number,purchase_order_id,invoice_date,due_date,total_amount,created_by
+     ) VALUES($1,$2,CURRENT_DATE-5,CURRENT_DATE-3,100000,$3) RETURNING id`,
+    [testData.supplierInvoiceNumber, purchaseOrderResult.rows[0].id, adminId],
+  );
+
   await pool.query(
     `
     INSERT INTO app.supplier_payments (
@@ -386,6 +399,7 @@ before(async () => {
       amount,
       method,
       reference_number,
+      supplier_invoice_id,
       paid_by
     )
     VALUES (
@@ -395,12 +409,14 @@ before(async () => {
       40000,
       'BANK_TRANSFER',
       'REPORT-SUPPLIER-REFERENCE',
-      $3
+      $3,
+      $4
     )
     `,
     [
       testData.supplierPaymentNumber,
       purchaseOrderResult.rows[0].id,
+      supplierInvoiceResult.rows[0].id,
       adminId,
     ],
   );

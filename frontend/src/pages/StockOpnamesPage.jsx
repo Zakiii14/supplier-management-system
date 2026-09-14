@@ -31,6 +31,7 @@ import FormSelect from "../components/forms/FormSelect";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
 import useCodeNumberSetting from "../hooks/useCodeNumberSetting";
+import useModalDismiss from "../hooks/useModalDismiss";
 import useStickyDataFilters from "../hooks/useStickyDataFilters";
 import "../styles/stock-opnames.css";
 import { formatDate, formatNumber } from "../utils/formatters";
@@ -112,12 +113,13 @@ const StockOpnameForm = ({ products, busy, error, onClose, onSubmit }) => {
   );
 };
 
-const StockOpnameDetail = ({ detail, user, busy, error, onClose, onAction }) => {
+const StockOpnameDetail = ({ detail, user, busy, error, dismissDisabled, onClose, onAction }) => {
   const canSubmit = ["ADMIN", "WAREHOUSE"].includes(user?.role) && detail.status === "DRAFT";
   const canDecide = ["ADMIN", "MANAGER"].includes(user?.role) && detail.status === "PENDING" && detail.submitted_by !== user?.id;
   const canCancel = ["ADMIN", "WAREHOUSE"].includes(user?.role) && ["DRAFT", "REJECTED"].includes(detail.status);
+  useModalDismiss(true, onClose, busy || dismissDisabled);
   return (
-    <div className="stock-opname-backdrop" role="presentation">
+    <div className="stock-opname-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy && !dismissDisabled) onClose(); }}>
       <section className="stock-opname-modal stock-opname-detail" role="dialog" aria-modal="true" aria-labelledby="stock-opname-detail-title">
         <header><div><span>STOCK OPNAME</span><h2 id="stock-opname-detail-title">{detail.opname_number}</h2><p>{formatDate(detail.opname_date)} · {detail.created_by_name || "Pengguna tidak tersedia"}</p></div><button type="button" aria-label="Tutup" disabled={busy} onClick={onClose}><X aria-hidden="true" /></button></header>
         <div className="stock-opname-detail-body">
@@ -132,7 +134,7 @@ const StockOpnameDetail = ({ detail, user, busy, error, onClose, onAction }) => 
           {detail.status === "PENDING" && detail.submitted_by === user?.id && <div className="stock-opname-info">Stock opname sedang menunggu keputusan pengguna lain yang berwenang.</div>}
           {error && <div className="stock-opname-form-error" role="alert"><AlertTriangle aria-hidden="true" />{error}</div>}
         </div>
-        {(canSubmit || canDecide || canCancel) && <footer>{canCancel && <button type="button" className="stock-opname-danger-action" disabled={busy} onClick={() => onAction("CANCEL")}><XCircle aria-hidden="true" /> Batalkan</button>}{canDecide && <><button type="button" className="stock-opname-reject-action" disabled={busy} onClick={() => onAction("REJECT")}><XCircle aria-hidden="true" /> Tolak</button><button type="button" className="primary-action" disabled={busy} onClick={() => onAction("APPROVE")}><CheckCircle2 aria-hidden="true" /> Setujui</button></>}{canSubmit && <button type="button" className="primary-action" disabled={busy} onClick={() => onAction("SUBMIT")}><Send aria-hidden="true" /> Ajukan</button>}</footer>}
+        <footer>{canCancel && <button type="button" className="stock-opname-danger-action" disabled={busy} onClick={() => onAction("CANCEL")}><XCircle aria-hidden="true" /> Batalkan</button>}{canDecide && <><button type="button" className="stock-opname-reject-action" disabled={busy} onClick={() => onAction("REJECT")}><XCircle aria-hidden="true" /> Tolak</button><button type="button" className="primary-action" disabled={busy} onClick={() => onAction("APPROVE")}><CheckCircle2 aria-hidden="true" /> Setujui</button></>}{canSubmit && <button type="button" className="primary-action" disabled={busy} onClick={() => onAction("SUBMIT")}><Send aria-hidden="true" /> Ajukan</button>}<button type="button" className="modal-detail-close-action" disabled={busy} onClick={onClose}>Tutup</button></footer>
       </section>
     </div>
   );
@@ -217,7 +219,7 @@ const StockOpnamesPage = () => {
         <PaginationBar page={page} totalPages={Math.max(pagination.total_pages, 1)} isLoading={loading} onPageChange={setPage} />
       </section>
       {formOpen && <StockOpnameForm products={products} busy={busy} error={actionError} onClose={() => { if (!busy) { setFormOpen(false); setActionError(""); } }} onSubmit={createOpname} />}
-      {detail && <StockOpnameDetail detail={detail} user={user} busy={busy} error={actionError} onClose={() => { if (!busy) { setDetail(null); setActionError(""); } }} onAction={setApprovalAction} />}
+      {detail && <StockOpnameDetail detail={detail} user={user} busy={busy} error={actionError} dismissDisabled={Boolean(approvalAction)} onClose={() => { if (!busy) { setDetail(null); setActionError(""); } }} onAction={setApprovalAction} />}
       <ApprovalActionDialog isOpen={Boolean(approvalAction)} action={approvalAction} transactionLabel="Stock opname" transactionNumber={detail?.opname_number} isSubmitting={busy} requestError={actionError} onCancel={() => { if (!busy) { setApprovalAction(""); setActionError(""); } }} onConfirm={runAction} />
     </div>
   );

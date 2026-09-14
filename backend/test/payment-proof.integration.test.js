@@ -118,6 +118,14 @@ before(async () => {
     `,
     [ids.purchaseOrder, ids.product],
   );
+  ids.supplierInvoice = (
+    await pool.query(
+      `INSERT INTO app.supplier_invoices(
+         invoice_number,purchase_order_id,invoice_date,due_date,total_amount,created_by
+       ) VALUES($1,$2,$3,$3,2000,$4) RETURNING id`,
+      [`PROOF-SINV-${suffix}`, ids.purchaseOrder, today, ids.user],
+    )
+  ).rows[0].id;
 
   ids.customer = (
     await pool.query(
@@ -161,6 +169,7 @@ after(async () => {
       "DELETE FROM app.supplier_payments WHERE purchase_order_id = $1",
       [ids.purchaseOrder],
     );
+    await pool.query("DELETE FROM app.supplier_invoices WHERE id = $1", [ids.supplierInvoice]);
     await pool.query(
       "DELETE FROM app.purchase_order_items WHERE purchase_order_id = $1",
       [ids.purchaseOrder],

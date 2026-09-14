@@ -27,6 +27,7 @@ import SupplierInvoicesPage from "./pages/SupplierInvoicesPage";
 import AuditLogsPage from "./pages/AuditLogsPage";
 import MasterDataImportPage from "./pages/MasterDataImportPage";
 import StockOpnamesPage from "./pages/StockOpnamesPage";
+import PurchaseReturnsPage from "./pages/PurchaseReturnsPage";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { navigationGroups } from "./utils/navigation";
 
@@ -56,6 +57,7 @@ const App = () => {
         item.path !== "/audit-logs" &&
         item.path !== "/master-data-import" &&
         item.path !== "/stock-opnames" &&
+        item.path !== "/purchase-returns" &&
         item.path !== "/users",
     );
 
@@ -121,6 +123,11 @@ const App = () => {
           <Route
             path="stock-opnames"
             element={<StockOpnamesPage />}
+          />
+
+          <Route
+            path="purchase-returns"
+            element={<PurchaseReturnsPage />}
           />
 
           <Route

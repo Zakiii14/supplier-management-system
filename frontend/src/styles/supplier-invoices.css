@@ -5,6 +5,57 @@
   overflow: visible;
 }
 
+.supplier-invoice-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.supplier-invoice-form-body label > small {
+  color: var(--sf-text-soft);
+  font-size: 0.72rem;
+}
+
+.supplier-invoice-table .table-action-cell {
+  width: 210px;
+}
+
+.supplier-invoice-table .supplier-invoice-actions {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.supplier-invoice-table
+  .supplier-invoice-actions
+  .table-edit-action {
+  min-width: 80px;
+  min-height: 34px;
+  justify-content: center;
+  padding: 0 11px;
+  color: var(--sf-accent);
+  background: var(--sf-accent-soft);
+  border: 1px solid var(--sf-border);
+  border-radius: 9px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.supplier-invoice-table
+  .supplier-invoice-actions
+  .table-edit-action:hover:not(:disabled) {
+  color: #ffffff;
+  background: #2563eb;
+  border-color: var(--sf-accent);
+}
+
+.supplier-invoice-detail-footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  padding: 15px 24px;
+  border-top: 1px solid var(--sf-border);
+}
+
 .supplier-invoice-filters {
   min-height: var(--data-filters-height);
   align-items: center;
@@ -121,10 +172,13 @@
 }
 
 .supplier-invoice-table th:nth-child(7) {
-  width: 12%;
+  width: 210px;
 }
 
 @media (max-width: 900px) {
+  .supplier-invoice-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .supplier-invoice-filters .search-control {
     min-width: 0;
     flex-basis: 100%;
@@ -136,6 +190,9 @@
 }
 
 @media (max-width: 700px) {
+  .supplier-invoice-summary-grid {
+    grid-template-columns: 1fr;
+  }
   .supplier-invoice-filters {
     flex-direction: row;
     padding: 12px;
@@ -148,6 +205,18 @@
 
   .supplier-invoice-filters .reset-filter {
     flex: 0 0 auto;
+  }
+
+  .supplier-invoice-table th:last-child,
+  .supplier-invoice-table .table-action-cell {
+    width: auto;
+  }
+
+  .supplier-invoice-table
+    .supplier-invoice-actions
+    .table-edit-action {
+    min-width: 0;
+    flex: 1 1 100px;
   }
 
   .supplier-invoice-file-picker {
@@ -170,6 +239,15 @@
     grid-template-columns: 1fr 1.4fr;
     padding: 13px 14px
       calc(13px + env(safe-area-inset-bottom));
+  }
+
+  .supplier-invoice-detail-footer {
+    padding: 13px 14px
+      calc(13px + env(safe-area-inset-bottom));
+  }
+
+  .supplier-invoice-detail-footer button {
+    width: 100%;
   }
 }
 

@@ -577,6 +577,80 @@
     padding-left: 7px;
   }
 }
+
+/* Tablet-only table viewport. Desktop keeps the original sticky page table. */
+@media (min-width: 701px) and (max-width: 1024px) {
+  @container (min-width: 701px) {
+    .data-table-wrapper {
+      max-width: 100%;
+      max-height: min(52dvh, 520px);
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-color:
+        var(--sf-border-strong)
+        var(--sf-surface-muted);
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .data-table-wrapper::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .data-table-wrapper::-webkit-scrollbar-track {
+      background: var(--sf-surface-muted);
+    }
+
+    .data-table-wrapper::-webkit-scrollbar-thumb {
+      background: var(--sf-border-strong);
+      border: 2px solid var(--sf-surface-muted);
+      border-radius: 999px;
+    }
+
+    .data-table {
+      width: 100%;
+      min-width: 1080px;
+      table-layout: fixed;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 12px 14px;
+      overflow-wrap: normal;
+      word-break: normal;
+    }
+
+    .data-table th {
+      position: sticky;
+      top: 0;
+      z-index: 24;
+      font-size: 0.65rem;
+      white-space: nowrap;
+      box-shadow: inset 0 -1px 0 var(--sf-border);
+    }
+
+    .data-table td {
+      font-size: 0.77rem;
+    }
+
+    .table-action-buttons {
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+    }
+
+    .table-edit-action,
+    .table-status-action {
+      width: auto;
+      min-width: 36px;
+      flex: 0 0 auto;
+      padding-right: 9px;
+      padding-left: 9px;
+      white-space: nowrap;
+    }
+  }
+}
 .data-table td {
   color: var(--sf-text-muted);
   font-size: 0.79rem;
@@ -964,9 +1038,43 @@
   height: 15px;
 }
 
+.modal-detail-close-action {
+  display: inline-flex;
+  min-width: 110px;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 18px;
+  color: var(--sf-text-strong);
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border);
+  border-radius: 11px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.modal-detail-close-action:hover:not(:disabled) {
+  color: var(--sf-accent);
+  background: var(--sf-surface-muted);
+}
+
+.modal-detail-close-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 @media (max-width: 700px) {
     .table-edit-action {
       justify-self: end;
+    }
+
+    .modal-detail-close-action {
+      width: 100%;
+      flex: 1 1 100%;
+      padding: 0 15px;
+      font-size: 0.78rem;
     }
 }
 

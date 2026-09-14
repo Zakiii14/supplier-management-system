@@ -187,10 +187,15 @@ test(
       .set("Authorization", adminAuthorization);
 
     assert.equal(response.status, 200);
-    assert.ok(response.body.data.length >= 12);
+    assert.ok(response.body.data.length >= 13);
     assert.ok(
       response.body.data.some(
         (setting) => setting.module_key === "STOCK_OPNAME",
+      ),
+    );
+    assert.ok(
+      response.body.data.some(
+        (setting) => setting.module_key === "PURCHASE_RETURN",
       ),
     );
 

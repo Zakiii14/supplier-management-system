@@ -117,6 +117,11 @@ const PurchaseOrderDetailDialog = ({
   const supplierPayments = Array.isArray(purchaseOrder.supplier_payments)
     ? purchaseOrder.supplier_payments
     : [];
+  const payableSupplierInvoices = Array.isArray(purchaseOrder.supplier_invoices)
+    ? purchaseOrder.supplier_invoices.filter(
+        (invoice) => Number(invoice.outstanding_amount) > 0,
+      )
+    : [];
 
   return (
     <div
@@ -336,7 +341,8 @@ const PurchaseOrderDetailDialog = ({
                 </div>
                 {canManageSupplierPayments &&
                   !["DRAFT", "CANCELLED"].includes(purchaseOrder.status) &&
-                  Number(purchaseOrder.outstanding_amount) > 0 && (
+                  Number(purchaseOrder.outstanding_amount) > 0 &&
+                  payableSupplierInvoices.length > 0 && (
                     <button
                       type="button"
                       className="supplier-payment-add"
@@ -361,6 +367,14 @@ const PurchaseOrderDetailDialog = ({
                   <strong>{formatCurrency(purchaseOrder.outstanding_amount)}</strong>
                 </article>
               </div>
+
+              {canManageSupplierPayments &&
+                Number(purchaseOrder.outstanding_amount) > 0 &&
+                payableSupplierInvoices.length === 0 && (
+                  <div className="payment-proof-empty">
+                    Buat tagihan supplier untuk PO ini terlebih dahulu sebelum mencatat pembayaran.
+                  </div>
+                )}
 
               {supplierPayments.length === 0 ? (
                 <div className="payment-proof-empty">

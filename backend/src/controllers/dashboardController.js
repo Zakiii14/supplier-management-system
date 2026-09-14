@@ -35,6 +35,7 @@ const ACTIVITY_TYPES = {
   ADMIN: [
     "PURCHASE_ORDER",
     "GOODS_RECEIPT",
+    "PURCHASE_RETURN",
     "INVENTORY_MOVEMENT",
     "SALES_ORDER",
     "DELIVERY",
@@ -44,11 +45,13 @@ const ACTIVITY_TYPES = {
   PURCHASING: [
     "PURCHASE_ORDER",
     "GOODS_RECEIPT",
+    "PURCHASE_RETURN",
     "INVENTORY_MOVEMENT",
   ],
   WAREHOUSE: [
     "PURCHASE_ORDER",
     "GOODS_RECEIPT",
+    "PURCHASE_RETURN",
     "INVENTORY_MOVEMENT",
     "SALES_ORDER",
     "DELIVERY",
@@ -61,6 +64,7 @@ const ACTIVITY_TYPES = {
   FINANCE: [
     "PURCHASE_ORDER",
     "GOODS_RECEIPT",
+    "PURCHASE_RETURN",
     "INVENTORY_MOVEMENT",
     "SALES_ORDER",
     "INVOICE",
@@ -69,6 +73,7 @@ const ACTIVITY_TYPES = {
   MANAGER: [
     "PURCHASE_ORDER",
     "GOODS_RECEIPT",
+    "PURCHASE_RETURN",
     "INVENTORY_MOVEMENT",
     "SALES_ORDER",
     "DELIVERY",
@@ -332,6 +337,23 @@ const getDashboardSummary = async (req, res) => {
           'RECEIVED'::TEXT,
           gr.created_at
         FROM app.goods_receipts gr
+        JOIN app.purchase_orders po
+          ON po.id = gr.purchase_order_id
+        JOIN app.suppliers s
+          ON s.id = po.supplier_id
+
+        UNION ALL
+
+        SELECT
+          'PURCHASE_RETURN'::TEXT,
+          pr.id,
+          pr.return_number::TEXT,
+          s.supplier_name::TEXT,
+          pr.status::TEXT,
+          pr.created_at
+        FROM app.purchase_returns pr
+        JOIN app.goods_receipts gr
+          ON gr.id = pr.goods_receipt_id
         JOIN app.purchase_orders po
           ON po.id = gr.purchase_order_id
         JOIN app.suppliers s

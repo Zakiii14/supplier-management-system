@@ -51,6 +51,7 @@ const getAllInventoryMovements = async (req, res) => {
             d.delivery_number,
             gr.receipt_number,
             so.opname_number,
+            pr.return_number,
             ''
           ) ILIKE $${values.length}
           OR CONCAT(
@@ -128,6 +129,9 @@ const getAllInventoryMovements = async (req, res) => {
       LEFT JOIN app.stock_opnames so
         ON im.reference_type = 'STOCK_OPNAME'
         AND so.id = im.reference_id
+      LEFT JOIN app.purchase_returns pr
+        ON im.reference_type = 'PURCHASE_RETURN'
+        AND pr.id = im.reference_id
 
       ${whereClause}
       `,
@@ -158,7 +162,8 @@ const getAllInventoryMovements = async (req, res) => {
         COALESCE(
           d.delivery_number,
           gr.receipt_number,
-          so.opname_number
+          so.opname_number,
+          pr.return_number
         ) AS reference_number,
         im.notes,
         im.created_by,
@@ -180,6 +185,9 @@ const getAllInventoryMovements = async (req, res) => {
       LEFT JOIN app.stock_opnames so
         ON im.reference_type = 'STOCK_OPNAME'
         AND so.id = im.reference_id
+      LEFT JOIN app.purchase_returns pr
+        ON im.reference_type = 'PURCHASE_RETURN'
+        AND pr.id = im.reference_id
 
       ${whereClause}
 
@@ -244,7 +252,8 @@ const getInventoryMovementById = async (req, res) => {
         COALESCE(
           d.delivery_number,
           gr.receipt_number,
-          so.opname_number
+          so.opname_number,
+          pr.return_number
         ) AS reference_number,
         im.notes,
         im.created_by,
@@ -266,6 +275,9 @@ const getInventoryMovementById = async (req, res) => {
       LEFT JOIN app.stock_opnames so
         ON im.reference_type = 'STOCK_OPNAME'
         AND so.id = im.reference_id
+      LEFT JOIN app.purchase_returns pr
+        ON im.reference_type = 'PURCHASE_RETURN'
+        AND pr.id = im.reference_id
 
       WHERE im.id = $1
       `,
