@@ -65,6 +65,8 @@ const DashboardLayout = () => {
   );
   const [isUserMenuOpen, setIsUserMenuOpen] =
     useState(false);
+  const [sidebarTooltip, setSidebarTooltip] =
+    useState(null);
   const userMenuRef = useRef(null);
 
   useEffect(() => {
@@ -113,6 +115,7 @@ const DashboardLayout = () => {
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         setIsUserMenuOpen(false);
+        setSidebarTooltip(null);
       }
     };
 
@@ -127,6 +130,10 @@ const DashboardLayout = () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, []);
+
+  useEffect(() => {
+    setSidebarTooltip(null);
+  }, [isSidebarCollapsed, location.pathname]);
 
   const visibleGroups = navigationGroups
     .map((group) => ({
@@ -151,9 +158,29 @@ const DashboardLayout = () => {
 
   const closeSidebar = () => {
     setIsSidebarOpen(false);
+    setSidebarTooltip(null);
+  };
+
+  const showSidebarTooltip = (label, element) => {
+    if (!isSidebarCollapsed || window.innerWidth <= 960) {
+      return;
+    }
+
+    const rect = element.getBoundingClientRect();
+
+    setSidebarTooltip({
+      label,
+      top: rect.top + rect.height / 2,
+      left: rect.right + 10,
+    });
+  };
+
+  const hideSidebarTooltip = () => {
+    setSidebarTooltip(null);
   };
 
   const toggleDesktopSidebar = () => {
+    setSidebarTooltip(null);
     setIsSidebarCollapsed((current) => {
       const nextValue = !current;
 
@@ -258,7 +285,21 @@ const DashboardLayout = () => {
                       to={item.path}
                       end={item.path === "/"}
                       onClick={closeSidebar}
-                      title={
+                      onMouseEnter={(event) =>
+                        showSidebarTooltip(
+                          item.label,
+                          event.currentTarget,
+                        )
+                      }
+                      onMouseLeave={hideSidebarTooltip}
+                      onFocus={(event) =>
+                        showSidebarTooltip(
+                          item.label,
+                          event.currentTarget,
+                        )
+                      }
+                      onBlur={hideSidebarTooltip}
+                      aria-label={
                         isSidebarCollapsed
                           ? item.label
                           : undefined
@@ -310,6 +351,19 @@ const DashboardLayout = () => {
         </div>
       </aside>
 
+      {sidebarTooltip && (
+        <div
+          className="sidebar-instant-tooltip"
+          role="tooltip"
+          style={{
+            top: `${sidebarTooltip.top}px`,
+            left: `${sidebarTooltip.left}px`,
+          }}
+        >
+          {sidebarTooltip.label}
+        </div>
+      )}
+
       <div className="dashboard-main">
         <header className="dashboard-header">
           <div className="dashboard-header-title">
@@ -331,93 +385,93 @@ const DashboardLayout = () => {
           </div>
 
           <div className="dashboard-header-actions">
-          <NotificationCenter />
-          <div className="dashboard-user-menu" ref={userMenuRef}>
-            <button
-              type="button"
-              className="dashboard-user"
-              onClick={() =>
-                setIsUserMenuOpen((current) => !current)
-              }
-              aria-expanded={isUserMenuOpen}
-              aria-haspopup="menu"
-            >
-              <UserAvatar user={user} className="dashboard-user-avatar" />
-
-              <span className="dashboard-user-copy">
-                <strong>{displayName}</strong>
-                <span>
-                  {ROLE_LABELS[user.role] || user.role}
-                </span>
-              </span>
-
-              <ChevronDown
-                className="dashboard-user-chevron"
-                aria-hidden="true"
-              />
-            </button>
-
-            {isUserMenuOpen && (
-              <div
-                className="dashboard-user-dropdown"
-                role="menu"
+            <NotificationCenter />
+            <div className="dashboard-user-menu" ref={userMenuRef}>
+              <button
+                type="button"
+                className="dashboard-user"
+                onClick={() =>
+                  setIsUserMenuOpen((current) => !current)
+                }
+                aria-expanded={isUserMenuOpen}
+                aria-haspopup="menu"
               >
-                <div className="dashboard-user-dropdown-identity">
-                  <UserAvatar user={user} className="dashboard-user-avatar" />
-                  <div>
-                    <strong>{displayName}</strong>
-                    <span>
-                      {ROLE_LABELS[user.role] || user.role}
-                    </span>
-                  </div>
-                </div>
+                <UserAvatar user={user} className="dashboard-user-avatar" />
 
-                <div className="dashboard-theme-section">
-                  <span>Tampilan</span>
-                  <div className="dashboard-theme-options">
-                    {THEME_OPTIONS.map((option) => {
-                      const Icon = option.icon;
+                <span className="dashboard-user-copy">
+                  <strong>{displayName}</strong>
+                  <span>
+                    {ROLE_LABELS[user.role] || user.role}
+                  </span>
+                </span>
 
-                      return (
-                        <button
-                          type="button"
-                          role="menuitemradio"
-                          aria-checked={
-                            themePreference === option.value
-                          }
-                          className={
-                            themePreference === option.value
-                              ? "is-selected"
-                              : ""
-                          }
-                          key={option.value}
-                          onClick={() =>
-                            setThemePreference(option.value)
-                          }
-                        >
-                          <Icon aria-hidden="true" />
-                          <span>{option.label}</span>
-                          {themePreference === option.value && (
-                            <Check aria-hidden="true" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                <ChevronDown
+                  className="dashboard-user-chevron"
+                  aria-hidden="true"
+                />
+              </button>
 
-                <button
-                  type="button"
-                  className="dashboard-dropdown-logout"
-                  role="menuitem"
-                  onClick={handleLogout}
+              {isUserMenuOpen && (
+                <div
+                  className="dashboard-user-dropdown"
+                  role="menu"
                 >
-                  <LogOut aria-hidden="true" />
-                  <span>Keluar dari akun</span>
-                </button>
-              </div>
-            )}
-          </div>
+                  <div className="dashboard-user-dropdown-identity">
+                    <UserAvatar user={user} className="dashboard-user-avatar" />
+                    <div>
+                      <strong>{displayName}</strong>
+                      <span>
+                        {ROLE_LABELS[user.role] || user.role}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="dashboard-theme-section">
+                    <span>Tampilan</span>
+                    <div className="dashboard-theme-options">
+                      {THEME_OPTIONS.map((option) => {
+                        const Icon = option.icon;
+
+                        return (
+                          <button
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={
+                              themePreference === option.value
+                            }
+                            className={
+                              themePreference === option.value
+                                ? "is-selected"
+                                : ""
+                            }
+                            key={option.value}
+                            onClick={() =>
+                              setThemePreference(option.value)
+                            }
+                          >
+                            <Icon aria-hidden="true" />
+                            <span>{option.label}</span>
+                            {themePreference === option.value && (
+                              <Check aria-hidden="true" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="dashboard-dropdown-logout"
+                    role="menuitem"
+                    onClick={handleLogout}
+                  >
+                    <LogOut aria-hidden="true" />
+                    <span>Keluar dari akun</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
