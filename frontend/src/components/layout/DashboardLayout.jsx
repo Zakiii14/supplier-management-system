@@ -131,10 +131,6 @@ const DashboardLayout = () => {
     };
   }, []);
 
-  useEffect(() => {
-    setSidebarTooltip(null);
-  }, [isSidebarCollapsed, location.pathname]);
-
   const visibleGroups = navigationGroups
     .map((group) => ({
       ...group,

@@ -68,15 +68,6 @@ const UserFormModal = ({
   const [avatarPreview, setAvatarPreview] = useState("");
   const [removeAvatar, setRemoveAvatar] = useState(false);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    setValues(createInitialValues(user));
-    setValidationError("");
-    setAvatarFile(null);
-    setAvatarPreview("");
-    setRemoveAvatar(false);
-  }, [isOpen, user]);
-
   useEffect(() => () => {
     if (avatarPreview) URL.revokeObjectURL(avatarPreview);
   }, [avatarPreview]);
