@@ -40,6 +40,7 @@ const login = async (req, res) => {
         full_name,
         email,
         password_hash,
+        password_changed_at,
         role,
         status,
         email_verified_at,
@@ -63,9 +64,6 @@ const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Invited accounts remain INACTIVE and passwordless until activation.
-    // This keeps legacy/internal accounts compatible while preventing invited
-    // users from logging in before they finish account activation.
     if (
       user.status !== "ACTIVE" ||
       !user.password_hash
@@ -92,6 +90,9 @@ const login = async (req, res) => {
       {
         username: user.username,
         role: user.role,
+        pwd: user.password_changed_at
+          ? new Date(user.password_changed_at).toISOString()
+          : null,
       },
       process.env.JWT_SECRET,
       {
