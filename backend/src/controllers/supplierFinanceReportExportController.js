@@ -73,6 +73,29 @@ const exportSupplierFinanceReport = async (req, res) => {
     );
 
     const rows = result.rows;
+    const refundResult = await pool.query(
+      `${SUPPLIER_FINANCE_CTE},
+      filtered_supplier_finance AS (
+        SELECT *
+        FROM supplier_finance_rows sfr
+        ${whereClause}
+      )
+      SELECT
+        prs.settlement_date,
+        prs.amount,
+        pr.return_number
+      FROM filtered_supplier_finance fsf
+      JOIN app.goods_receipts gr
+        ON gr.purchase_order_id = fsf.id
+      JOIN app.purchase_returns pr
+        ON pr.goods_receipt_id = gr.id
+      JOIN app.purchase_return_settlements prs
+        ON prs.purchase_return_id = pr.id
+        AND prs.settlement_type = 'REFUND'
+      ORDER BY prs.settlement_date, pr.return_number`,
+      values,
+    );
+    const refundRows = refundResult.rows;
     const selectedSupplier = parsed.supplierId
       ? rows[0]
         ? `${rows[0].supplier_code} ${rows[0].supplier_name}`
@@ -146,6 +169,12 @@ const exportSupplierFinanceReport = async (req, res) => {
             type: "currency",
             color: "14805E",
           },
+          {
+            key: "refundValue",
+            label: "Refund supplier",
+            type: "currency",
+            color: "D92D20",
+          },
         ],
         buildTrend: ({ transactions, rows: reportRows, getPeriodKey }) => {
           const trend = new Map();
@@ -157,6 +186,7 @@ const exportSupplierFinanceReport = async (req, res) => {
                 period,
                 purchaseValue: 0,
                 paymentValue: 0,
+                refundValue: 0,
               };
               entry.purchaseValue += Number(row.total_amount) || 0;
               trend.set(period, entry);
@@ -170,10 +200,22 @@ const exportSupplierFinanceReport = async (req, res) => {
                 period,
                 purchaseValue: 0,
                 paymentValue: 0,
+                refundValue: 0,
               };
               entry.paymentValue += Number(row.payment_amount) || 0;
               trend.set(period, entry);
             });
+          refundRows.forEach((row) => {
+            const period = getPeriodKey(row.settlement_date);
+            const entry = trend.get(period) || {
+              period,
+              purchaseValue: 0,
+              paymentValue: 0,
+              refundValue: 0,
+            };
+            entry.refundValue += Number(row.amount) || 0;
+            trend.set(period, entry);
+          });
           return Array.from(trend.values()).sort((a, b) =>
             a.period.localeCompare(b.period),
           );
@@ -201,6 +243,14 @@ const exportSupplierFinanceReport = async (req, res) => {
                 (sum, row) => sum + (Number(row.payment_amount) || 0),
                 0,
               ),
+          },
+          {
+            label: "Refund supplier",
+            type: "currency",
+            value: () => refundRows.reduce(
+              (sum, row) => sum + (Number(row.amount) || 0),
+              0,
+            ),
           },
           {
             label: "Sisa utang supplier",
@@ -231,7 +281,11 @@ const exportSupplierFinanceReport = async (req, res) => {
         { key: "supplier_name", label: "Supplier", width: 23 },
         { key: "payment_scheme", label: "Skema", type: "status", width: 18 },
         { key: "total_amount", label: "Nilai PO", type: "currency", width: 18 },
+        { key: "return_credit_amount", label: "Kredit retur", type: "currency", width: 18 },
         { key: "paid_amount", label: "Sudah dibayar", type: "currency", width: 18 },
+        { key: "supplier_refunds", label: "Refund", type: "currency", width: 16 },
+        { key: "net_supplier_payments", label: "Pembayaran bersih", type: "currency", width: 19 },
+        { key: "replacement_amount", label: "Replacement", type: "currency", width: 17 },
         {
           key: "outstanding_amount",
           label: "Sisa utang",

@@ -231,6 +231,24 @@ const exportPurchasingReport = async (req, res) => {
       : "";
     const result = await pool.query(
       `
+      WITH returned_items AS (
+        SELECT
+          gr.purchase_order_id,
+          pri.product_id,
+          COALESCE(SUM(pri.quantity), 0)
+            AS returned_quantity,
+          COALESCE(
+            SUM(pri.quantity * pri.unit_price),
+            0
+          ) AS returned_amount
+        FROM app.purchase_returns pr
+        JOIN app.goods_receipts gr
+          ON gr.id = pr.goods_receipt_id
+        JOIN app.purchase_return_items pri
+          ON pri.purchase_return_id = pr.id
+        WHERE pr.status = 'APPROVED'
+        GROUP BY gr.purchase_order_id, pri.product_id
+      )
       SELECT
         po.po_number,
         po.order_date,
@@ -244,15 +262,43 @@ const exportPurchasingReport = async (req, res) => {
         p.unit,
         poi.quantity AS ordered_quantity,
         poi.received_quantity,
+        COALESCE(ri.returned_quantity, 0)
+          AS returned_quantity,
+        GREATEST(
+          poi.received_quantity
+            - COALESCE(ri.returned_quantity, 0),
+          0
+        ) AS net_received_quantity,
         GREATEST(
           poi.quantity - poi.received_quantity,
           0
         ) AS pending_quantity,
         poi.unit_price,
         poi.quantity * poi.unit_price
-          AS item_subtotal,
+          AS gross_item_subtotal,
+        COALESCE(ri.returned_amount, 0)
+          AS returned_amount,
+        GREATEST(
+          poi.quantity * poi.unit_price
+            - COALESCE(ri.returned_amount, 0),
+          0
+        ) AS item_subtotal,
         SUM(
           poi.quantity * poi.unit_price
+        ) OVER (
+          PARTITION BY po.id
+        ) AS gross_order_total,
+        SUM(
+          COALESCE(ri.returned_amount, 0)
+        ) OVER (
+          PARTITION BY po.id
+        ) AS returned_order_total,
+        SUM(
+          GREATEST(
+            poi.quantity * poi.unit_price
+              - COALESCE(ri.returned_amount, 0),
+            0
+          )
         ) OVER (
           PARTITION BY po.id
         ) AS order_total
@@ -263,6 +309,9 @@ const exportPurchasingReport = async (req, res) => {
         ON poi.purchase_order_id = po.id
       JOIN app.products p
         ON p.id = poi.product_id
+      LEFT JOIN returned_items ri
+        ON ri.purchase_order_id = po.id
+        AND ri.product_id = poi.product_id
       ${whereClause}
       ORDER BY
         po.order_date DESC,
@@ -318,6 +367,18 @@ const exportPurchasingReport = async (req, res) => {
         width: 13,
       },
       {
+        key: "returned_quantity",
+        label: "Diretur",
+        type: "number",
+        width: 13,
+      },
+      {
+        key: "net_received_quantity",
+        label: "Diterima bersih",
+        type: "number",
+        width: 15,
+      },
+      {
         key: "pending_quantity",
         label: "Tersisa",
         type: "number",
@@ -330,8 +391,20 @@ const exportPurchasingReport = async (req, res) => {
         width: 17,
       },
       {
+        key: "gross_item_subtotal",
+        label: "Subtotal bruto",
+        type: "currency",
+        width: 18,
+      },
+      {
+        key: "returned_amount",
+        label: "Nilai retur",
+        type: "currency",
+        width: 17,
+      },
+      {
         key: "item_subtotal",
-        label: "Subtotal item",
+        label: "Subtotal bersih",
         type: "currency",
         width: 18,
       },
@@ -366,6 +439,17 @@ const exportPurchasingReport = async (req, res) => {
                 activeTransactions.reduce(
                   (total, { row }) =>
                     total + (Number(row.order_total) || 0),
+                  0,
+                ),
+            },
+            {
+              label: "Nilai retur pembelian",
+              type: "currency",
+              value: ({ activeTransactions }) =>
+                activeTransactions.reduce(
+                  (total, { row }) =>
+                    total
+                      + (Number(row.returned_order_total) || 0),
                   0,
                 ),
             },
@@ -447,8 +531,42 @@ const exportPurchasingReport = async (req, res) => {
               ),
           },
           {
+            label: "Diretur",
+            type: "number",
+            width: 13,
+            value: (_row, { groupRows }) =>
+              groupRows.reduce(
+                (total, row) =>
+                  total + Number(row.returned_quantity),
+                0,
+              ),
+          },
+          {
+            label: "Diterima bersih",
+            type: "number",
+            width: 15,
+            value: (_row, { groupRows }) =>
+              groupRows.reduce(
+                (total, row) =>
+                  total + Number(row.net_received_quantity),
+                0,
+              ),
+          },
+          {
+            key: "gross_order_total",
+            label: "Total bruto",
+            type: "currency",
+            width: 18,
+          },
+          {
+            key: "returned_order_total",
+            label: "Nilai retur",
+            type: "currency",
+            width: 18,
+          },
+          {
             key: "order_total",
-            label: "Total PO",
+            label: "Total bersih",
             type: "currency",
             width: 18,
           },
@@ -503,6 +621,20 @@ const exportPurchasingReport = async (req, res) => {
             width: 65,
           },
           {
+            key: "returned_quantity",
+            label: "Diretur",
+            type: "number",
+            align: "right",
+            width: 65,
+          },
+          {
+            key: "net_received_quantity",
+            label: "Bersih",
+            type: "number",
+            align: "right",
+            width: 65,
+          },
+          {
             key: "pending_quantity",
             label: "Tersisa",
             type: "number",
@@ -517,8 +649,22 @@ const exportPurchasingReport = async (req, res) => {
             width: 90,
           },
           {
+            key: "gross_item_subtotal",
+            label: "Subtotal bruto",
+            type: "currency",
+            align: "right",
+            width: 100,
+          },
+          {
+            key: "returned_amount",
+            label: "Nilai retur",
+            type: "currency",
+            align: "right",
+            width: 90,
+          },
+          {
             key: "item_subtotal",
-            label: "Subtotal",
+            label: "Subtotal bersih",
             type: "currency",
             align: "right",
             width: 100,
@@ -618,6 +764,24 @@ const exportSalesReport = async (req, res) => {
         JOIN app.deliveries d
           ON d.id = di.delivery_id
         GROUP BY di.sales_order_item_id
+      ),
+      returned_items AS (
+        SELECT
+          d.sales_order_id,
+          sri.product_id,
+          COALESCE(SUM(sri.quantity), 0)
+            AS returned_quantity,
+          COALESCE(
+            SUM(sri.quantity * sri.unit_price),
+            0
+          ) AS returned_amount
+        FROM app.sales_returns sr
+        JOIN app.deliveries d
+          ON d.id = sr.delivery_id
+        JOIN app.sales_return_items sri
+          ON sri.sales_return_id = sr.id
+        WHERE sr.status = 'APPROVED'
+        GROUP BY d.sales_order_id, sri.product_id
       )
       SELECT
         so.so_number,
@@ -633,6 +797,13 @@ const exportSalesReport = async (req, res) => {
         soi.quantity AS ordered_quantity,
         COALESCE(di.delivered_quantity, 0)
           AS delivered_quantity,
+        COALESCE(ri.returned_quantity, 0)
+          AS returned_quantity,
+        GREATEST(
+          COALESCE(di.delivered_quantity, 0)
+            - COALESCE(ri.returned_quantity, 0),
+          0
+        ) AS net_delivered_quantity,
         GREATEST(
           soi.quantity
             - COALESCE(di.delivered_quantity, 0),
@@ -644,11 +815,34 @@ const exportSalesReport = async (req, res) => {
           soi.quantity * soi.unit_price
             - soi.discount_amount,
           0
+        ) AS gross_item_subtotal,
+        COALESCE(ri.returned_amount, 0)
+          AS returned_amount,
+        GREATEST(
+          soi.quantity * soi.unit_price
+            - soi.discount_amount
+            - COALESCE(ri.returned_amount, 0),
+          0
         ) AS item_subtotal,
         SUM(
           GREATEST(
             soi.quantity * soi.unit_price
               - soi.discount_amount,
+            0
+          )
+        ) OVER (
+          PARTITION BY so.id
+        ) AS gross_order_total,
+        SUM(
+          COALESCE(ri.returned_amount, 0)
+        ) OVER (
+          PARTITION BY so.id
+        ) AS returned_order_total,
+        SUM(
+          GREATEST(
+            soi.quantity * soi.unit_price
+              - soi.discount_amount
+              - COALESCE(ri.returned_amount, 0),
             0
           )
         ) OVER (
@@ -663,6 +857,9 @@ const exportSalesReport = async (req, res) => {
         ON p.id = soi.product_id
       LEFT JOIN delivered_items di
         ON di.sales_order_item_id = soi.id
+      LEFT JOIN returned_items ri
+        ON ri.sales_order_id = so.id
+        AND ri.product_id = soi.product_id
       ${whereClause}
       ORDER BY
         so.order_date DESC,
@@ -718,6 +915,18 @@ const exportSalesReport = async (req, res) => {
         width: 13,
       },
       {
+        key: "returned_quantity",
+        label: "Diretur",
+        type: "number",
+        width: 13,
+      },
+      {
+        key: "net_delivered_quantity",
+        label: "Terkirim bersih",
+        type: "number",
+        width: 15,
+      },
+      {
         key: "pending_quantity",
         label: "Tersisa",
         type: "number",
@@ -736,8 +945,20 @@ const exportSalesReport = async (req, res) => {
         width: 15,
       },
       {
+        key: "gross_item_subtotal",
+        label: "Subtotal bruto",
+        type: "currency",
+        width: 18,
+      },
+      {
+        key: "returned_amount",
+        label: "Nilai retur",
+        type: "currency",
+        width: 17,
+      },
+      {
         key: "item_subtotal",
-        label: "Subtotal item",
+        label: "Subtotal bersih",
         type: "currency",
         width: 18,
       },
@@ -772,6 +993,17 @@ const exportSalesReport = async (req, res) => {
                 activeTransactions.reduce(
                   (total, { row }) =>
                     total + (Number(row.order_total) || 0),
+                  0,
+                ),
+            },
+            {
+              label: "Nilai retur penjualan",
+              type: "currency",
+              value: ({ activeTransactions }) =>
+                activeTransactions.reduce(
+                  (total, { row }) =>
+                    total
+                      + (Number(row.returned_order_total) || 0),
                   0,
                 ),
             },
@@ -853,8 +1085,42 @@ const exportSalesReport = async (req, res) => {
               ),
           },
           {
+            label: "Diretur",
+            type: "number",
+            width: 13,
+            value: (_row, { groupRows }) =>
+              groupRows.reduce(
+                (total, row) =>
+                  total + Number(row.returned_quantity),
+                0,
+              ),
+          },
+          {
+            label: "Terkirim bersih",
+            type: "number",
+            width: 15,
+            value: (_row, { groupRows }) =>
+              groupRows.reduce(
+                (total, row) =>
+                  total + Number(row.net_delivered_quantity),
+                0,
+              ),
+          },
+          {
+            key: "gross_order_total",
+            label: "Total bruto",
+            type: "currency",
+            width: 18,
+          },
+          {
+            key: "returned_order_total",
+            label: "Nilai retur",
+            type: "currency",
+            width: 18,
+          },
+          {
             key: "order_total",
-            label: "Total SO",
+            label: "Total bersih",
             type: "currency",
             width: 18,
           },
@@ -909,6 +1175,20 @@ const exportSalesReport = async (req, res) => {
             width: 60,
           },
           {
+            key: "returned_quantity",
+            label: "Diretur",
+            type: "number",
+            align: "right",
+            width: 60,
+          },
+          {
+            key: "net_delivered_quantity",
+            label: "Bersih",
+            type: "number",
+            align: "right",
+            width: 60,
+          },
+          {
             key: "pending_quantity",
             label: "Tersisa",
             type: "number",
@@ -930,8 +1210,22 @@ const exportSalesReport = async (req, res) => {
             width: 75,
           },
           {
+            key: "gross_item_subtotal",
+            label: "Subtotal bruto",
+            type: "currency",
+            align: "right",
+            width: 95,
+          },
+          {
+            key: "returned_amount",
+            label: "Nilai retur",
+            type: "currency",
+            align: "right",
+            width: 85,
+          },
+          {
             key: "item_subtotal",
-            label: "Subtotal",
+            label: "Subtotal bersih",
             type: "currency",
             align: "right",
             width: 95,

@@ -34,9 +34,15 @@ const SUPPLIER_FINANCE_CTE = `
         ELSE COALESCE(item_summary.total_amount, 0)
       END AS total_amount,
       COALESCE(invoice_summary.invoice_count, 0) AS invoice_count,
+      COALESCE(invoice_summary.return_credit_amount, 0)
+        AS return_credit_amount,
       COALESCE(payment_summary.paid_amount, 0) AS paid_amount,
       COALESCE(payment_summary.payment_count, 0) AS payment_count,
       COALESCE(proof_summary.proof_count, 0) AS proof_count,
+      COALESCE(return_summary.supplier_refunds, 0)
+        AS supplier_refunds,
+      COALESCE(return_summary.replacement_amount, 0)
+        AS replacement_amount,
       CASE WHEN invoice_summary.invoice_count > 0
         THEN invoice_summary.due_date
         ELSE CASE
@@ -58,6 +64,7 @@ const SUPPLIER_FINANCE_CTE = `
     LEFT JOIN LATERAL (
       SELECT COUNT(si.id)::INTEGER AS invoice_count,
         COALESCE(SUM(si.total_amount-COALESCE((SELECT SUM(prs.amount) FROM app.purchase_return_settlements prs WHERE prs.supplier_invoice_id=si.id AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')),0)),0) AS invoiced_amount,
+        COALESCE(SUM(COALESCE((SELECT SUM(prs.amount) FROM app.purchase_return_settlements prs WHERE prs.supplier_invoice_id=si.id AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')),0)),0) AS return_credit_amount,
         MIN(si.due_date) FILTER (WHERE si.total_amount > COALESCE((SELECT SUM(spi.amount) FROM app.supplier_payments spi WHERE spi.supplier_invoice_id=si.id),0)+COALESCE((SELECT SUM(prs.amount) FROM app.purchase_return_settlements prs WHERE prs.supplier_invoice_id=si.id AND prs.settlement_type IN ('INVOICE_DEDUCTION','SUPPLIER_CREDIT')),0)) AS due_date
       FROM app.supplier_invoices si
       WHERE si.purchase_order_id=po.id
@@ -76,12 +83,31 @@ const SUPPLIER_FINANCE_CTE = `
         ON pp.supplier_payment_id = sp.id
       WHERE sp.purchase_order_id = po.id
     ) proof_summary ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        COALESCE(SUM(prs.amount) FILTER (
+          WHERE prs.settlement_type = 'REFUND'
+        ), 0) AS supplier_refunds,
+        COALESCE(SUM(prs.amount) FILTER (
+          WHERE prs.settlement_type = 'REPLACEMENT'
+        ), 0) AS replacement_amount
+      FROM app.purchase_return_settlements prs
+      JOIN app.purchase_returns pr
+        ON pr.id = prs.purchase_return_id
+      JOIN app.goods_receipts gr
+        ON gr.id = pr.goods_receipt_id
+      WHERE gr.purchase_order_id = po.id
+    ) return_summary ON TRUE
     WHERE po.status <> 'DRAFT'
   ),
   supplier_finance_rows AS (
     SELECT
       sfb.*,
       GREATEST(sfb.total_amount - sfb.paid_amount, 0) AS outstanding_amount,
+      GREATEST(
+        sfb.paid_amount - sfb.supplier_refunds,
+        0
+      ) AS net_supplier_payments,
       CASE
         WHEN sfb.purchase_order_status = 'CANCELLED' THEN 'CANCELLED'
         WHEN sfb.total_amount > 0 AND sfb.paid_amount >= sfb.total_amount

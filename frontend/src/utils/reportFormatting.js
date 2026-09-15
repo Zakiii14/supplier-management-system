@@ -40,12 +40,22 @@ const REPORT_FIELD_LABELS = {
     active_purchase_orders:
         "Pesanan pembelian aktif",
     total_purchase_value:
-        "Total nilai pembelian",
+        "Nilai pembelian bersih",
+    gross_purchase_value:
+        "Nilai pembelian bruto",
+    returned_purchase_value:
+        "Nilai retur pembelian",
+    gross_purchase_amount:
+        "Nilai pembelian bruto",
     total_order_value: "Total nilai pesanan",
     ordered_quantity:
         "Jumlah barang dipesan",
     received_quantity:
         "Jumlah barang diterima",
+    returned_quantity:
+        "Jumlah barang diretur",
+    net_received_quantity:
+        "Jumlah diterima bersih",
     pending_receipt_quantity:
         "Jumlah barang belum diterima",
     total_received_value:
@@ -62,10 +72,27 @@ const REPORT_FIELD_LABELS = {
     total_stock: "Total stok",
     total_stock_quantity:
         "Total jumlah stok",
+    total_stock_units: "Total stok fisik",
+    available_stock_units:
+        "Stok tersedia",
+    quarantine_stock_units:
+        "Stok karantina",
+    damaged_stock_units:
+        "Stok rusak",
+    total_physical_stock:
+        "Total stok fisik",
+    quarantine_stock: "Stok karantina",
+    damaged_stock: "Stok rusak",
     total_stock_value:
         "Total nilai persediaan",
     total_inventory_value:
         "Total nilai persediaan",
+    available_inventory_value:
+        "Nilai stok tersedia",
+    quarantine_inventory_value:
+        "Nilai stok karantina",
+    damaged_inventory_value:
+        "Nilai stok rusak",
     inbound_quantity:
         "Jumlah stok masuk",
     outbound_quantity:
@@ -79,13 +106,17 @@ const REPORT_FIELD_LABELS = {
     active_sales_orders:
         "Pesanan penjualan aktif",
     total_sales_value:
-        "Total nilai penjualan",
+        "Nilai penjualan bersih",
+    gross_sales_value:
+        "Nilai penjualan bruto",
+    gross_sales_amount:
+        "Nilai penjualan bruto",
     delivered_quantity:
         "Jumlah barang terkirim",
-    returned_quantity:
-        "Jumlah barang diretur",
-    returned_amount:
-        "Nilai retur penjualan",
+    returned_amount: "Nilai retur",
+    returned_value: "Nilai retur",
+    net_delivered_quantity:
+        "Jumlah terkirim bersih",
     pending_delivery_quantity:
         "Jumlah barang belum terkirim",
     delivered_value:
@@ -103,6 +134,7 @@ const REPORT_FIELD_LABELS = {
         "Total nilai invoice",
     total_paid_amount:
         "Total nilai terbayar",
+    total_tax_amount: "Total pajak invoice",
     total_return_credit:
         "Kredit retur customer",
     net_invoice_value:
@@ -113,12 +145,35 @@ const REPORT_FIELD_LABELS = {
         "Sisa tagihan",
     total_payments:
         "Total transaksi pembayaran",
+    customer_payment_proofs:
+        "Bukti pembayaran pelanggan",
     payments_received:
         "Total pembayaran diterima",
+    total_customer_refunds:
+        "Jumlah refund customer",
+    customer_refunds:
+        "Nilai refund customer",
+    customer_replacement_value:
+        "Nilai replacement customer",
+    return_credit_settlements:
+        "Penyelesaian kredit retur",
+    net_payments_received:
+        "Pembayaran bersih diterima",
     overdue_purchase_orders:
         "PO melewati jatuh tempo",
     supplier_payments_made:
         "Pembayaran kepada supplier",
+    supplier_refunds: "Refund supplier",
+    net_supplier_payments:
+        "Pembayaran bersih supplier",
+    supplier_return_credit:
+        "Kredit retur supplier",
+    return_credit_amount:
+        "Kredit retur supplier",
+    supplier_replacement_value:
+        "Nilai replacement supplier",
+    replacement_amount:
+        "Nilai replacement",
     supplier_outstanding_amount:
         "Sisa utang supplier",
     overdue_supplier_amount:
@@ -136,6 +191,9 @@ const REPORT_FIELD_LABELS = {
     sales_value: "Nilai penjualan",
     invoice_value: "Nilai invoice",
     payment_value: "Nilai pembayaran",
+    refund_value: "Nilai refund",
+    supplier_refund_value:
+        "Nilai refund supplier",
 
     item_count: "Jumlah jenis barang",
     total_items: "Jumlah jenis barang",
@@ -161,6 +219,7 @@ const REPORT_FIELD_LABELS = {
 
 const HIDDEN_REPORT_FIELDS = new Set([
     "id",
+    "stored_status",
     "supplier_id",
     "category_id",
     "product_id",
@@ -171,7 +230,7 @@ const HIDDEN_REPORT_FIELDS = new Set([
 ]);
 
 const CURRENCY_FIELD_PATTERN =
-    /(_amount$|_value$|_balance$|_revenue$|_cost$|_price$|^grand_total$|^paid_amount$|^outstanding_amount$|^payments_received$|^supplier_payments_made$)/i;
+    /(_amount$|_value$|_balance$|_revenue$|_cost$|_price$|_refunds?$|_credit$|^grand_total$|^paid_amount$|^outstanding_amount$|^payments_received$|^net_payments_received$|^supplier_payments_made$|^net_supplier_payments$|^total_return_credit$|^return_credit_settlements$)/i;
 
 const DATE_FIELD_PATTERN =
     /(^date$|_date$|^due_date$)/i;
@@ -194,6 +253,8 @@ const REPORT_ENUM_LABELS = {
     AVAILABLE: "Tersedia",
     LOW: "Stok menipis",
     OUT: "Stok habis",
+    QUARANTINE: "Karantina",
+    DAMAGED: "Rusak",
 
     CANCELLED: "Dibatalkan",
 

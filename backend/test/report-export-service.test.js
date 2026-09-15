@@ -157,7 +157,7 @@ test("report export creates a three-sheet workbook and a PDF without footer-only
   assert.equal(pageObjects?.length, 1);
 });
 
-test("report export supports named sheets, filtered details, and two chart series", async () => {
+test("report export supports named sheets, filtered details, and multiple chart series", async () => {
   assert.equal(formatNumber("199.000"), "199");
 
   const movementRows = [
@@ -170,6 +170,7 @@ test("report export supports named sheets, filtered details, and two chart serie
       movement_date: "2026-09-06",
       inbound: 12,
       outbound: 4,
+      damaged: 1,
     },
     {
       sku: "SKU-002",
@@ -180,6 +181,7 @@ test("report export supports named sheets, filtered details, and two chart serie
       movement_date: null,
       inbound: 0,
       outbound: 0,
+      damaged: 0,
     },
   ];
   const movementGroup = {
@@ -200,8 +202,14 @@ test("report export supports named sheets, filtered details, and two chart serie
       trendColumns: [
         { key: "inbound", label: "Stok masuk", type: "number", color: "14805E" },
         { key: "outbound", label: "Stok keluar", type: "number", color: "D92D20" },
+        { key: "damaged", label: "Stok rusak", type: "number", color: "B54708" },
       ],
-      buildTrend: () => [{ period: "2026-09", inbound: 12, outbound: 4 }],
+      buildTrend: () => [{
+        period: "2026-09",
+        inbound: 12,
+        outbound: 4,
+        damaged: 1,
+      }],
       metrics: [
         { label: "Produk", type: "number", value: ({ transactions }) => transactions.length },
         { label: "Stok", type: "number", value: ({ transactions }) => transactions.reduce((total, item) => total + item.row.current_stock, 0) },
@@ -220,6 +228,7 @@ test("report export supports named sheets, filtered details, and two chart serie
       { key: "movement_date", label: "Tanggal", type: "date", width: 150 },
       { key: "inbound", label: "Masuk", type: "number", width: 100 },
       { key: "outbound", label: "Keluar", type: "number", width: 100 },
+      { key: "damaged", label: "Rusak", type: "number", width: 100 },
     ],
   };
   const workbook = await createExcelReport({
@@ -243,6 +252,7 @@ test("report export supports named sheets, filtered details, and two chart serie
   assert.doesNotMatch(detailXml, /SKU-002/);
   assert.match(chartXml, /Stok masuk/);
   assert.match(chartXml, /Stok keluar/);
+  assert.match(chartXml, /Stok rusak/);
   assert.match(
     drawingXml,
     /<xdr:to><xdr:col>10<\/xdr:col>/,

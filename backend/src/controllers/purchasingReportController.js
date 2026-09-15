@@ -104,7 +104,24 @@ const getPurchasingReport = async (req, res) => {
       : "";
 
     const reportCte = `
-      WITH report_rows AS (
+      WITH return_totals AS (
+        SELECT
+          gr.purchase_order_id,
+          COALESCE(SUM(pri.quantity), 0)
+            AS returned_quantity,
+          COALESCE(
+            SUM(pri.quantity * pri.unit_price),
+            0
+          ) AS returned_amount
+        FROM app.purchase_returns pr
+        JOIN app.goods_receipts gr
+          ON gr.id = pr.goods_receipt_id
+        JOIN app.purchase_return_items pri
+          ON pri.purchase_return_id = pr.id
+        WHERE pr.status = 'APPROVED'
+        GROUP BY gr.purchase_order_id
+      ),
+      report_rows AS (
         SELECT
           po.id,
           po.po_number,
@@ -119,6 +136,13 @@ const getPurchasingReport = async (req, res) => {
             AS ordered_quantity,
           COALESCE(SUM(poi.received_quantity), 0)
             AS received_quantity,
+          COALESCE(rt.returned_quantity, 0)
+            AS returned_quantity,
+          GREATEST(
+            COALESCE(SUM(poi.received_quantity), 0)
+              - COALESCE(rt.returned_quantity, 0),
+            0
+          ) AS net_received_quantity,
           COALESCE(
             SUM(
               GREATEST(
@@ -131,14 +155,29 @@ const getPurchasingReport = async (req, res) => {
           COALESCE(
             SUM(poi.quantity * poi.unit_price),
             0
+          ) AS gross_purchase_amount,
+          COALESCE(rt.returned_amount, 0)
+            AS returned_amount,
+          GREATEST(
+            COALESCE(
+              SUM(poi.quantity * poi.unit_price),
+              0
+            ) - COALESCE(rt.returned_amount, 0),
+            0
           ) AS total_amount
         FROM app.purchase_orders po
         JOIN app.suppliers s
           ON s.id = po.supplier_id
         LEFT JOIN app.purchase_order_items poi
           ON poi.purchase_order_id = po.id
+        LEFT JOIN return_totals rt
+          ON rt.purchase_order_id = po.id
         ${whereClause}
-        GROUP BY po.id, s.id
+        GROUP BY
+          po.id,
+          s.id,
+          rt.returned_quantity,
+          rt.returned_amount
       )
     `;
 
@@ -154,6 +193,18 @@ const getPurchasingReport = async (req, res) => {
           (COUNT(*) FILTER (
             WHERE status <> 'CANCELLED'
           ))::INTEGER AS active_purchase_orders,
+          COALESCE(
+            SUM(gross_purchase_amount) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS gross_purchase_value,
+          COALESCE(
+            SUM(returned_amount) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS returned_purchase_value,
           COALESCE(
             SUM(total_amount) FILTER (
               WHERE status <> 'CANCELLED'
@@ -172,6 +223,18 @@ const getPurchasingReport = async (req, res) => {
             ),
             0
           ) AS received_quantity,
+          COALESCE(
+            SUM(returned_quantity) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS returned_quantity,
+          COALESCE(
+            SUM(net_received_quantity) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS net_received_quantity,
           COALESCE(
             SUM(pending_receipt_quantity) FILTER (
               WHERE status <> 'CANCELLED'
@@ -198,11 +261,29 @@ const getPurchasingReport = async (req, res) => {
             0
           ) AS total_value,
           COALESCE(
+            SUM(returned_amount) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS returned_value,
+          COALESCE(
             SUM(received_quantity) FILTER (
               WHERE status <> 'CANCELLED'
             ),
             0
-          ) AS received_quantity
+          ) AS received_quantity,
+          COALESCE(
+            SUM(returned_quantity) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS returned_quantity,
+          COALESCE(
+            SUM(net_received_quantity) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS net_received_quantity
         FROM report_rows
         GROUP BY DATE_TRUNC('month', order_date)
         ORDER BY DATE_TRUNC('month', order_date) ASC`,

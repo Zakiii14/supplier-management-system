@@ -4,7 +4,7 @@ const REPORT_CONFIG = {
         label: "Pembelian",
         title: "Laporan Pembelian",
         description:
-            "Pantau pesanan pembelian, nilai pembelian, dan aktivitas supplier.",
+            "Pantau pesanan, penerimaan, retur, dan nilai pembelian bersih.",
         roles: [
             "ADMIN",
             "PURCHASING",
@@ -43,7 +43,7 @@ const REPORT_CONFIG = {
         label: "Persediaan",
         title: "Laporan Persediaan",
         description:
-            "Pantau ketersediaan, nilai stok, dan pergerakan persediaan.",
+            "Pantau stok tersedia, karantina, rusak, dan seluruh pergerakannya.",
         roles: [
             "ADMIN",
             "PURCHASING",
@@ -66,6 +66,14 @@ const REPORT_CONFIG = {
                 value: "OUT",
                 label: "Stok habis",
             },
+            {
+                value: "QUARANTINE",
+                label: "Memiliki stok karantina",
+            },
+            {
+                value: "DAMAGED",
+                label: "Memiliki stok rusak",
+            },
         ],
         entityParam: "category_id",
         entityLabel: "Kategori",
@@ -77,7 +85,7 @@ const REPORT_CONFIG = {
         label: "Penjualan",
         title: "Laporan Penjualan",
         description:
-            "Analisis pesanan penjualan, nilai penjualan, dan aktivitas pelanggan.",
+            "Analisis pesanan, pengiriman, retur, dan nilai penjualan bersih.",
         roles: [
             "ADMIN",
             "SALES",
@@ -116,7 +124,7 @@ const REPORT_CONFIG = {
         label: "Piutang Pelanggan",
         title: "Laporan Keuangan Penjualan",
         description:
-            "Pantau invoice, pembayaran diterima, dan sisa tagihan pelanggan.",
+            "Pantau pajak, kredit retur, refund, pembayaran, dan sisa piutang.",
         roles: ["ADMIN", "FINANCE", "MANAGER"],
         statusParam: "status",
         statusLabel: "Status invoice",
@@ -152,7 +160,7 @@ const REPORT_CONFIG = {
         label: "Utang Supplier",
         title: "Laporan Keuangan Pembelian",
         description:
-            "Pantau nilai PO, pembayaran keluar, dan sisa utang kepada supplier.",
+            "Pantau kredit retur, refund, pembayaran bersih, dan utang supplier.",
         roles: ["ADMIN", "FINANCE", "MANAGER"],
         statusParam: "payment_status",
         statusLabel: "Status pembayaran",

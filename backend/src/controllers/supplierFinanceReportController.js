@@ -41,6 +41,18 @@ const getSupplierFinanceReport = async (req, res) => {
             COALESCE(SUM(paid_amount) FILTER (
               WHERE payment_status <> 'CANCELLED'
             ), 0) AS supplier_payments_made,
+            COALESCE(SUM(supplier_refunds) FILTER (
+              WHERE payment_status <> 'CANCELLED'
+            ), 0) AS supplier_refunds,
+            COALESCE(SUM(net_supplier_payments) FILTER (
+              WHERE payment_status <> 'CANCELLED'
+            ), 0) AS net_supplier_payments,
+            COALESCE(SUM(return_credit_amount) FILTER (
+              WHERE payment_status <> 'CANCELLED'
+            ), 0) AS supplier_return_credit,
+            COALESCE(SUM(replacement_amount) FILTER (
+              WHERE payment_status <> 'CANCELLED'
+            ), 0) AS supplier_replacement_value,
             COALESCE(SUM(outstanding_amount) FILTER (
               WHERE payment_status NOT IN ('PAID', 'CANCELLED')
             ), 0) AS supplier_outstanding_amount,
@@ -55,7 +67,8 @@ const getSupplierFinanceReport = async (req, res) => {
             SELECT
               DATE_TRUNC('month', fsf.order_date) AS period,
               COALESCE(SUM(fsf.total_amount), 0) AS purchase_value,
-              0::NUMERIC AS supplier_payment_value
+              0::NUMERIC AS supplier_payment_value,
+              0::NUMERIC AS supplier_refund_value
             FROM filtered_supplier_finance fsf
             WHERE fsf.payment_status <> 'CANCELLED'
             GROUP BY DATE_TRUNC('month', fsf.order_date)
@@ -65,18 +78,39 @@ const getSupplierFinanceReport = async (req, res) => {
             SELECT
               DATE_TRUNC('month', sp.payment_date),
               0::NUMERIC,
-              COALESCE(SUM(sp.amount), 0)
+              COALESCE(SUM(sp.amount), 0),
+              0::NUMERIC
             FROM filtered_supplier_finance fsf
             JOIN app.supplier_payments sp
               ON sp.purchase_order_id = fsf.id
             WHERE fsf.payment_status <> 'CANCELLED'
             GROUP BY DATE_TRUNC('month', sp.payment_date)
+
+            UNION ALL
+
+            SELECT
+              DATE_TRUNC('month', prs.settlement_date),
+              0::NUMERIC,
+              0::NUMERIC,
+              COALESCE(SUM(prs.amount), 0)
+            FROM filtered_supplier_finance fsf
+            JOIN app.goods_receipts gr
+              ON gr.purchase_order_id = fsf.id
+            JOIN app.purchase_returns pr
+              ON pr.goods_receipt_id = gr.id
+            JOIN app.purchase_return_settlements prs
+              ON prs.purchase_return_id = pr.id
+              AND prs.settlement_type = 'REFUND'
+            WHERE fsf.payment_status <> 'CANCELLED'
+            GROUP BY DATE_TRUNC('month', prs.settlement_date)
           )
           SELECT
             TO_CHAR(period, 'YYYY-MM') AS period,
             COALESCE(SUM(purchase_value), 0) AS purchase_value,
             COALESCE(SUM(supplier_payment_value), 0)
-              AS supplier_payment_value
+              AS supplier_payment_value,
+            COALESCE(SUM(supplier_refund_value), 0)
+              AS supplier_refund_value
           FROM monthly_activity
           GROUP BY period
           ORDER BY period ASC`,
@@ -101,6 +135,10 @@ const getSupplierFinanceReport = async (req, res) => {
             supplier_name,
             total_amount,
             paid_amount,
+            return_credit_amount,
+            supplier_refunds,
+            net_supplier_payments,
+            replacement_amount,
             outstanding_amount,
             payment_count,
             proof_count

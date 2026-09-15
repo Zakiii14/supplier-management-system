@@ -17,7 +17,13 @@ const {
 } = require("../services/reportExportService");
 
 const EXPORT_FORMATS = ["xlsx", "pdf"];
-const STOCK_STATUSES = ["AVAILABLE", "LOW", "OUT"];
+const STOCK_STATUSES = [
+  "AVAILABLE",
+  "LOW",
+  "OUT",
+  "QUARANTINE",
+  "DAMAGED",
+];
 const INVOICE_STATUSES = [
   "UNPAID",
   "PARTIAL",
@@ -129,6 +135,12 @@ const exportInventoryReport = async (req, res) => {
     if (stockStatus === "AVAILABLE") {
       productConditions.push("p.current_stock > p.minimum_stock");
     }
+    if (stockStatus === "QUARANTINE") {
+      productConditions.push("p.quarantine_stock > 0");
+    }
+    if (stockStatus === "DAMAGED") {
+      productConditions.push("p.damaged_stock > 0");
+    }
     if (parsed.dateFrom) {
       values.push(parsed.dateFrom);
       movementConditions.push(`im.movement_date >= $${values.length}::DATE`);
@@ -155,9 +167,25 @@ const exportInventoryReport = async (req, res) => {
         s.supplier_code,
         s.supplier_name,
         p.current_stock,
+        p.quarantine_stock,
+        p.damaged_stock,
+        p.current_stock
+          + p.quarantine_stock
+          + p.damaged_stock AS total_physical_stock,
         p.minimum_stock,
         p.purchase_price,
         p.current_stock * p.purchase_price AS inventory_value,
+        p.current_stock * p.purchase_price
+          AS available_inventory_value,
+        p.quarantine_stock * p.purchase_price
+          AS quarantine_inventory_value,
+        p.damaged_stock * p.purchase_price
+          AS damaged_inventory_value,
+        (
+          p.current_stock
+            + p.quarantine_stock
+            + p.damaged_stock
+        ) * p.purchase_price AS total_inventory_value,
         CASE
           WHEN p.current_stock = 0 THEN 'OUT'
           WHEN p.current_stock <= p.minimum_stock THEN 'LOW'
@@ -169,8 +197,17 @@ const exportInventoryReport = async (req, res) => {
         ) END AS movement_number,
         im.movement_type::TEXT AS movement_type,
         im.quantity AS movement_quantity,
+        im.stock_bucket,
         im.reference_type,
-        COALESCE(d.delivery_number, gr.receipt_number) AS reference_number,
+        COALESCE(
+          d.delivery_number,
+          gr.receipt_number,
+          so.opname_number,
+          pr.return_number,
+          sr.return_number,
+          isi.inspection_number,
+          idr.resolution_number
+        ) AS reference_number,
         im.movement_date,
         im.notes AS movement_notes,
         u.full_name AS created_by_name
@@ -185,6 +222,16 @@ const exportInventoryReport = async (req, res) => {
         ON im.reference_type = 'DELIVERY' AND d.id = im.reference_id
       LEFT JOIN app.goods_receipts gr
         ON im.reference_type = 'GOODS_RECEIPT' AND gr.id = im.reference_id
+      LEFT JOIN app.stock_opnames so
+        ON im.reference_type = 'STOCK_OPNAME' AND so.id = im.reference_id
+      LEFT JOIN app.purchase_returns pr
+        ON im.reference_type = 'PURCHASE_RETURN' AND pr.id = im.reference_id
+      LEFT JOIN app.sales_returns sr
+        ON im.reference_type = 'SALES_RETURN' AND sr.id = im.reference_id
+      LEFT JOIN app.inventory_stock_inspections isi
+        ON im.reference_type = 'STOCK_INSPECTION' AND isi.id = im.reference_id
+      LEFT JOIN app.inventory_damage_resolutions idr
+        ON im.reference_type = 'DAMAGE_RESOLUTION' AND idr.id = im.reference_id
       WHERE ${productConditions.join(" AND ")}
       ORDER BY p.product_name, p.sku, im.movement_date DESC
       `,
@@ -220,6 +267,7 @@ const exportInventoryReport = async (req, res) => {
         { key: "movement_number", label: "ID pergerakan", width: 18 },
         { key: "movement_date", label: "Tanggal", type: "date", width: 15 },
         { key: "movement_type", label: "Jenis", type: "status", width: 22 },
+        { key: "stock_bucket", label: "Kelompok stok", type: "status", width: 17 },
         { key: "movement_quantity", label: "Jumlah", type: "number", width: 12 },
         { key: "reference_number", label: "Referensi", width: 18 },
         { key: "created_by_name", label: "Petugas", width: 20 },
@@ -276,11 +324,11 @@ const exportInventoryReport = async (req, res) => {
               value: ({ transactions }) => transactions.length,
             },
             {
-              label: "Total unit stok",
+              label: "Total stok fisik",
               type: "number",
               value: ({ transactions }) => transactions.reduce(
                 (sum, item) =>
-                  sum + (Number(item.row.current_stock) || 0),
+                  sum + (Number(item.row.total_physical_stock) || 0),
                 0,
               ),
             },
@@ -309,10 +357,16 @@ const exportInventoryReport = async (req, res) => {
           { key: "supplier_name", label: "Supplier", width: 22 },
           { key: "unit", label: "Satuan", width: 11 },
           { key: "current_stock", label: "Stok", type: "number", width: 12 },
+          { key: "quarantine_stock", label: "Karantina", type: "number", width: 12 },
+          { key: "damaged_stock", label: "Rusak", type: "number", width: 12 },
+          { key: "total_physical_stock", label: "Total fisik", type: "number", width: 12 },
           { key: "minimum_stock", label: "Minimum", type: "number", width: 12 },
           { key: "stock_status", label: "Status", type: "status", width: 17 },
           { key: "purchase_price", label: "Harga beli", type: "currency", width: 17 },
-          { key: "inventory_value", label: "Nilai stok", type: "currency", width: 18 },
+          { key: "available_inventory_value", label: "Nilai tersedia", type: "currency", width: 18 },
+          { key: "quarantine_inventory_value", label: "Nilai karantina", type: "currency", width: 18 },
+          { key: "damaged_inventory_value", label: "Nilai rusak", type: "currency", width: 18 },
+          { key: "total_inventory_value", label: "Nilai total", type: "currency", width: 18 },
           {
             label: "Masuk",
             type: "number",
@@ -333,19 +387,28 @@ const exportInventoryReport = async (req, res) => {
           { label: "Kategori", width: 1.5, value: (row) => row.category_name },
           { label: "Status", type: "status", value: (row) => row.stock_status },
           {
-            label: "Stok / Minimum",
+            label: "Tersedia / Minimum",
             value: (row) => row.current_stock,
             format: (_value, row) =>
               `${formatNumber(row.current_stock)} / ${formatNumber(
                 row.minimum_stock,
               )} ${row.unit}`,
           },
-          { label: "Nilai stok", type: "currency", value: (row) => row.inventory_value },
+          {
+            label: "Karantina / Rusak",
+            value: (row) => row.quarantine_stock,
+            format: (_value, row) =>
+              `${formatNumber(row.quarantine_stock)} / ${formatNumber(
+                row.damaged_stock,
+              )} ${row.unit}`,
+          },
+          { label: "Nilai total", type: "currency", value: (row) => row.total_inventory_value },
         ],
         itemColumns: [
           { key: "movement_number", label: "ID pergerakan", width: 95 },
           { key: "movement_date", label: "Tanggal", type: "date", width: 78 },
           { key: "movement_type", label: "Jenis", type: "status", width: 115 },
+          { key: "stock_bucket", label: "Kelompok", type: "status", width: 80 },
           { key: "movement_quantity", label: "Jumlah", type: "number", align: "right", width: 55 },
           { key: "reference_number", label: "Referensi", width: 95 },
           { key: "created_by_name", label: "Petugas", width: 100 },
@@ -427,6 +490,11 @@ const exportFinanceReport = async (req, res) => {
         i.tax_amount,
         i.grand_total,
         i.paid_amount,
+        i.credit_amount,
+        GREATEST(
+          i.grand_total - i.credit_amount,
+          0
+        ) AS net_invoice_value,
         GREATEST(i.grand_total - i.paid_amount - i.credit_amount, 0) AS outstanding_amount,
         i.notes AS invoice_notes,
         so.so_number,
@@ -439,6 +507,11 @@ const exportFinanceReport = async (req, res) => {
         p.method::TEXT AS payment_method,
         p.reference_number AS payment_reference,
         p.notes AS payment_notes,
+        (
+          SELECT COUNT(*)::INTEGER
+          FROM app.payment_proofs pp
+          WHERE pp.customer_payment_id = p.id
+        ) AS payment_proof_count,
         u.full_name AS received_by_name
       FROM app.invoices i
       JOIN app.sales_orders so ON so.id = i.sales_order_id
@@ -451,6 +524,41 @@ const exportFinanceReport = async (req, res) => {
       values,
     );
     const rows = result.rows;
+    const refundResult = await pool.query(
+      `
+      SELECT
+        srs.settlement_date,
+        srs.amount,
+        srs.settlement_type,
+        sr.return_number
+      FROM app.sales_return_settlements srs
+      JOIN app.sales_returns sr
+        ON sr.id = srs.sales_return_id
+      JOIN app.deliveries d
+        ON d.id = sr.delivery_id
+      JOIN app.sales_orders so
+        ON so.id = d.sales_order_id
+      WHERE ($1::DATE IS NULL
+          OR srs.settlement_date >= $1)
+        AND ($2::DATE IS NULL
+          OR srs.settlement_date <= $2)
+        AND ($3::UUID IS NULL
+          OR so.customer_id = $3)
+      ORDER BY srs.settlement_date, sr.return_number
+      `,
+      [
+        parsed.dateFrom || null,
+        parsed.dateTo || null,
+        customerId || null,
+      ],
+    );
+    const settlementRows = refundResult.rows;
+    const refundRows = settlementRows.filter(
+      (row) => row.settlement_type === "REFUND",
+    );
+    const replacementRows = settlementRows.filter(
+      (row) => row.settlement_type === "REPLACEMENT",
+    );
     const selectedCustomer = customerId && rows[0]
       ? `${rows[0].customer_code} ${rows[0].customer_name}`
       : customerId ? "Pelanggan terpilih" : "Semua pelanggan";
@@ -476,6 +584,7 @@ const exportFinanceReport = async (req, res) => {
         { key: "payment_method", label: "Metode", type: "status", width: 17 },
         { key: "payment_amount", label: "Jumlah", type: "currency", width: 18 },
         { key: "payment_reference", label: "Referensi", width: 19 },
+        { key: "payment_proof_count", label: "Bukti", type: "number", width: 10 },
         { key: "received_by_name", label: "Penerima", width: 20 },
         { key: "payment_notes", label: "Catatan", width: 27 },
       ],
@@ -513,6 +622,12 @@ const exportFinanceReport = async (req, res) => {
               type: "currency",
               color: "14805E",
             },
+            {
+              key: "refundValue",
+              label: "Refund customer",
+              type: "currency",
+              color: "D92D20",
+            },
           ],
           buildTrend: ({ transactions, rows: reportRows, getPeriodKey }) => {
             const trend = new Map();
@@ -524,8 +639,10 @@ const exportFinanceReport = async (req, res) => {
                   period,
                   invoiceValue: 0,
                   paymentValue: 0,
+                  refundValue: 0,
                 };
-                entry.invoiceValue += Number(row.grand_total) || 0;
+                entry.invoiceValue +=
+                  Number(row.net_invoice_value) || 0;
                 trend.set(period, entry);
               });
             reportRows
@@ -537,10 +654,24 @@ const exportFinanceReport = async (req, res) => {
                   period,
                   invoiceValue: 0,
                   paymentValue: 0,
+                  refundValue: 0,
                 };
                 entry.paymentValue += Number(row.payment_amount) || 0;
                 trend.set(period, entry);
               });
+            refundRows.forEach((row) => {
+              const period = getPeriodKey(row.settlement_date);
+              const entry = trend.get(period) || {
+                period,
+                invoiceValue: 0,
+                paymentValue: 0,
+                refundValue: 0,
+              };
+              entry.refundValue =
+                (entry.refundValue || 0)
+                + (Number(row.amount) || 0);
+              trend.set(period, entry);
+            });
             return Array.from(trend.values()).sort((a, b) =>
               a.period.localeCompare(b.period),
             );
@@ -557,9 +688,46 @@ const exportFinanceReport = async (req, res) => {
               value: ({ activeTransactions }) =>
                 activeTransactions.reduce(
                   (sum, item) =>
-                    sum + (Number(item.row.grand_total) || 0),
+                    sum
+                      + (Number(item.row.net_invoice_value) || 0),
                   0,
                 ),
+            },
+            {
+              label: "Pajak invoice",
+              type: "currency",
+              value: ({ activeTransactions }) =>
+                activeTransactions.reduce(
+                  (sum, item) =>
+                    sum + (Number(item.row.tax_amount) || 0),
+                  0,
+                ),
+            },
+            {
+              label: "Kredit retur",
+              type: "currency",
+              value: ({ activeTransactions }) =>
+                activeTransactions.reduce(
+                  (sum, item) =>
+                    sum + (Number(item.row.credit_amount) || 0),
+                  0,
+                ),
+            },
+            {
+              label: "Refund customer",
+              type: "currency",
+              value: () => refundRows.reduce(
+                (sum, row) => sum + (Number(row.amount) || 0),
+                0,
+              ),
+            },
+            {
+              label: "Replacement customer",
+              type: "currency",
+              value: () => replacementRows.reduce(
+                (sum, row) => sum + (Number(row.amount) || 0),
+                0,
+              ),
             },
             {
               label: "Pembayaran diterima",
@@ -595,7 +763,12 @@ const exportFinanceReport = async (req, res) => {
           { key: "so_number", label: "Nomor SO", width: 18 },
           { key: "customer_code", label: "Kode pelanggan", width: 16 },
           { key: "customer_name", label: "Pelanggan", width: 23 },
+          { key: "subtotal", label: "Subtotal", type: "currency", width: 17 },
+          { key: "discount_amount", label: "Diskon", type: "currency", width: 16 },
+          { key: "tax_amount", label: "Pajak", type: "currency", width: 16 },
           { key: "grand_total", label: "Total invoice", type: "currency", width: 18 },
+          { key: "credit_amount", label: "Kredit retur", type: "currency", width: 18 },
+          { key: "net_invoice_value", label: "Nilai bersih", type: "currency", width: 18 },
           { key: "paid_amount", label: "Sudah dibayar", type: "currency", width: 18 },
           { key: "outstanding_amount", label: "Sisa tagihan", type: "currency", width: 18 },
           { key: "invoice_notes", label: "Catatan", width: 26 },
@@ -610,6 +783,8 @@ const exportFinanceReport = async (req, res) => {
           },
           { label: "Status", type: "status", value: (row) => row.status },
           { label: "Total", type: "currency", value: (row) => row.grand_total },
+          { label: "Pajak", type: "currency", value: (row) => row.tax_amount },
+          { label: "Kredit retur", type: "currency", value: (row) => row.credit_amount },
           { label: "Sisa tagihan", type: "currency", value: (row) => row.outstanding_amount },
         ],
         itemColumns: [
@@ -618,6 +793,7 @@ const exportFinanceReport = async (req, res) => {
           { key: "payment_method", label: "Metode", type: "status", width: 80 },
           { key: "payment_amount", label: "Jumlah", type: "currency", align: "right", width: 100 },
           { key: "payment_reference", label: "Referensi", width: 100 },
+          { key: "payment_proof_count", label: "Bukti", type: "number", width: 48 },
           { key: "received_by_name", label: "Penerima", width: 100 },
           { key: "payment_notes", label: "Catatan", width: 125 },
         ],

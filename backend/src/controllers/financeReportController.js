@@ -179,6 +179,7 @@ const getFinanceReport = async (req, res) => {
     const [
       invoiceSummaryResult,
       paymentSummaryResult,
+      refundSummaryResult,
       countResult,
     ] = await Promise.all([
       pool.query(
@@ -211,6 +212,12 @@ const getFinanceReport = async (req, res) => {
             0
           ) AS total_paid_amount,
           COALESCE(
+            SUM(tax_amount) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS total_tax_amount,
+          COALESCE(
             SUM(credit_amount) FILTER (
               WHERE status <> 'CANCELLED'
             ),
@@ -240,13 +247,58 @@ const getFinanceReport = async (req, res) => {
         SELECT
           COUNT(p.id)::INTEGER AS total_payments,
           COALESCE(SUM(p.amount), 0)
-            AS payments_received
+            AS payments_received,
+          COALESCE(SUM(proofs.proof_count), 0)::INTEGER
+            AS customer_payment_proofs
         FROM app.payments p
         JOIN app.invoices i
           ON i.id = p.invoice_id
+        LEFT JOIN LATERAL (
+          SELECT COUNT(*)::INTEGER AS proof_count
+          FROM app.payment_proofs pp
+          WHERE pp.customer_payment_id = p.id
+        ) proofs ON TRUE
         ${paymentWhereClause}
         `,
         paymentValues,
+      ),
+      pool.query(
+        `
+        SELECT
+          (COUNT(srs.id) FILTER (
+            WHERE srs.settlement_type = 'REFUND'
+          ))::INTEGER AS total_customer_refunds,
+          COALESCE(SUM(srs.amount) FILTER (
+            WHERE srs.settlement_type = 'REFUND'
+          ), 0) AS customer_refunds,
+          COALESCE(SUM(srs.amount) FILTER (
+            WHERE srs.settlement_type = 'REPLACEMENT'
+          ), 0) AS customer_replacement_value,
+          COALESCE(SUM(srs.amount) FILTER (
+            WHERE srs.settlement_type IN (
+              'INVOICE_DEDUCTION',
+              'CUSTOMER_CREDIT'
+            )
+          ), 0) AS return_credit_settlements
+        FROM app.sales_return_settlements srs
+        JOIN app.sales_returns sr
+          ON sr.id = srs.sales_return_id
+        JOIN app.deliveries d
+          ON d.id = sr.delivery_id
+        JOIN app.sales_orders so
+          ON so.id = d.sales_order_id
+        WHERE ($1::DATE IS NULL
+            OR srs.settlement_date >= $1)
+          AND ($2::DATE IS NULL
+            OR srs.settlement_date <= $2)
+          AND ($3::UUID IS NULL
+            OR so.customer_id = $3)
+        `,
+        [
+          parsed.dateFrom || null,
+          parsed.dateTo || null,
+          customerId || null,
+        ],
       ),
       pool.query(
         `${reportCte}
@@ -268,7 +320,8 @@ const getFinanceReport = async (req, res) => {
             ),
             0
           ) AS invoice_value,
-          0::NUMERIC AS payment_value
+          0::NUMERIC AS payment_value,
+          0::NUMERIC AS refund_value
         FROM app.invoices i
         WHERE
           ($1::DATE IS NULL OR i.invoice_date >= $1)
@@ -281,7 +334,8 @@ const getFinanceReport = async (req, res) => {
         SELECT
           DATE_TRUNC('month', p.payment_date),
           0::NUMERIC,
-          COALESCE(SUM(p.amount), 0)
+          COALESCE(SUM(p.amount), 0),
+          0::NUMERIC
         FROM app.payments p
         JOIN app.invoices i
           ON i.id = p.invoice_id
@@ -290,13 +344,38 @@ const getFinanceReport = async (req, res) => {
           AND ($2::DATE IS NULL OR p.payment_date <= $2)
           AND ($3::UUID IS NULL OR i.customer_id = $3)
         GROUP BY DATE_TRUNC('month', p.payment_date)
+
+        UNION ALL
+
+        SELECT
+          DATE_TRUNC('month', srs.settlement_date),
+          0::NUMERIC,
+          0::NUMERIC,
+          COALESCE(SUM(srs.amount), 0)
+        FROM app.sales_return_settlements srs
+        JOIN app.sales_returns sr
+          ON sr.id = srs.sales_return_id
+        JOIN app.deliveries d
+          ON d.id = sr.delivery_id
+        JOIN app.sales_orders so
+          ON so.id = d.sales_order_id
+        WHERE srs.settlement_type = 'REFUND'
+          AND ($1::DATE IS NULL
+            OR srs.settlement_date >= $1)
+          AND ($2::DATE IS NULL
+            OR srs.settlement_date <= $2)
+          AND ($3::UUID IS NULL
+            OR so.customer_id = $3)
+        GROUP BY DATE_TRUNC('month', srs.settlement_date)
       )
       SELECT
         TO_CHAR(period, 'YYYY-MM') AS period,
         COALESCE(SUM(invoice_value), 0)
           AS invoice_value,
         COALESCE(SUM(payment_value), 0)
-          AS payment_value
+          AS payment_value,
+        COALESCE(SUM(refund_value), 0)
+          AS refund_value
       FROM monthly_activity
       GROUP BY period
       ORDER BY period ASC
@@ -336,6 +415,16 @@ const getFinanceReport = async (req, res) => {
       summary: {
         ...invoiceSummaryResult.rows[0],
         ...paymentSummaryResult.rows[0],
+        ...refundSummaryResult.rows[0],
+        net_payments_received:
+          Number(
+            paymentSummaryResult.rows[0]
+              .payments_received,
+          )
+          - Number(
+            refundSummaryResult.rows[0]
+              .customer_refunds,
+          ),
       },
       trend: trendResult.rows,
       rows: rowsResult.rows,

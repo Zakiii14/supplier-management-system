@@ -12,6 +12,8 @@ const STOCK_STATUSES = [
   "AVAILABLE",
   "LOW",
   "OUT",
+  "QUARANTINE",
+  "DAMAGED",
 ];
 
 const INBOUND_MOVEMENT_TYPES = [
@@ -119,6 +121,10 @@ const getInventoryReport = async (req, res) => {
       productConditions.push(
         "p.current_stock > p.minimum_stock",
       );
+    } else if (stockStatus === "QUARANTINE") {
+      productConditions.push("p.quarantine_stock > 0");
+    } else if (stockStatus === "DAMAGED") {
+      productConditions.push("p.damaged_stock > 0");
     }
 
     const movementWhereClause =
@@ -167,10 +173,26 @@ const getInventoryReport = async (req, res) => {
           s.supplier_code,
           s.supplier_name,
           p.current_stock,
+          p.quarantine_stock,
+          p.damaged_stock,
+          p.current_stock
+            + p.quarantine_stock
+            + p.damaged_stock
+            AS total_physical_stock,
           p.minimum_stock,
           p.purchase_price,
           p.current_stock * p.purchase_price
-            AS inventory_value,
+            AS available_inventory_value,
+          p.quarantine_stock * p.purchase_price
+            AS quarantine_inventory_value,
+          p.damaged_stock * p.purchase_price
+            AS damaged_inventory_value,
+          (
+            p.current_stock
+              + p.quarantine_stock
+              + p.damaged_stock
+          ) * p.purchase_price
+            AS total_inventory_value,
           COALESCE(mt.inbound_quantity, 0)
             AS inbound_quantity,
           COALESCE(mt.outbound_quantity, 0)
@@ -211,8 +233,20 @@ const getInventoryReport = async (req, res) => {
               WHERE stock_status = 'OUT'
             ))::INTEGER AS out_of_stock_products,
             COALESCE(SUM(current_stock), 0)
+              AS available_stock_units,
+            COALESCE(SUM(quarantine_stock), 0)
+              AS quarantine_stock_units,
+            COALESCE(SUM(damaged_stock), 0)
+              AS damaged_stock_units,
+            COALESCE(SUM(total_physical_stock), 0)
               AS total_stock_units,
-            COALESCE(SUM(inventory_value), 0)
+            COALESCE(SUM(available_inventory_value), 0)
+              AS available_inventory_value,
+            COALESCE(SUM(quarantine_inventory_value), 0)
+              AS quarantine_inventory_value,
+            COALESCE(SUM(damaged_inventory_value), 0)
+              AS damaged_inventory_value,
+            COALESCE(SUM(total_inventory_value), 0)
               AS total_inventory_value,
             COALESCE(SUM(inbound_quantity), 0)
               AS inbound_quantity,

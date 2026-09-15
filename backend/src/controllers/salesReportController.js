@@ -149,6 +149,11 @@ const getSalesReport = async (req, res) => {
           COALESCE(rt.returned_quantity, 0)
             AS returned_quantity,
           GREATEST(
+            COALESCE(dt.delivered_quantity, 0)
+              - COALESCE(rt.returned_quantity, 0),
+            0
+          ) AS net_delivered_quantity,
+          GREATEST(
             COALESCE(SUM(soi.quantity), 0)
               - COALESCE(dt.delivered_quantity, 0),
             0
@@ -163,6 +168,16 @@ const getSalesReport = async (req, res) => {
             ),
             0
           ) - COALESCE(rt.returned_amount, 0), 0) AS total_amount,
+          COALESCE(
+            SUM(
+              GREATEST(
+                soi.quantity * soi.unit_price
+                  - soi.discount_amount,
+                0
+              )
+            ),
+            0
+          ) AS gross_sales_amount,
           COALESCE(rt.returned_amount, 0) AS returned_amount
         FROM app.sales_orders so
         JOIN app.customers c
@@ -194,6 +209,12 @@ const getSalesReport = async (req, res) => {
             WHERE status <> 'CANCELLED'
           ))::INTEGER AS total_customers,
           COALESCE(
+            SUM(gross_sales_amount) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS gross_sales_value,
+          COALESCE(
             SUM(total_amount) FILTER (
               WHERE status <> 'CANCELLED'
             ),
@@ -217,6 +238,12 @@ const getSalesReport = async (req, res) => {
             ),
             0
           ) AS returned_quantity,
+          COALESCE(
+            SUM(net_delivered_quantity) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS net_delivered_quantity,
           COALESCE(
             SUM(returned_amount) FILTER (
               WHERE status <> 'CANCELLED'
@@ -249,11 +276,29 @@ const getSalesReport = async (req, res) => {
             0
           ) AS total_value,
           COALESCE(
+            SUM(returned_amount) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS returned_value,
+          COALESCE(
             SUM(delivered_quantity) FILTER (
               WHERE status <> 'CANCELLED'
             ),
             0
-          ) AS delivered_quantity
+          ) AS delivered_quantity,
+          COALESCE(
+            SUM(returned_quantity) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS returned_quantity,
+          COALESCE(
+            SUM(net_delivered_quantity) FILTER (
+              WHERE status <> 'CANCELLED'
+            ),
+            0
+          ) AS net_delivered_quantity
         FROM report_rows
         GROUP BY DATE_TRUNC('month', order_date)
         ORDER BY DATE_TRUNC('month', order_date) ASC`,
