@@ -1,0 +1,37 @@
+@media (max-width: 700px) {
+  .users-page .user-table td[data-label="Pengguna"] .user-identity-cell {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    grid-template-columns: 38px minmax(0, 1fr);
+    align-items: start;
+    justify-content: stretch;
+    gap: 10px;
+  }
+
+  .users-page .user-table td[data-label="Pengguna"] .user-identity-cell > div:last-child {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    justify-items: end;
+    text-align: right;
+  }
+
+  .users-page .user-table td[data-label="Pengguna"] .user-identity-cell strong,
+  .users-page .user-table td[data-label="Pengguna"] .user-identity-cell span {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: visible;
+    text-align: right;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .users-page .user-table td[data-label="Pengguna"] .user-identity-cell strong {
+    line-height: 1.35;
+  }
+}
