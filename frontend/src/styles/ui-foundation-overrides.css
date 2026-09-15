@@ -1,0 +1,290 @@
+/* Final UI foundation overrides.
+ * Consolidates calm dashboard styling with shared accessibility, sizing,
+ * typography, and theme-aware interaction polish.
+ */
+
+::selection {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary);
+}
+
+.sidebar-brand-icon {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary);
+  border: 1px solid color-mix(in srgb, var(--sf-primary) 78%, var(--sf-border));
+  box-shadow: none;
+}
+
+.sidebar-link.is-active {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.sidebar-link.is-active svg {
+  color: currentColor;
+}
+
+.sidebar-account-card {
+  background: var(--sf-surface-muted);
+}
+
+.dashboard-header,
+html[data-theme="dark"] .dashboard-header {
+  background: color-mix(in srgb, var(--sf-surface) 95%, transparent);
+}
+
+.dashboard-welcome,
+html[data-theme="dark"] .dashboard-welcome {
+  color: var(--sf-text-strong);
+  background: var(--sf-accent-soft);
+  border-color: var(--sf-border);
+  box-shadow: var(--sf-shadow-card);
+}
+
+.dashboard-refresh-button {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary);
+  border-color: var(--sf-primary);
+  box-shadow: none;
+}
+
+.dashboard-refresh-button:hover:not(:disabled) {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary-hover);
+  border-color: var(--sf-primary-hover);
+}
+
+.sidebar-instant-tooltip {
+  position: fixed;
+  z-index: 1400;
+  min-width: max-content;
+  max-width: 240px;
+  padding: 7px 10px;
+  color: var(--sf-surface);
+  background: var(--sf-text-strong);
+  border: 1px solid color-mix(in srgb, var(--sf-text-strong) 82%, transparent);
+  border-radius: 8px;
+  box-shadow: var(--sf-shadow-menu);
+  font-size: var(--sf-type-caption-size);
+  font-weight: 650;
+  line-height: 1.25;
+  pointer-events: none;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+/* Shared typography floor for compact labels and operational badges. */
+.page-heading p,
+.dashboard-section-heading > div > p,
+.dashboard-trend-eyebrow,
+.page-eyebrow,
+.module-placeholder-eyebrow,
+.product-modal-eyebrow,
+.category-form-heading p,
+.user-detail-identity span {
+  font-size: var(--sf-type-overline-size);
+  line-height: 1.4;
+}
+
+.status-badge,
+.stock-warning,
+.purchase-order-status,
+.sales-order-status,
+.delivery-status,
+.invoice-status,
+.purchase-return-status,
+.stock-opname-status,
+.supplier-invoice-status,
+.payment-method-badge,
+.user-role-badge,
+.inventory-movement-badge,
+.report-status,
+.goods-receipt-detail-status,
+.dashboard-activity-status,
+.record-status {
+  min-height: 24px;
+  font-size: var(--sf-type-caption-size);
+  line-height: 1.25;
+}
+
+.data-table th {
+  font-size: var(--sf-type-caption-size);
+}
+
+/* Shared controls use one theme-aware size and focus treatment. */
+.primary-action,
+.secondary-action,
+.table-filter-toggle,
+.search-control,
+.status-filter-trigger,
+.form-select-trigger,
+.form-date-picker-trigger,
+.checkbox-filter,
+.file-picker-button {
+  min-height: 44px;
+}
+
+.sidebar-menu-button,
+.sidebar-collapse-button,
+.sidebar-close,
+.notification-trigger {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.primary-action:focus-visible,
+.secondary-action:focus-visible,
+.table-edit-action:focus-visible,
+.table-status-action:focus-visible,
+.table-filter-toggle:focus-visible,
+.search-control button:focus-visible,
+.reset-filter:focus-visible,
+.status-filter-trigger:focus-visible,
+.form-select-trigger:focus-visible,
+.form-date-picker-trigger:focus-visible,
+.file-picker-button:focus-visible,
+.sidebar-menu-button:focus-visible,
+.sidebar-collapse-button:focus-visible,
+.sidebar-close:focus-visible,
+.notification-trigger:focus-visible,
+.dashboard-user:focus-visible,
+.dashboard-theme-options button:focus-visible,
+.dashboard-dropdown-logout:focus-visible,
+.pagination-bar button:focus-visible {
+  outline: 3px solid var(--sf-focus);
+  outline-offset: 2px;
+}
+
+.file-picker-button:hover:not(:disabled) {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary);
+  border-color: var(--sf-primary);
+}
+
+.file-picker-button:focus-visible {
+  border-color: var(--sf-accent);
+}
+
+/* Canonical table actions stay compact on desktop and become touch-friendly on mobile. */
+.data-table.data-table
+  .table-action-buttons
+  > .table-edit-action:hover:not(:disabled),
+.data-table.data-table
+  .table-action-cell
+  > .table-edit-action:hover:not(:disabled) {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary);
+  border-color: var(--sf-primary);
+}
+
+.data-table.data-table
+  .table-action-buttons
+  > .table-status-action.is-deactivate:hover:not(:disabled),
+.data-table.data-table
+  .table-action-cell
+  > .table-status-action.is-deactivate:hover:not(:disabled),
+.table-status-action.is-deactivate:hover:not(:disabled) {
+  color: var(--sf-status-danger-text);
+  background: color-mix(
+    in srgb,
+    var(--sf-status-danger-bg) 72%,
+    var(--sf-status-danger-text) 28%
+  );
+  border-color: transparent;
+}
+
+.data-table.data-table
+  .table-action-buttons
+  > .table-status-action.is-activate:hover:not(:disabled),
+.data-table.data-table
+  .table-action-cell
+  > .table-status-action.is-activate:hover:not(:disabled),
+.table-status-action.is-activate:hover:not(:disabled) {
+  color: var(--sf-status-success-text);
+  background: color-mix(
+    in srgb,
+    var(--sf-status-success-bg) 72%,
+    var(--sf-status-success-text) 28%
+  );
+  border-color: transparent;
+}
+
+.status-dialog-confirm.is-deactivate {
+  color: var(--sf-status-danger-text);
+  background: color-mix(
+    in srgb,
+    var(--sf-status-danger-bg) 72%,
+    var(--sf-status-danger-text) 28%
+  );
+  border-color: transparent;
+}
+
+.status-dialog-confirm.is-deactivate:hover:not(:disabled) {
+  background: color-mix(
+    in srgb,
+    var(--sf-status-danger-bg) 62%,
+    var(--sf-status-danger-text) 38%
+  );
+}
+
+.status-dialog-confirm.is-activate {
+  color: var(--sf-status-success-text);
+  background: color-mix(
+    in srgb,
+    var(--sf-status-success-bg) 72%,
+    var(--sf-status-success-text) 28%
+  );
+  border-color: transparent;
+}
+
+.status-dialog-confirm.is-activate:hover:not(:disabled) {
+  background: color-mix(
+    in srgb,
+    var(--sf-status-success-bg) 62%,
+    var(--sf-status-success-text) 38%
+  );
+}
+
+html[data-theme="dark"] .sidebar-logout:hover,
+html[data-theme="dark"] .dashboard-dropdown-logout:hover {
+  background: color-mix(
+    in srgb,
+    var(--sf-status-danger-bg) 62%,
+    transparent
+  );
+}
+
+@media (max-width: 960px) {
+  .sidebar-instant-tooltip {
+    display: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .primary-action,
+  .page-heading .secondary-action {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  .reset-filter,
+  .pagination-bar button {
+    min-height: 44px;
+  }
+
+  .data-table.data-table
+    .table-action-buttons
+    > :is(.table-edit-action, .table-status-action),
+  .data-table.data-table
+    .table-action-cell
+    > :is(.table-edit-action, .table-status-action) {
+    min-height: 44px;
+    height: 44px;
+    font-size: var(--sf-type-caption-size);
+  }
+}
