@@ -9,7 +9,7 @@ import "./styles/theme.css";
 import "./styles/modern-interactive-charts.css";
 import "./styles/modern-dashboard-layout.css";
 import "./styles/user-mobile-name-fix.css";
-import "./styles/dashboard-calm-overrides.css";
+import "./styles/ui-foundation-overrides.css";
 
 const THEME_STORAGE_KEY = "supplyflow-theme";
 const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
