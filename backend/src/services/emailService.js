@@ -11,11 +11,15 @@ const sendEmail = async ({ to, subject, html, text }) => {
   const provider = (process.env.EMAIL_PROVIDER || "console").toLowerCase();
 
   if (provider === "console") {
-    console.log("[EMAIL:console]", {
-      to,
-      subject,
-      text,
-    });
+    console.log(
+      [
+        "[EMAIL:console]",
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        "",
+        text,
+      ].join("\n"),
+    );
 
     return { provider: "console" };
   }
