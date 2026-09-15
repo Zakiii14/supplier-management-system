@@ -12,6 +12,7 @@ import "./styles/user-mobile-name-fix.css";
 import "./styles/ui-foundation-overrides.css";
 import "./styles/component-consistency.css";
 import "./styles/form-consistency.css";
+import "./styles/page-consistency.css";
 
 const THEME_STORAGE_KEY = "supplyflow-theme";
 const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
