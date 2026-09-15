@@ -1,0 +1,80 @@
+/* Tablet responsive verification. */
+
+@media (min-width: 701px) and (max-width: 1024px) {
+  .dashboard-content {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .purchase-order-detail-backdrop,
+  .goods-receipt-detail-backdrop,
+  .user-detail-backdrop,
+  .payment-detail-backdrop,
+  .invoice-detail-backdrop,
+  .delivery-detail-backdrop,
+  .supplier-invoice-detail-backdrop,
+  .stock-opname-detail-backdrop,
+  .purchase-return-detail-backdrop,
+  .sales-return-detail-backdrop,
+  .inventory-movement-detail-backdrop,
+  .inventory-detail-backdrop,
+  .product-modal-backdrop,
+  .category-form-backdrop,
+  .purchase-order-form-backdrop,
+  .goods-receipt-form-backdrop {
+    padding: 16px;
+  }
+
+  .purchase-order-detail-dialog,
+  .goods-receipt-detail-dialog,
+  .user-detail-dialog,
+  .payment-detail-dialog,
+  .invoice-detail-dialog,
+  .delivery-detail-dialog,
+  .supplier-invoice-detail-dialog,
+  .stock-opname-detail-dialog,
+  .purchase-return-detail-dialog,
+  .sales-return-detail-dialog,
+  .inventory-movement-detail-dialog,
+  .inventory-detail-dialog,
+  .product-modal,
+  .category-form-modal,
+  .purchase-order-form-modal,
+  .goods-receipt-form-modal {
+    max-width: 100%;
+    max-height: calc(100dvh - 32px);
+  }
+
+  .goods-receipt-detail-summary,
+  .goods-receipt-detail-totals,
+  .purchase-order-detail-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .goods-receipt-form-po-summary,
+  .goods-receipt-form-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .purchase-order-detail-table-wrapper,
+  .goods-receipt-detail-table-wrapper,
+  .report-trend-details-scroll,
+  .master-import-table-wrapper {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .report-trend-details table {
+    min-width: 680px;
+  }
+
+  .master-import-table {
+    min-width: 860px;
+  }
+
+  .code-setting-card footer {
+    flex-wrap: wrap;
+  }
+}

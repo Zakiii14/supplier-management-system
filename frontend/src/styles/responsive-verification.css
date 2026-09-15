@@ -1,0 +1,224 @@
+/* SupplyFlow final responsive verification.
+ * Targeted safeguards for narrow mobile widths and dense responsive states.
+ * Keep this layer limited to responsive presentation; no business behavior.
+ */
+
+/* Prevent page-level content from forcing horizontal overflow. */
+.dashboard-content,
+.dashboard-page,
+.page-heading,
+.page-heading > div,
+.page-heading-actions,
+.data-panel,
+.data-table-wrapper,
+.report-section,
+.report-filter-panel,
+.code-setting-card,
+.master-import-page,
+.master-import-preview {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 700px) {
+  /* Module CSS historically shrank several operational badges below the
+   * typography floor. Keep mobile status information legible. */
+  :is(
+    .status-badge,
+    .record-status,
+    .purchase-order-status,
+    .sales-order-status,
+    .delivery-status,
+    .invoice-status,
+    .purchase-return-status,
+    .stock-opname-status,
+    .supplier-invoice-status,
+    .payment-method-badge,
+    .user-role-badge,
+    .inventory-movement-badge,
+    .report-status,
+    .goods-receipt-detail-status,
+    .approval-state,
+    .user-current-badge
+  ) {
+    min-height: 24px;
+    padding: 3px 8px;
+    font-size: var(--sf-type-caption-size);
+    line-height: 1.25;
+  }
+
+  .data-table td::before {
+    font-size: var(--sf-type-caption-size);
+    line-height: 1.35;
+  }
+
+  /* Detail and form headers must be able to shrink around long document names. */
+  :is(
+    .purchase-order-detail-header,
+    .goods-receipt-detail-header,
+    .user-detail-header,
+    .payment-detail-header,
+    .invoice-detail-header,
+    .delivery-detail-header,
+    .supplier-invoice-detail-header,
+    .stock-opname-detail-header,
+    .purchase-return-detail-header,
+    .sales-return-detail-header,
+    .inventory-movement-detail-header,
+    .product-modal-header,
+    .category-form-header,
+    .purchase-order-form-header
+  ) > div:first-child {
+    min-width: 0;
+  }
+
+  :is(
+    .purchase-order-detail-header,
+    .goods-receipt-detail-header,
+    .user-detail-header,
+    .payment-detail-header,
+    .invoice-detail-header,
+    .delivery-detail-header,
+    .supplier-invoice-detail-header,
+    .stock-opname-detail-header,
+    .purchase-return-detail-header,
+    .sales-return-detail-header,
+    .inventory-movement-detail-header,
+    .product-modal-header,
+    .category-form-header,
+    .purchase-order-form-header
+  ) h2 {
+    overflow-wrap: anywhere;
+  }
+
+  /* Dense report charts remain scrollable, but their labels stay readable. */
+  .report-trend-y-axis {
+    width: 104px;
+  }
+
+  .report-trend-y-axis span,
+  .report-trend-value,
+  .report-trend-period > strong,
+  .report-trend-bar-item small {
+    font-size: 0.6875rem;
+    line-height: 1.3;
+  }
+
+  .report-trend-metrics button,
+  .report-trend-scale-note,
+  .report-trend-details p,
+  .report-trend-details th,
+  .report-trend-details td {
+    font-size: var(--sf-type-caption-size);
+  }
+
+  .payment-amount-input button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .dashboard-content {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .page-heading {
+    width: 100%;
+  }
+
+  .page-heading-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .data-table-wrapper {
+    padding-right: 10px;
+    padding-left: 10px;
+  }
+
+  .data-table tbody tr {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .data-table td {
+    grid-template-columns: minmax(88px, 0.75fr) minmax(0, 1.25fr);
+    gap: 10px;
+  }
+
+  .report-active-heading,
+  .report-filters,
+  .report-section {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .report-filter-panel > .report-option-warning,
+  .report-filter-panel > .data-error {
+    margin-right: 14px;
+    margin-left: 14px;
+  }
+
+  .code-setting-card {
+    padding: 16px;
+  }
+
+  .code-setting-card footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .code-setting-card footer button {
+    width: 100%;
+  }
+
+  .master-import-note,
+  .master-import-message {
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 360px) {
+  /* Long form actions are safer stacked at 320–360 px widths. */
+  :is(.product-form-actions, .category-form-actions, .purchase-order-form-actions) {
+    grid-template-columns: 1fr;
+  }
+
+  :is(.product-form-actions, .category-form-actions, .purchase-order-form-actions) button {
+    width: 100%;
+  }
+
+  .user-avatar-editor {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .user-avatar-editor-copy > div {
+    width: 100%;
+  }
+
+  .user-avatar-editor-copy > div > * {
+    flex: 1 1 120px;
+    justify-content: center;
+  }
+
+  .login-brand-panel,
+  .login-form-panel {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .login-brand-content h1 {
+    font-size: 1.75rem;
+  }
+
+  .report-trend-y-axis {
+    width: 98px;
+  }
+
+  .report-trend-periods {
+    gap: 12px;
+    padding-left: 10px;
+  }
+}
