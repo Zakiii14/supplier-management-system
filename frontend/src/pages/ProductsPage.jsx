@@ -32,6 +32,7 @@ import {
 import { getActiveSuppliersRequest } from "../api/suppliers";
 import ProductFormModal from "../components/products/ProductFormModal";
 import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import StatusFilter from "../components/filters/StatusFilter";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
@@ -420,8 +421,9 @@ const ProductsPage = () => {
       )}
 
       <section className="data-panel">
-        <form
-          className="data-filters product-filters"
+        <CollapsibleFilters
+          active={hasActiveFilters}
+          className="product-filters"
           onSubmit={handleSearch}
         >
           <div className="search-control">
@@ -467,7 +469,7 @@ const ProductsPage = () => {
               Reset
             </button>
           )}
-        </form>
+        </CollapsibleFilters>
 
         {errorMessage && (
           <div className="data-error" role="alert">

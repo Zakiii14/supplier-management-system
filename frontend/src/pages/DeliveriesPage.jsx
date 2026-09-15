@@ -26,6 +26,7 @@ import {
 import DeliveryDetailDialog from "../components/deliveries/DeliveryDetailDialog";
 import DeliveryFormModal from "../components/deliveries/DeliveryFormModal";
 import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import StatusFilter from "../components/filters/StatusFilter";
 import PaginationBar from "../components/tables/PaginationBar";
@@ -567,9 +568,10 @@ const DeliveriesPage = () => {
       )}
 
       <section className="data-panel">
-        <form
+        <CollapsibleFilters
           ref={filtersRef}
-          className="data-filters purchase-order-filters delivery-filters"
+          active={hasActiveFilters}
+          className="purchase-order-filters delivery-filters"
           onSubmit={handleSearch}
         >
           <div className="search-control">
@@ -622,7 +624,7 @@ const DeliveriesPage = () => {
               handleDateToChange
             }
           />
-        </form>
+        </CollapsibleFilters>
 
         {errorMessage && (
           <div

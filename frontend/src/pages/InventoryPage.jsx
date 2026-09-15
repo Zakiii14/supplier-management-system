@@ -18,6 +18,7 @@ import {
     getInventoryMovementsRequest,
     getQuarantineStocksRequest,
 } from "../api/inventoryMovements";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import StatusFilter from "../components/filters/StatusFilter";
 import FormDatePicker from "../components/forms/FormDatePicker";
 import FormSelect from "../components/forms/FormSelect";
@@ -553,9 +554,10 @@ const InventoryPage = () => {
             </section>
 
             <section className="data-panel">
-                <form
+                <CollapsibleFilters
                     ref={filtersRef}
-                    className="data-filters inventory-filters"
+                    active={Boolean(appliedSearch || movementType || dateFrom || dateTo)}
+                    className="inventory-filters"
                     onSubmit={handleSearch}
                 >
                     <div className="search-control">
@@ -604,7 +606,7 @@ const InventoryPage = () => {
                         onDateFromChange={handleDateFromChange}
                         onDateToChange={handleDateToChange}
                     />
-                </form>
+                </CollapsibleFilters>
 
                 {errorMessage && (
                     <div className="data-error" role="alert">

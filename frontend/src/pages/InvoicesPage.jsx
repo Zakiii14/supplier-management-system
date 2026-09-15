@@ -20,6 +20,7 @@ import {
   getInvoicesRequest,
 } from "../api/invoices";
 import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import StatusFilter from "../components/filters/StatusFilter";
 import InvoiceDetailDialog from "../components/invoices/InvoiceDetailDialog";
@@ -487,9 +488,10 @@ const InvoicesPage = () => {
       )}
 
       <section className="data-panel">
-        <form
+        <CollapsibleFilters
           ref={filtersRef}
-          className="data-filters purchase-order-filters invoice-filters"
+          active={hasActiveFilters}
+          className="purchase-order-filters invoice-filters"
           onSubmit={handleSearch}
         >
           <div className="search-control">
@@ -542,7 +544,7 @@ const InvoicesPage = () => {
               handleDateToChange
             }
           />
-        </form>
+        </CollapsibleFilters>
 
         {errorMessage && (
           <div

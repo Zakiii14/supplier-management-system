@@ -50,6 +50,8 @@ const referenceTypeLabels = {
   STOCK_OPNAME: "Stok opname",
   PURCHASE_RETURN: "Retur pembelian",
   SALES_RETURN: "Retur penjualan",
+  STOCK_INSPECTION: "Pemeriksaan stok",
+  DAMAGE_RESOLUTION: "Penanganan stok rusak",
 };
 
 const stockBucketLabels = {

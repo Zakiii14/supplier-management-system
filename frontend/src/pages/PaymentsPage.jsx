@@ -22,6 +22,7 @@ import {
   replacePaymentProofRequest,
 } from "../api/payments";
 import { getPaymentSettingsRequest } from "../api/paymentSettings";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import StatusFilter from "../components/filters/StatusFilter";
 import PaymentDetailDialog from "../components/payments/PaymentDetailDialog";
@@ -469,9 +470,10 @@ const PaymentsPage = () => {
       )}
 
       <section className="data-panel">
-        <form
+        <CollapsibleFilters
           ref={filtersRef}
-          className="data-filters purchase-order-filters payment-filters"
+          active={hasActiveFilters}
+          className="purchase-order-filters payment-filters"
           onSubmit={handleSearch}
         >
           <div className="search-control">
@@ -520,7 +522,7 @@ const PaymentsPage = () => {
               handleDateToChange
             }
           />
-        </form>
+        </CollapsibleFilters>
 
         {errorMessage && (
           <div className="data-error" role="alert">

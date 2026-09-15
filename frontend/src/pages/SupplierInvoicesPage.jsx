@@ -19,6 +19,7 @@ import {
   openSupplierInvoiceAttachmentRequest,
   saveSupplierInvoiceRequest,
 } from "../api/supplierInvoices";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import StatusFilter from "../components/filters/StatusFilter";
 import FilePickerButton from "../components/forms/FilePickerButton";
 import FormDatePicker from "../components/forms/FormDatePicker";
@@ -480,8 +481,9 @@ const SupplierInvoicesPage = () => {
       )}
 
       <section className="data-panel">
-        <form
-          className="data-filters supplier-invoice-filters"
+        <CollapsibleFilters
+          active={hasActiveFilters}
+          className="supplier-invoice-filters"
           onSubmit={handleSearch}
         >
           <div className="search-control">
@@ -515,7 +517,7 @@ const SupplierInvoicesPage = () => {
               Reset
             </button>
           )}
-        </form>
+        </CollapsibleFilters>
 
         <div className="table-summary">
           <p>

@@ -23,6 +23,7 @@ import {
     updateSupplierStatusRequest,
 } from "../api/suppliers";
 import SupplierFormModal from "../components/suppliers/SupplierFormModal";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import StatusFilter from "../components/filters/StatusFilter";
 import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
 import PaginationBar from "../components/tables/PaginationBar";
@@ -331,8 +332,9 @@ const SuppliersPage = () => {
             </section>
 
             <section className="data-panel">
-                <form
-                    className="data-filters supplier-filters"
+                <CollapsibleFilters
+                    active={hasActiveFilters}
+                    className="supplier-filters"
                     onSubmit={handleSearch}
                 >
                     <div className="search-control">
@@ -367,7 +369,7 @@ const SuppliersPage = () => {
                             Reset
                         </button>
                     )}
-                </form>
+                </CollapsibleFilters>
 
                 {errorMessage && (
                     <div className="data-error" role="alert">

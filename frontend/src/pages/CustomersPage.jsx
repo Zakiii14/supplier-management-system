@@ -23,6 +23,7 @@ import {
     updateCustomerStatusRequest,
 } from "../api/customers";
 import CustomerFormModal from "../components/customers/CustomerFormModal";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import StatusFilter from "../components/filters/StatusFilter";
 import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
 import PaginationBar from "../components/tables/PaginationBar";
@@ -331,8 +332,9 @@ const CustomersPage = () => {
             </section>
 
             <section className="data-panel">
-                <form
-                    className="data-filters customer-filters"
+                <CollapsibleFilters
+                    active={hasActiveFilters}
+                    className="customer-filters"
                     onSubmit={handleSearch}
                 >
                     <div className="search-control">
@@ -367,7 +369,7 @@ const CustomersPage = () => {
                             Reset
                         </button>
                     )}
-                </form>
+                </CollapsibleFilters>
 
                 {errorMessage && (
                     <div className="data-error" role="alert">

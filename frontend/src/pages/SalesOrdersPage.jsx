@@ -27,6 +27,7 @@ import {
 } from "../api/salesOrders";
 import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
 import ApprovalActionDialog from "../components/approvals/ApprovalActionDialog";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import StatusFilter from "../components/filters/StatusFilter";
 import SalesOrderDetailDialog from "../components/sales-orders/SalesOrderDetailDialog";
@@ -539,9 +540,10 @@ const SalesOrdersPage = () => {
       )}
 
       <section className="data-panel">
-        <form
+        <CollapsibleFilters
           ref={filtersRef}
-          className="data-filters purchase-order-filters sales-order-filters"
+          active={hasActiveFilters}
+          className="purchase-order-filters sales-order-filters"
           onSubmit={handleSearch}
         >
           <div className="search-control">
@@ -585,7 +587,7 @@ const SalesOrdersPage = () => {
             onDateFromChange={handleDateFromChange}
             onDateToChange={handleDateToChange}
           />
-        </form>
+        </CollapsibleFilters>
 
         {errorMessage && (
           <div className="data-error" role="alert">

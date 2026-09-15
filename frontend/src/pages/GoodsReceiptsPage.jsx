@@ -13,6 +13,7 @@ import {
     getGoodsReceiptByIdRequest,
     getGoodsReceiptsRequest,
 } from "../api/goodsReceipts";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import useStickyDataFilters from "../hooks/useStickyDataFilters";
 import "../styles/goods-receipts.css";
@@ -412,9 +413,10 @@ const GoodsReceiptsPage = () => {
             )}
 
             <section className="data-panel">
-                <form
+                <CollapsibleFilters
                     ref={filtersRef}
-                    className="data-filters goods-receipt-filters"
+                    active={Boolean(appliedSearch || dateFrom || dateTo)}
+                    className="goods-receipt-filters"
                     onSubmit={handleSearch}
                 >
                     <div className="search-control">
@@ -451,7 +453,7 @@ const GoodsReceiptsPage = () => {
                         onDateFromChange={handleDateFromChange}
                         onDateToChange={handleDateToChange}
                     />
-                </form>
+                </CollapsibleFilters>
 
                 {errorMessage && (
                     <div className="data-error" role="alert">

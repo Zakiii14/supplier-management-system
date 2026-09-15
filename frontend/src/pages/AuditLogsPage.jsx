@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { getAuditLogRequest, getAuditLogsRequest } from "../api/auditLogs";
 import FormSelect from "../components/forms/FormSelect";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import PaginationBar from "../components/tables/PaginationBar";
 import useModalDismiss from "../hooks/useModalDismiss";
 import { formatDate } from "../utils/formatters";
@@ -390,7 +391,8 @@ const AuditLogsPage = () => {
         </div>
       )}
       <section className="data-panel">
-        <form
+        <CollapsibleFilters
+          active={hasActiveFilters}
           className="audit-filters"
           onSubmit={(e) => {
             e.preventDefault();
@@ -441,7 +443,7 @@ const AuditLogsPage = () => {
               setModule(value);
             }}
           />
-        </form>
+        </CollapsibleFilters>
         <div className="table-summary">
           Menampilkan <strong>{rows.length}</strong> dari{" "}
           <strong>{pagination.total}</strong> aktivitas

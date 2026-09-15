@@ -26,6 +26,7 @@ import {
     deleteUserAvatarRequest,
 } from "../api/users";
 import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import StatusFilter from "../components/filters/StatusFilter";
 import PaginationBar from "../components/tables/PaginationBar";
 import UserDetailDialog from "../components/users/UserDetailDialog";
@@ -538,8 +539,9 @@ const UsersPage = () => {
             )}
 
             <section className="data-panel">
-                <form
-                    className="data-filters product-filters user-filters"
+                <CollapsibleFilters
+                    active={hasActiveFilters}
+                    className="product-filters user-filters"
                     onSubmit={handleSearch}
                 >
                     <div className="search-control">
@@ -583,7 +585,7 @@ const UsersPage = () => {
                             Reset
                         </button>
                     )}
-                </form>
+                </CollapsibleFilters>
 
                 {errorMessage && (
                     <div className="data-error" role="alert">

@@ -11,6 +11,18 @@
   color: var(--sf-accent);
 }
 
+.purchase-return-table td > strong,
+.purchase-return-table td > small {
+  display: block;
+}
+
+.purchase-return-table td > small {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  color: var(--sf-text-soft);
+  line-height: 1.5;
+}
+
 .purchase-return-table th:last-child {
   width: var(--data-table-action-column-width);
 }

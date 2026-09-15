@@ -34,6 +34,7 @@ import {
   updatePurchaseOrderStatusRequest,
 } from "../api/purchaseOrders";
 import { getPaymentSettingsRequest } from "../api/paymentSettings";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import ApprovalActionDialog from "../components/approvals/ApprovalActionDialog";
 import StatusFilter from "../components/filters/StatusFilter";
@@ -776,9 +777,10 @@ const PurchaseOrdersPage = () => {
         </div>
       )}
       <section className="data-panel">
-        <form
+        <CollapsibleFilters
           ref={filtersRef}
-          className="data-filters purchase-order-filters"
+          active={hasActiveFilters}
+          className="purchase-order-filters"
           onSubmit={handleSearch}
         >
           <div className="search-control">
@@ -822,7 +824,7 @@ const PurchaseOrdersPage = () => {
             onDateFromChange={handleDateFromChange}
             onDateToChange={handleDateToChange}
           />
-        </form>
+        </CollapsibleFilters>
 
         {errorMessage && (
           <div className="data-error" role="alert">

@@ -18,6 +18,7 @@ import {
 } from "../api/categories";
 import CategoryFormModal from "../components/categories/CategoryFormModal";
 import StatusConfirmDialog from "../components/dialogs/StatusConfirmDialog";
+import CollapsibleFilters from "../components/filters/CollapsibleFilters";
 import StatusFilter from "../components/filters/StatusFilter";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
@@ -312,8 +313,9 @@ const CategoriesPage = () => {
       )}
 
       <section className="data-panel">
-        <form
-          className="data-filters category-filters"
+        <CollapsibleFilters
+          active={hasActiveFilters}
+          className="category-filters"
           onSubmit={handleSearch}
         >
           <div className="search-control">
@@ -348,7 +350,7 @@ const CategoriesPage = () => {
               Reset
             </button>
           )}
-        </form>
+        </CollapsibleFilters>
 
         {errorMessage && (
           <div className="data-error" role="alert">
