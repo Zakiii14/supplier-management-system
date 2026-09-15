@@ -63,11 +63,9 @@ const login = async (req, res) => {
 
     const user = result.rows[0];
 
-    // Invitation-created accounts stay INACTIVE and passwordless until their
-    // activation token is consumed. Keeping login gated by status + password
-    // preserves compatibility with legacy/internal accounts that predate email
-    // verification while still preventing invited accounts from signing in
-    // before activation.
+    // Invited accounts remain INACTIVE and passwordless until activation.
+    // This keeps legacy/internal accounts compatible while preventing invited
+    // users from logging in before they finish account activation.
     if (
       user.status !== "ACTIVE" ||
       !user.password_hash
@@ -164,16 +162,15 @@ const forgotPassword = async (req, res) => {
       user.status === "ACTIVE" &&
       user.password_hash
     ) {
-      const { rawToken, expiresAt } = await createAuthToken({
+      const { token, expiresAt } = await createAuthToken({
         userId: user.id,
-        type: TOKEN_TYPES.PASSWORD_RESET,
-        ttlMinutes: Number(process.env.PASSWORD_RESET_TTL_MINUTES) || 30,
+        tokenType: TOKEN_TYPES.PASSWORD_RESET,
       });
 
       await sendPasswordResetEmail({
-        to: user.email,
+        email: user.email,
         fullName: user.full_name,
-        token: rawToken,
+        token,
         expiresAt,
       });
     }
@@ -187,10 +184,10 @@ const forgotPassword = async (req, res) => {
 
 const validatePasswordResetToken = async (req, res) => {
   try {
-    const tokenRecord = await findValidAuthToken(
-      req.query?.token,
-      TOKEN_TYPES.PASSWORD_RESET,
-    );
+    const tokenRecord = await findValidAuthToken({
+      token: req.query?.token,
+      tokenType: TOKEN_TYPES.PASSWORD_RESET,
+    });
 
     if (!tokenRecord) {
       return res.status(400).json({
@@ -218,8 +215,6 @@ const validatePasswordResetToken = async (req, res) => {
 };
 
 const resetPassword = async (req, res) => {
-  const client = await pool.connect();
-
   try {
     const { token, password, password_confirmation } = req.body ?? {};
 
@@ -244,16 +239,12 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    await client.query("BEGIN");
-
-    const tokenRecord = await findValidAuthToken(
+    const tokenRecord = await findValidAuthToken({
       token,
-      TOKEN_TYPES.PASSWORD_RESET,
-      client,
-    );
+      tokenType: TOKEN_TYPES.PASSWORD_RESET,
+    });
 
     if (!tokenRecord) {
-      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
         message: "Reset password link is invalid or has expired",
@@ -262,55 +253,39 @@ const resetPassword = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    await client.query(
-      `
-      UPDATE app.users
-      SET
-        password_hash = $1,
-        password_changed_at = NOW(),
-        updated_at = NOW()
-      WHERE id = $2
-      `,
-      [passwordHash, tokenRecord.user_id],
-    );
+    const consumed = await consumeAuthToken({
+      tokenId: tokenRecord.id,
+      userId: tokenRecord.user_id,
+      passwordHash,
+      verifyEmail: false,
+    });
 
-    await consumeAuthToken(tokenRecord.id, client);
-
-    await client.query(
-      `
-      UPDATE app.auth_tokens
-      SET used_at = COALESCE(used_at, NOW())
-      WHERE user_id = $1
-        AND token_type = 'PASSWORD_RESET'
-        AND used_at IS NULL
-      `,
-      [tokenRecord.user_id],
-    );
-
-    await client.query("COMMIT");
+    if (!consumed) {
+      return res.status(400).json({
+        success: false,
+        message: "Reset password link is invalid or has expired",
+      });
+    }
 
     return res.status(200).json({
       success: true,
       message: "Password has been reset successfully",
     });
   } catch (error) {
-    await client.query("ROLLBACK").catch(() => {});
     console.error("Reset password error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to reset password",
     });
-  } finally {
-    client.release();
   }
 };
 
 const validateActivationToken = async (req, res) => {
   try {
-    const tokenRecord = await findValidAuthToken(
-      req.query?.token,
-      TOKEN_TYPES.ACCOUNT_ACTIVATION,
-    );
+    const tokenRecord = await findValidAuthToken({
+      token: req.query?.token,
+      tokenType: TOKEN_TYPES.ACCOUNT_ACTIVATION,
+    });
 
     if (!tokenRecord) {
       return res.status(400).json({
@@ -339,8 +314,6 @@ const validateActivationToken = async (req, res) => {
 };
 
 const activateAccount = async (req, res) => {
-  const client = await pool.connect();
-
   try {
     const { token, password, password_confirmation } = req.body ?? {};
 
@@ -365,16 +338,12 @@ const activateAccount = async (req, res) => {
       });
     }
 
-    await client.query("BEGIN");
-
-    const tokenRecord = await findValidAuthToken(
+    const tokenRecord = await findValidAuthToken({
       token,
-      TOKEN_TYPES.ACCOUNT_ACTIVATION,
-      client,
-    );
+      tokenType: TOKEN_TYPES.ACCOUNT_ACTIVATION,
+    });
 
     if (!tokenRecord) {
-      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
         message: "Activation link is invalid or has expired",
@@ -383,48 +352,30 @@ const activateAccount = async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    await client.query(
-      `
-      UPDATE app.users
-      SET
-        password_hash = $1,
-        status = 'ACTIVE',
-        email_verified_at = COALESCE(email_verified_at, NOW()),
-        password_changed_at = NOW(),
-        updated_at = NOW()
-      WHERE id = $2
-      `,
-      [passwordHash, tokenRecord.user_id],
-    );
+    const consumed = await consumeAuthToken({
+      tokenId: tokenRecord.id,
+      userId: tokenRecord.user_id,
+      passwordHash,
+      verifyEmail: true,
+    });
 
-    await consumeAuthToken(tokenRecord.id, client);
-
-    await client.query(
-      `
-      UPDATE app.auth_tokens
-      SET used_at = COALESCE(used_at, NOW())
-      WHERE user_id = $1
-        AND token_type = 'ACCOUNT_ACTIVATION'
-        AND used_at IS NULL
-      `,
-      [tokenRecord.user_id],
-    );
-
-    await client.query("COMMIT");
+    if (!consumed) {
+      return res.status(400).json({
+        success: false,
+        message: "Activation link is invalid or has expired",
+      });
+    }
 
     return res.status(200).json({
       success: true,
       message: "Account activated successfully. You can now log in.",
     });
   } catch (error) {
-    await client.query("ROLLBACK").catch(() => {});
     console.error("Activate account error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to activate account",
     });
-  } finally {
-    client.release();
   }
 };
 
