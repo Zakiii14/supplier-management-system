@@ -14,6 +14,7 @@ import "./styles/component-consistency.css";
 import "./styles/form-consistency.css";
 import "./styles/page-consistency.css";
 import "./styles/responsive-verification.css";
+import "./styles/tablet-responsive-verification.css";
 
 const THEME_STORAGE_KEY = "supplyflow-theme";
 const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
