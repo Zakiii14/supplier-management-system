@@ -1,13 +1,14 @@
 const crypto = require("node:crypto");
-const fs = require("node:fs");
-const fsPromises = require("node:fs/promises");
 const path = require("node:path");
 const multer = require("multer");
+const {
+  createDirectoryStorage,
+  resolveStorageDirectory,
+} = require("./fileStorageService");
 
 const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024;
-const storageDirectory = path.resolve(
-  process.env.USER_AVATAR_STORAGE_DIR ||
-    path.join(__dirname, "../../storage/user-avatars"),
+const avatarStorage = createDirectoryStorage(
+  resolveStorageDirectory("user-avatars", "USER_AVATAR_STORAGE_DIR"),
 );
 
 const upload = multer({
@@ -29,20 +30,39 @@ const uploadUserAvatar = (req, res, next) => {
 };
 
 const detectImageType = (buffer) => {
-  if (buffer?.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+  if (
+    buffer?.length >= 3 &&
+    buffer[0] === 0xff &&
+    buffer[1] === 0xd8 &&
+    buffer[2] === 0xff
+  ) {
     return { extension: ".jpg", mimeType: "image/jpeg" };
   }
-  if (buffer?.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+  if (
+    buffer?.length >= 8 &&
+    buffer.subarray(0, 8).equals(
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    )
+  ) {
     return { extension: ".png", mimeType: "image/png" };
   }
-  if (buffer?.length >= 12 && buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP") {
+  if (
+    buffer?.length >= 12 &&
+    buffer.subarray(0, 4).toString("ascii") === "RIFF" &&
+    buffer.subarray(8, 12).toString("ascii") === "WEBP"
+  ) {
     return { extension: ".webp", mimeType: "image/webp" };
   }
   return null;
 };
 
 const normalizeName = (value) =>
-  (path.basename(value || "foto-profil").replace(/[\u0000-\u001f\u007f]/g, "").trim() || "foto-profil").slice(0, 255);
+  (
+    path
+      .basename(value || "foto-profil")
+      .replace(/[\u0000-\u001f\u007f]/g, "")
+      .trim() || "foto-profil"
+  ).slice(0, 255);
 
 const storeAvatar = async (file) => {
   const type = detectImageType(file?.buffer);
@@ -51,9 +71,10 @@ const storeAvatar = async (file) => {
     error.statusCode = 400;
     throw error;
   }
-  await fsPromises.mkdir(storageDirectory, { recursive: true });
+
   const storageName = `${crypto.randomUUID()}${type.extension}`;
-  await fsPromises.writeFile(path.join(storageDirectory, storageName), file.buffer, { flag: "wx" });
+  await avatarStorage.write(storageName, file.buffer);
+
   return {
     storageName,
     originalName: normalizeName(file.originalname),
@@ -64,17 +85,18 @@ const storeAvatar = async (file) => {
 
 const removeAvatar = async (storageName) => {
   if (!/^[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(storageName || "")) return;
-  try {
-    await fsPromises.unlink(path.join(storageDirectory, storageName));
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-  }
+  await avatarStorage.remove(storageName);
 };
 
 const streamAvatar = (res, avatar) => {
-  if (!/^[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(avatar.avatar_storage_name || "")) return false;
-  const avatarPath = path.join(storageDirectory, avatar.avatar_storage_name);
-  if (!fs.existsSync(avatarPath)) return false;
+  const storageName = avatar.avatar_storage_name;
+  if (
+    !/^[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(storageName || "") ||
+    !avatarStorage.exists(storageName)
+  ) {
+    return false;
+  }
+
   res.set({
     "Content-Type": avatar.avatar_mime_type,
     "Content-Length": String(avatar.avatar_size_bytes),
@@ -82,8 +104,13 @@ const streamAvatar = (res, avatar) => {
     "X-Content-Type-Options": "nosniff",
     "Content-Disposition": `inline; filename="${normalizeName(avatar.avatar_original_name).replace(/"/g, "")}"`,
   });
-  fs.createReadStream(avatarPath).pipe(res);
+  avatarStorage.createReadStream(storageName).pipe(res);
   return true;
 };
 
-module.exports = { uploadUserAvatar, storeAvatar, removeAvatar, streamAvatar };
+module.exports = {
+  uploadUserAvatar,
+  storeAvatar,
+  removeAvatar,
+  streamAvatar,
+};

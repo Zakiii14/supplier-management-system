@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const path = require("node:path");
 const { after, test } = require("node:test");
 
 const validateEnvironment = require("../src/config/validateEnvironment");
@@ -21,6 +22,7 @@ const TRACKED_ENVIRONMENT_KEYS = [
   "EMAIL_PROVIDER",
   "RESEND_API_KEY",
   "EMAIL_FROM",
+  "FILE_STORAGE_ROOT",
 ];
 
 const originalEnvironment = Object.fromEntries(
@@ -28,13 +30,8 @@ const originalEnvironment = Object.fromEntries(
 );
 
 const applyEnvironment = (values) => {
-  for (const key of TRACKED_ENVIRONMENT_KEYS) {
-    delete process.env[key];
-  }
-
-  for (const [key, value] of Object.entries(values)) {
-    process.env[key] = value;
-  }
+  for (const key of TRACKED_ENVIRONMENT_KEYS) delete process.env[key];
+  for (const [key, value] of Object.entries(values)) process.env[key] = value;
 };
 
 const productionEnvironment = {
@@ -44,6 +41,7 @@ const productionEnvironment = {
   EMAIL_PROVIDER: "resend",
   RESEND_API_KEY: "test-key",
   EMAIL_FROM: "SupplyFlow <no-reply@example.com>",
+  FILE_STORAGE_ROOT: path.resolve("production-storage"),
 };
 
 const discreteDatabaseEnvironment = {
@@ -56,11 +54,8 @@ const discreteDatabaseEnvironment = {
 
 after(() => {
   for (const key of TRACKED_ENVIRONMENT_KEYS) {
-    if (originalEnvironment[key] === undefined) {
-      delete process.env[key];
-    } else {
-      process.env[key] = originalEnvironment[key];
-    }
+    if (originalEnvironment[key] === undefined) delete process.env[key];
+    else process.env[key] = originalEnvironment[key];
   }
 });
 
@@ -72,11 +67,10 @@ test("accepts local database settings with SSL disabled", () => {
     JWT_SECRET: "development-secret",
     EMAIL_PROVIDER: "console",
   });
-
   assert.doesNotThrow(() => validateEnvironment());
 });
 
-test("accepts production database settings with TLS required", () => {
+test("accepts production database settings with TLS and durable storage", () => {
   applyEnvironment({
     ...discreteDatabaseEnvironment,
     ...productionEnvironment,
@@ -85,7 +79,6 @@ test("accepts production database settings with TLS required", () => {
     READINESS_TIMEOUT_MS: "3000",
     SHUTDOWN_TIMEOUT_MS: "10000",
   });
-
   assert.doesNotThrow(() => validateEnvironment());
 });
 
@@ -95,7 +88,6 @@ test("accepts a managed DATABASE_URL with sslmode", () => {
     DATABASE_URL:
       "postgresql://user:password@db.example.com:5432/supplyflow?sslmode=require",
   });
-
   assert.doesNotThrow(() => validateEnvironment());
 });
 
@@ -105,7 +97,6 @@ test("rejects disabled PostgreSQL TLS in production", () => {
     ...productionEnvironment,
     DB_SSL_MODE: "disable",
   });
-
   assert.throws(
     () => validateEnvironment(),
     /DB_SSL_MODE cannot be disable in production/,
@@ -119,7 +110,6 @@ test("rejects duplicate PostgreSQL SSL configuration", () => {
       "postgresql://user:password@db.example.com:5432/supplyflow?sslmode=require",
     DB_SSL_MODE: "verify-full",
   });
-
   assert.throws(
     () => validateEnvironment(),
     /Configure PostgreSQL SSL either with DB_SSL_MODE or SSL parameters in DATABASE_URL/,
@@ -135,7 +125,6 @@ test("rejects invalid production runtime settings", () => {
     READINESS_TIMEOUT_MS: "0",
     SHUTDOWN_TIMEOUT_MS: "not-a-number",
   });
-
   assert.throws(
     () => validateEnvironment(),
     /LOG_LEVEL must be debug, info, warn, error, or silent/,
@@ -147,5 +136,29 @@ test("rejects invalid production runtime settings", () => {
   assert.throws(
     () => validateEnvironment(),
     /SHUTDOWN_TIMEOUT_MS must be a positive integer/,
+  );
+});
+
+test("production requires an absolute file storage root", () => {
+  applyEnvironment({
+    ...discreteDatabaseEnvironment,
+    ...productionEnvironment,
+    DB_SSL_MODE: "require",
+    FILE_STORAGE_ROOT: "",
+  });
+  assert.throws(
+    () => validateEnvironment(),
+    /FILE_STORAGE_ROOT is required in production/,
+  );
+
+  applyEnvironment({
+    ...discreteDatabaseEnvironment,
+    ...productionEnvironment,
+    DB_SSL_MODE: "require",
+    FILE_STORAGE_ROOT: "relative-storage",
+  });
+  assert.throws(
+    () => validateEnvironment(),
+    /FILE_STORAGE_ROOT must be an absolute path in production/,
   );
 });

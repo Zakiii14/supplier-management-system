@@ -3,8 +3,12 @@ const fs = require("node:fs");
 const fsp = require("node:fs/promises");
 const path = require("node:path");
 const multer = require("multer");
+const { resolveStorageDirectory } = require("./fileStorageService");
 
-const directory = path.resolve(process.env.SUPPLIER_INVOICE_STORAGE_DIR || path.join(__dirname, "../../storage/supplier-invoices"));
+const directory = resolveStorageDirectory(
+  "supplier-invoices",
+  "SUPPLIER_INVOICE_STORAGE_DIR",
+);
 const upload = multer({ storage: multer.memoryStorage(), limits: { files: 3, fileSize: 5 * 1024 * 1024 } });
 const uploadAttachments = (req, res, next) => upload.array("attachments", 3)(req, res, (error) => {
   if (!error) return next();

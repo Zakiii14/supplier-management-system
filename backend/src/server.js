@@ -2,12 +2,15 @@ require("dotenv").config();
 
 const validateEnvironment = require("./config/validateEnvironment");
 const logger = require("./utils/logger");
+const {
+  configureFileStorageEnvironment,
+  ensureApplicationFileStorageReady,
+} = require("./services/fileStorageService");
 
 const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10000;
 
 const getShutdownTimeoutMs = () => {
   const configured = Number(process.env.SHUTDOWN_TIMEOUT_MS);
-
   return Number.isInteger(configured) && configured > 0
     ? configured
     : DEFAULT_SHUTDOWN_TIMEOUT_MS;
@@ -22,32 +25,22 @@ const createGracefulShutdown = ({
   let shutdownPromise = null;
 
   return (signal) => {
-    if (shutdownPromise) {
-      return shutdownPromise;
-    }
+    if (shutdownPromise) return shutdownPromise;
 
     shutdownPromise = (async () => {
       logger.info("shutdown_started", { signal });
 
       const forcedExitTimer = setTimeout(() => {
-        logger.error("shutdown_timeout", {
-          signal,
-          timeout_ms: timeoutMs,
-        });
+        logger.error("shutdown_timeout", { signal, timeout_ms: timeoutMs });
         exit(1);
       }, timeoutMs);
       forcedExitTimer.unref?.();
 
       const errors = [];
-
       try {
         await new Promise((resolve, reject) => {
           server.close((error) => {
-            if (error) {
-              reject(error);
-              return;
-            }
-
+            if (error) return reject(error);
             resolve();
           });
         });
@@ -62,7 +55,6 @@ const createGracefulShutdown = ({
       }
 
       clearTimeout(forcedExitTimer);
-
       if (errors.length > 0) {
         logger.error("shutdown_failed", {
           signal,
@@ -83,21 +75,23 @@ const createGracefulShutdown = ({
 
 const startServer = () => {
   validateEnvironment();
+  configureFileStorageEnvironment();
+  const storageDirectories = ensureApplicationFileStorageReady();
 
   const app = require("./app");
   const databasePool = require("./config/database");
   const port = Number(process.env.PORT) || 3000;
   const server = app.listen(port, () => {
+    logger.info("file_storage_ready", {
+      directory_count: storageDirectories.length,
+    });
     logger.info("server_started", {
       port,
       environment: process.env.NODE_ENV || "development",
     });
   });
 
-  const shutdown = createGracefulShutdown({
-    server,
-    databasePool,
-  });
+  const shutdown = createGracefulShutdown({ server, databasePool });
 
   process.once("SIGTERM", () => {
     void shutdown("SIGTERM");

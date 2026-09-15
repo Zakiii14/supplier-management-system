@@ -1,15 +1,16 @@
 const crypto = require("node:crypto");
-const fs = require("node:fs");
-const fsPromises = require("node:fs/promises");
 const path = require("node:path");
 const multer = require("multer");
+const {
+  createDirectoryStorage,
+  resolveStorageDirectory,
+} = require("./fileStorageService");
 
 const MAX_PROOF_FILES = 3;
 const MAX_PROOF_SIZE_BYTES = 5 * 1024 * 1024;
 
-const storageDirectory = path.resolve(
-  process.env.PAYMENT_PROOF_STORAGE_DIR ||
-    path.join(__dirname, "../../storage/payment-proofs"),
+const proofStorage = createDirectoryStorage(
+  resolveStorageDirectory("payment-proofs", "PAYMENT_PROOF_STORAGE_DIR"),
 );
 
 const upload = multer({
@@ -41,13 +42,8 @@ const wrapUpload = (middleware) => (req, res, next) => {
   });
 };
 
-const uploadProofs = wrapUpload(
-  upload.array("proofs", MAX_PROOF_FILES),
-);
-
-const uploadReplacementProof = wrapUpload(
-  upload.single("proof"),
-);
+const uploadProofs = wrapUpload(upload.array("proofs", MAX_PROOF_FILES));
+const uploadReplacementProof = wrapUpload(upload.single("proof"));
 
 const detectFileType = (buffer) => {
   if (
@@ -92,7 +88,6 @@ const detectFileType = (buffer) => {
 const normalizeOriginalName = (value) => {
   const baseName = path.basename(value || "bukti-pembayaran");
   const cleaned = baseName.replace(/[\u0000-\u001f\u007f]/g, "").trim();
-
   return (cleaned || "bukti-pembayaran").slice(0, 255);
 };
 
@@ -104,7 +99,6 @@ const storeProofFile = async (file) => {
   }
 
   const detectedType = detectFileType(file.buffer);
-
   if (!detectedType) {
     const error = new Error(
       "Format bukti pembayaran harus PDF, JPG, PNG, atau WebP",
@@ -113,16 +107,9 @@ const storeProofFile = async (file) => {
     throw error;
   }
 
-  await fsPromises.mkdir(storageDirectory, { recursive: true });
-
   const storageName = `${crypto.randomUUID()}${detectedType.extension}`;
-  const destination = path.join(storageDirectory, storageName);
-  const checksum = crypto
-    .createHash("sha256")
-    .update(file.buffer)
-    .digest("hex");
-
-  await fsPromises.writeFile(destination, file.buffer, { flag: "wx" });
+  const checksum = crypto.createHash("sha256").update(file.buffer).digest("hex");
+  await proofStorage.write(storageName, file.buffer);
 
   return {
     originalName: normalizeOriginalName(file.originalname),
@@ -134,37 +121,20 @@ const storeProofFile = async (file) => {
 };
 
 const removeStoredProofFile = async (storageName) => {
-  if (!/^[0-9a-f-]{36}\.(pdf|jpg|png|webp)$/i.test(storageName || "")) {
-    return;
-  }
-
-  try {
-    await fsPromises.unlink(path.join(storageDirectory, storageName));
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      throw error;
-    }
-  }
+  if (!/^[0-9a-f-]{36}\.(pdf|jpg|png|webp)$/i.test(storageName || "")) return;
+  await proofStorage.remove(storageName);
 };
 
 const removeStoredProofFiles = async (proofs) => {
-  await Promise.all(
-    proofs.map((proof) => removeStoredProofFile(proof.storageName)),
-  );
-};
-
-const getStoredProofPath = (storageName) => {
-  if (!/^[0-9a-f-]{36}\.(pdf|jpg|png|webp)$/i.test(storageName || "")) {
-    return null;
-  }
-
-  return path.join(storageDirectory, storageName);
+  await Promise.all(proofs.map((proof) => removeStoredProofFile(proof.storageName)));
 };
 
 const streamStoredProof = (res, proof, download = false) => {
-  const proofPath = getStoredProofPath(proof.storage_name);
-
-  if (!proofPath || !fs.existsSync(proofPath)) {
+  const storageName = proof.storage_name;
+  if (
+    !/^[0-9a-f-]{36}\.(pdf|jpg|png|webp)$/i.test(storageName || "") ||
+    !proofStorage.exists(storageName)
+  ) {
     return false;
   }
 
@@ -180,7 +150,7 @@ const streamStoredProof = (res, proof, download = false) => {
     "X-Content-Type-Options": "nosniff",
   });
 
-  fs.createReadStream(proofPath).pipe(res);
+  proofStorage.createReadStream(storageName).pipe(res);
   return true;
 };
 
@@ -203,31 +173,20 @@ const storeAndInsertProofs = async ({
   ownerId,
   uploadedBy,
 }) => {
-  if (
-    !["customer_payment_id", "supplier_payment_id"].includes(
-      ownerColumn,
-    )
-  ) {
+  if (!["customer_payment_id", "supplier_payment_id"].includes(ownerColumn)) {
     throw new Error("Invalid payment proof owner");
   }
 
   const storedProofs = [];
-
   try {
     for (const file of files) {
       const stored = await storeProofFile(file);
       storedProofs.push(stored);
-
       await client.query(
         `
         INSERT INTO app.payment_proofs (
-          ${ownerColumn},
-          original_name,
-          storage_name,
-          mime_type,
-          size_bytes,
-          checksum_sha256,
-          uploaded_by
+          ${ownerColumn}, original_name, storage_name, mime_type,
+          size_bytes, checksum_sha256, uploaded_by
         )
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         `,
@@ -242,7 +201,6 @@ const storeAndInsertProofs = async ({
         ],
       );
     }
-
     return storedProofs;
   } catch (error) {
     await removeStoredProofFiles(storedProofs);

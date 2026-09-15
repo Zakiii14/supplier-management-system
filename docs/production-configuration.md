@@ -1,6 +1,6 @@
 # Production Configuration
 
-This document defines the deployment configuration contract introduced in PR-1 and the runtime hardening added in PR-2. It does not configure a specific hosting provider yet; provider-specific deployment belongs to PR-6.
+This document defines the production configuration contract introduced in PR-1, runtime hardening added in PR-2, migration safety added in PR-3, and durable private file storage added in PR-4. Provider-specific deployment still belongs to PR-6.
 
 ## Frontend and API routing
 
@@ -22,6 +22,7 @@ Production should set at least:
 - `FRONTEND_URL=https://...`
 - `JWT_SECRET` with at least 32 characters
 - a non-console `EMAIL_PROVIDER` and its provider credentials
+- `FILE_STORAGE_ROOT` as an absolute path on a durable mounted volume
 - `TRUST_PROXY=true` only when Express is behind the trusted reverse proxy/load balancer expected by the deployment
 
 Runtime controls introduced in PR-2:
@@ -75,6 +76,20 @@ When `DATABASE_URL` already contains PostgreSQL SSL query parameters such as `ss
 
 If production has no explicit SSL configuration, the backend defaults to `require`. Prefer `verify-full` when the managed database provider supplies a verifiable certificate chain.
 
-## Local file storage
+## Private file storage
 
-`PAYMENT_PROOF_STORAGE_DIR`, `USER_AVATAR_STORAGE_DIR`, and `SUPPLIER_INVOICE_STORAGE_DIR` remain supported for the current local-filesystem implementation. They are documented here only for configuration completeness. Moving uploads to production-grade object storage is intentionally deferred to PR-4.
+SupplyFlow stores payment proofs, user avatars, and supplier invoice attachments as private files. Their existing authenticated API endpoints remain unchanged; the frontend does not receive a public filesystem path.
+
+Production must configure `FILE_STORAGE_ROOT` as an **absolute path on a durable mounted volume**. The backend creates these namespaces below that root:
+
+- `payment-proofs/`
+- `user-avatars/`
+- `supplier-invoices/`
+
+The backend performs a write/read/delete probe for every storage namespace before starting the HTTP listener. If the mount is missing, read-only, or otherwise unusable, startup fails instead of silently accepting uploads onto an ephemeral application filesystem.
+
+Do not point `FILE_STORAGE_ROOT` at a container/image root directory that is discarded on redeploy. The deployment platform must mount storage whose lifecycle is independent from the API process. Backup and restore procedures for this volume are covered by PR-5.
+
+For a single API instance, one durable mounted volume is sufficient. If the API is horizontally scaled, every instance must see the same shared persistent filesystem. A future object-storage adapter can be placed behind the same storage service boundary when a deployment requires fully stateless multi-instance storage.
+
+For development and tests, leaving `FILE_STORAGE_ROOT` empty keeps the existing `backend/storage` default. `PAYMENT_PROOF_STORAGE_DIR`, `USER_AVATAR_STORAGE_DIR`, and `SUPPLIER_INVOICE_STORAGE_DIR` remain available as legacy development/test overrides. When `FILE_STORAGE_ROOT` is configured by normal server startup, it takes precedence and maps all three namespaces under the central root.
