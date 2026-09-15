@@ -469,6 +469,39 @@ CREATE TABLE app.products (
     CONSTRAINT products_selling_price_check CHECK ((selling_price >= (0)::numeric))
 );
 
+CREATE TABLE app.inventory_stock_inspections (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    inspection_number character varying(40) NOT NULL UNIQUE,
+    product_id uuid NOT NULL,
+    source_bucket character varying(20) DEFAULT 'QUARANTINE' NOT NULL,
+    target_bucket character varying(20) NOT NULL,
+    quantity numeric(18,3) NOT NULL,
+    inspection_date date DEFAULT CURRENT_DATE NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT inventory_stock_inspections_source_check CHECK (source_bucket = 'QUARANTINE'),
+    CONSTRAINT inventory_stock_inspections_target_check CHECK (target_bucket IN ('AVAILABLE','DAMAGED')),
+    CONSTRAINT inventory_stock_inspections_quantity_check CHECK (quantity > 0)
+);
+
+CREATE TABLE app.inventory_damage_resolutions (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    resolution_number character varying(40) NOT NULL UNIQUE,
+    product_id uuid NOT NULL,
+    resolution_action character varying(30) NOT NULL,
+    quantity numeric(18,3) NOT NULL,
+    resolution_date date DEFAULT CURRENT_DATE NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT inventory_damage_resolutions_action_check CHECK (resolution_action IN ('REWORK_TO_QUARANTINE','DISPOSE')),
+    CONSTRAINT inventory_damage_resolutions_quantity_check CHECK (quantity > 0)
+);
+
+CREATE INDEX idx_inventory_stock_inspections_product ON app.inventory_stock_inspections (product_id, inspection_date DESC);
+CREATE INDEX idx_inventory_damage_resolutions_product ON app.inventory_damage_resolutions (product_id, resolution_date DESC);
+
 
 --
 -- Name: purchase_order_items; Type: TABLE; Schema: app; Owner: -
@@ -542,6 +575,22 @@ CREATE TABLE app.payment_settings (
 );
 
 INSERT INTO app.payment_settings (id) VALUES (1);
+
+CREATE TABLE app.tax_settings (
+    id smallint DEFAULT 1 PRIMARY KEY,
+    is_enabled boolean DEFAULT true NOT NULL,
+    tax_name character varying(40) DEFAULT 'PPN' NOT NULL,
+    default_rate numeric(5,2) DEFAULT 0 NOT NULL,
+    allow_invoice_override boolean DEFAULT true NOT NULL,
+    updated_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT tax_settings_singleton_check CHECK (id = 1),
+    CONSTRAINT tax_settings_name_check CHECK (BTRIM(tax_name) <> ''),
+    CONSTRAINT tax_settings_rate_check CHECK (default_rate >= 0 AND default_rate <= 100)
+);
+
+INSERT INTO app.tax_settings (id) VALUES (1);
 
 
 --
@@ -1351,6 +1400,8 @@ CREATE TRIGGER trg_purchase_orders_updated_at BEFORE UPDATE ON app.purchase_orde
 
 CREATE TRIGGER trg_payment_settings_updated_at BEFORE UPDATE ON app.payment_settings FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
 
+CREATE TRIGGER trg_tax_settings_updated_at BEFORE UPDATE ON app.tax_settings FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
 
 --
 -- Name: supplier_payments trg_supplier_payments_updated_at; Type: TRIGGER; Schema: app; Owner: -
@@ -1534,6 +1585,21 @@ ALTER TABLE ONLY app.payments
 
 ALTER TABLE ONLY app.payment_settings
     ADD CONSTRAINT payment_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY app.tax_settings
+    ADD CONSTRAINT tax_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY app.inventory_stock_inspections
+    ADD CONSTRAINT inventory_stock_inspections_product_fkey FOREIGN KEY (product_id) REFERENCES app.products(id) ON DELETE RESTRICT;
+
+ALTER TABLE ONLY app.inventory_stock_inspections
+    ADD CONSTRAINT inventory_stock_inspections_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+ALTER TABLE ONLY app.inventory_damage_resolutions
+    ADD CONSTRAINT inventory_damage_resolutions_product_fkey FOREIGN KEY (product_id) REFERENCES app.products(id) ON DELETE RESTRICT;
+
+ALTER TABLE ONLY app.inventory_damage_resolutions
+    ADD CONSTRAINT inventory_damage_resolutions_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
 
 --

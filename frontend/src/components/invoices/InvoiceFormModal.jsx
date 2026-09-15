@@ -18,6 +18,7 @@ import FormDatePicker from "../forms/FormDatePicker";
 import FormSelect from "../forms/FormSelect";
 import CodeNumberField from "../forms/CodeNumberField";
 import useCodeNumberSetting from "../../hooks/useCodeNumberSetting";
+import { getTaxSettingsRequest } from "../../api/taxSettings";
 
 const getTodayValue = () =>
   new Date().toISOString().slice(0, 10);
@@ -68,11 +69,40 @@ const InvoiceFormModal = ({
 
   const [validationError, setValidationError] =
     useState("");
+  const [taxSettings, setTaxSettings] = useState({
+    is_enabled: false,
+    tax_name: "Pajak",
+    default_rate: 0,
+    allow_invoice_override: true,
+  });
+  const [isTaxSettingsLoading, setIsTaxSettingsLoading] = useState(true);
   const {
     setting: codeNumberSetting,
     isLoading: isNumberingLoading,
     errorMessage: numberingError,
   } = useCodeNumberSetting("INVOICE", isOpen);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    let cancelled = false;
+    getTaxSettingsRequest()
+      .then((settings) => {
+        if (cancelled) return;
+        setTaxSettings(settings);
+        setValues((currentValues) => {
+          const salesOrder = salesOrders.find((item) => item.id === currentValues.sales_order_id);
+          if (!salesOrder) return currentValues;
+          const taxableAmount = Number(salesOrder.total_amount || 0);
+          const defaultTaxAmount = settings.is_enabled
+            ? Math.round(taxableAmount * Number(settings.default_rate || 0)) / 100
+            : 0;
+          return { ...currentValues, tax_amount: String(defaultTaxAmount) };
+        });
+      })
+      .catch(() => { if (!cancelled) setValidationError("Pengaturan pajak gagal dimuat. Coba tutup dan buka kembali formulir."); })
+      .finally(() => { if (!cancelled) setIsTaxSettingsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, salesOrders]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -162,9 +192,15 @@ const InvoiceFormModal = ({
   const handleSalesOrderChange = (
     salesOrderId,
   ) => {
+    const salesOrder = salesOrders.find((item) => item.id === salesOrderId);
+    const taxableAmount = Number(salesOrder?.total_amount || 0);
+    const defaultTaxAmount = taxSettings.is_enabled
+      ? Math.round(taxableAmount * Number(taxSettings.default_rate || 0)) / 100
+      : 0;
     setValues((currentValues) => ({
       ...currentValues,
       sales_order_id: salesOrderId,
+      tax_amount: String(defaultTaxAmount),
     }));
 
     setValidationError("");
@@ -327,7 +363,7 @@ const InvoiceFormModal = ({
                 </div>
 
                 <label className="purchase-order-form-field">
-                  <span>Pajak</span>
+                  <span>{taxSettings.tax_name || "Pajak"}{taxSettings.is_enabled ? ` (${formatNumber(taxSettings.default_rate)}%)` : ""}</span>
 
                   <input
                     type="number"
@@ -336,9 +372,10 @@ const InvoiceFormModal = ({
                     step="1"
                     value={values.tax_amount}
                     placeholder="0"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isTaxSettingsLoading || !taxSettings.is_enabled || !taxSettings.allow_invoice_override}
                     onChange={handleFieldChange}
                   />
+                  <small>{!taxSettings.is_enabled ? "Pajak otomatis sedang dinonaktifkan." : taxSettings.allow_invoice_override ? "Dihitung otomatis dan dapat dikoreksi." : "Dihitung otomatis dari pengaturan pajak."}</small>
                 </label>
 
                 <label className="purchase-order-form-field is-full">

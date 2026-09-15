@@ -8,6 +8,7 @@ import {
   Hash,
   PackageOpen,
   PackageX,
+  Percent,
   ReceiptText,
   FileText,
   FileClock,
@@ -232,6 +233,12 @@ const navigationGroups = [
         label: "Pengaturan Pembayaran",
         path: "/payment-settings",
         icon: WalletCards,
+        roles: ["ADMIN"],
+      },
+      {
+        label: "Pengaturan Pajak",
+        path: "/tax-settings",
+        icon: Percent,
         roles: ["ADMIN"],
       },
       {

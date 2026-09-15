@@ -44,7 +44,7 @@ before(async () => {
   ids.product = product.rows[0].id;
   const quarantineProduct = await pool.query(`INSERT INTO app.products(sku,product_name,category_id,supplier_id,unit,purchase_price,selling_price,current_stock,status) VALUES($1,'SR Quarantine Product',$2,$3,'PCS',10000,20000,7,'ACTIVE') RETURNING id`, [code("SKUQ"),ids.category,ids.supplier]);
   ids.quarantineProduct = quarantineProduct.rows[0].id;
-  const damagedProduct = await pool.query(`INSERT INTO app.products(sku,product_name,category_id,supplier_id,unit,purchase_price,selling_price,current_stock,status) VALUES($1,'SR Damaged Product',$2,$3,'PCS',10000,20000,7,'ACTIVE') RETURNING id`, [code("SKUD"),ids.category,ids.supplier]);
+  const damagedProduct = await pool.query(`INSERT INTO app.products(sku,product_name,category_id,supplier_id,unit,purchase_price,selling_price,current_stock,damaged_stock,status) VALUES($1,'SR Damaged Product',$2,$3,'PCS',10000,20000,7,1,'ACTIVE') RETURNING id`, [code("SKUD"),ids.category,ids.supplier]);
   ids.damagedProduct = damagedProduct.rows[0].id;
   const customer = await pool.query(`INSERT INTO app.customers(customer_code,customer_name,status) VALUES($1,'SR Customer','ACTIVE') RETURNING id`, [code("CUS")]);
   ids.customer = customer.rows[0].id;
@@ -70,6 +70,10 @@ after(async () => {
     if (ids.inspection) {
       await pool.query(`DELETE FROM app.inventory_movements WHERE reference_type='STOCK_INSPECTION' AND reference_id=$1`, [ids.inspection]);
       await pool.query(`DELETE FROM app.inventory_stock_inspections WHERE id=$1`, [ids.inspection]);
+    }
+    if (ids.damageResolutions?.length) {
+      await pool.query(`DELETE FROM app.inventory_movements WHERE reference_type='DAMAGE_RESOLUTION' AND reference_id=ANY($1::uuid[])`, [ids.damageResolutions]);
+      await pool.query(`DELETE FROM app.inventory_damage_resolutions WHERE id=ANY($1::uuid[])`, [ids.damageResolutions]);
     }
     if (ids.return) {
       await pool.query(`DELETE FROM app.sales_return_settlements WHERE sales_return_id=$1`, [ids.return]);
@@ -121,7 +125,7 @@ test("sales return routes returned items into inventory buckets by condition", a
   assert.equal(Number(productsById.get(ids.quarantineProduct).current_stock), 7);
   assert.equal(Number(productsById.get(ids.quarantineProduct).quarantine_stock), 1);
   assert.equal(Number(productsById.get(ids.damagedProduct).current_stock), 7);
-  assert.equal(Number(productsById.get(ids.damagedProduct).damaged_stock), 1);
+  assert.equal(Number(productsById.get(ids.damagedProduct).damaged_stock), 2);
   const movements = await pool.query(`SELECT movement_type,quantity,stock_bucket FROM app.inventory_movements WHERE reference_type='SALES_RETURN' AND reference_id=$1`, [ids.return]);
   assert.equal(movements.rows.length, 3);
   const movementsByBucket = new Map(movements.rows.map((row) => [row.stock_bucket, row]));
@@ -151,6 +155,30 @@ test("sales return routes returned items into inventory buckets by condition", a
     { movement_type: "ADJUSTMENT_IN", stock_bucket: "AVAILABLE" },
     { movement_type: "ADJUSTMENT_OUT", stock_bucket: "QUARANTINE" },
   ]);
+
+  response = await request(app).get("/api/inventory-movements/damaged-stocks").set("Authorization", managerAuth);
+  assert.equal(response.status, 200);
+  assert.ok(response.body.data.some((item) => item.id === ids.damagedProduct && Number(item.damaged_stock) === 2));
+
+  ids.damageResolutions = [];
+  response = await request(app).post("/api/inventory-movements/damage-resolutions").set("Authorization", managerAuth).send({
+    product_id: ids.damagedProduct, quantity: 1, resolution_action: "REWORK_TO_QUARANTINE", notes: "Kemasan sudah diperbaiki",
+  });
+  assert.equal(response.status, 201);
+  ids.damageResolutions.push(response.body.data.id);
+
+  response = await request(app).post("/api/inventory-movements/damage-resolutions").set("Authorization", managerAuth).send({
+    product_id: ids.damagedProduct, quantity: 1, resolution_action: "DISPOSE", notes: "Produk bocor dan tidak aman",
+  });
+  assert.equal(response.status, 201);
+  ids.damageResolutions.push(response.body.data.id);
+
+  const resolvedProduct = await pool.query(`SELECT damaged_stock,quarantine_stock FROM app.products WHERE id=$1`, [ids.damagedProduct]);
+  assert.equal(Number(resolvedProduct.rows[0].damaged_stock), 0);
+  assert.equal(Number(resolvedProduct.rows[0].quarantine_stock), 1);
+  const resolutionMovements = await pool.query(`SELECT movement_type,stock_bucket FROM app.inventory_movements WHERE reference_type='DAMAGE_RESOLUTION' AND reference_id=ANY($1::uuid[])`, [ids.damageResolutions]);
+  assert.equal(resolutionMovements.rows.filter((row) => row.movement_type === "ADJUSTMENT_OUT" && row.stock_bucket === "DAMAGED").length, 2);
+  assert.equal(resolutionMovements.rows.filter((row) => row.movement_type === "ADJUSTMENT_IN" && row.stock_bucket === "QUARANTINE").length, 1);
 });
 
 test("sales return credit keeps an unpaid invoice unpaid and blocks duplicate excess settlement", async () => {

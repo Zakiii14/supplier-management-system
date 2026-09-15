@@ -532,7 +532,7 @@ const createInvoice = async (req, res) => {
       invoice_number,
       sales_order_id,
       invoice_date,
-      tax_amount = 0,
+      tax_amount,
       notes,
     } = req.body;
 
@@ -543,10 +543,9 @@ const createInvoice = async (req, res) => {
       });
     }
 
-    if (
-      Number.isNaN(Number(tax_amount)) ||
-      Number(tax_amount) < 0
-    ) {
+    if (tax_amount !== undefined && tax_amount !== null && (
+      Number.isNaN(Number(tax_amount)) || Number(tax_amount) < 0
+    )) {
       return res.status(400).json({
         success: false,
         message:
@@ -639,7 +638,18 @@ const createInvoice = async (req, res) => {
       totalResult.rows[0].discount_amount
     );
 
-    const taxAmount = Number(tax_amount);
+    const taxSettingsResult = await client.query(
+      `SELECT is_enabled,default_rate,allow_invoice_override
+       FROM app.tax_settings WHERE id=1`,
+    );
+    const taxSettings = taxSettingsResult.rows[0] || { is_enabled: false, default_rate: 0, allow_invoice_override: true };
+    const taxableAmount = subtotal - discountAmount;
+    const calculatedTaxAmount = Math.round(taxableAmount * Number(taxSettings.default_rate || 0)) / 100;
+    const taxAmount = taxSettings.is_enabled
+      ? (taxSettings.allow_invoice_override && tax_amount !== undefined && tax_amount !== null
+          ? Number(tax_amount)
+          : calculatedTaxAmount)
+      : 0;
 
     const grandTotal =
       subtotal - discountAmount + taxAmount;

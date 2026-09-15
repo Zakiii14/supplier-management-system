@@ -9,6 +9,8 @@ const {
   getInventoryMovementById,
   getQuarantineStocks,
   createStockInspection,
+  getDamagedStocks,
+  createDamageResolution,
 } = require(
   "../controllers/inventoryMovementController"
 );
@@ -37,6 +39,18 @@ router.post(
   "/stock-inspections",
   authorizeRoles("ADMIN", "WAREHOUSE", "MANAGER"),
   createStockInspection
+);
+
+router.get(
+  "/damaged-stocks",
+  authorizeRoles("ADMIN", "WAREHOUSE", "MANAGER"),
+  getDamagedStocks
+);
+
+router.post(
+  "/damage-resolutions",
+  authorizeRoles("ADMIN", "WAREHOUSE", "MANAGER"),
+  createDamageResolution
 );
 
 router.get(

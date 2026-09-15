@@ -27,6 +27,7 @@ const codeNumberSettingRoutes = require(
 const paymentSettingRoutes = require(
   "./routes/paymentSettingRoutes"
 );
+const taxSettingRoutes = require("./routes/taxSettingRoutes");
 const supplierInvoiceRoutes = require("./routes/supplierInvoiceRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const auditLogRoutes = require("./routes/auditLogRoutes");
@@ -121,6 +122,7 @@ app.use(
   authenticate,
   paymentSettingRoutes
 );
+app.use("/api/tax-settings", authenticate, taxSettingRoutes);
 app.use("/api/auth", authRoutes);
 
 app.use((error, req, res, next) => {

@@ -38,8 +38,25 @@ const createStockInspectionRequest = async (payload) => {
   return response.data.data;
 };
 
+const getDamagedStocksRequest = async () => {
+  const response = await apiClient.get(
+    "/inventory-movements/damaged-stocks",
+  );
+  return response.data.data;
+};
+
+const createDamageResolutionRequest = async (payload) => {
+  const response = await apiClient.post(
+    "/inventory-movements/damage-resolutions",
+    payload,
+  );
+  return response.data.data;
+};
+
 export {
+  createDamageResolutionRequest,
   createStockInspectionRequest,
+  getDamagedStocksRequest,
   getInventoryMovementByIdRequest,
   getInventoryMovementsRequest,
   getQuarantineStocksRequest,

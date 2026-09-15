@@ -23,6 +23,7 @@ import UsersPage from "./pages/UsersPage";
 import ReportsPage from "./pages/ReportsPage";
 import CodeNumberSettingsPage from "./pages/CodeNumberSettingsPage";
 import PaymentSettingsPage from "./pages/PaymentSettingsPage";
+import TaxSettingsPage from "./pages/TaxSettingsPage";
 import SupplierInvoicesPage from "./pages/SupplierInvoicesPage";
 import AuditLogsPage from "./pages/AuditLogsPage";
 import MasterDataImportPage from "./pages/MasterDataImportPage";
@@ -54,6 +55,7 @@ const App = () => {
         item.path !== "/reports" &&
         item.path !== "/code-number-settings" &&
         item.path !== "/payment-settings" &&
+        item.path !== "/tax-settings" &&
         item.path !== "/supplier-invoices" &&
         item.path !== "/audit-logs" &&
         item.path !== "/master-data-import" &&
@@ -188,6 +190,8 @@ const App = () => {
             path="payment-settings"
             element={<PaymentSettingsPage />}
           />
+
+          <Route path="tax-settings" element={<TaxSettingsPage />} />
 
           {moduleRoutes.map((item) => (
             <Route

@@ -54,6 +54,7 @@ const getAllInventoryMovements = async (req, res) => {
             pr.return_number,
             sr.return_number,
             isi.inspection_number,
+            idr.resolution_number,
             ''
           ) ILIKE $${values.length}
           OR CONCAT(
@@ -140,6 +141,9 @@ const getAllInventoryMovements = async (req, res) => {
       LEFT JOIN app.inventory_stock_inspections isi
         ON im.reference_type = 'STOCK_INSPECTION'
         AND isi.id = im.reference_id
+      LEFT JOIN app.inventory_damage_resolutions idr
+        ON im.reference_type = 'DAMAGE_RESOLUTION'
+        AND idr.id = im.reference_id
 
       ${whereClause}
       `,
@@ -174,7 +178,8 @@ const getAllInventoryMovements = async (req, res) => {
           so.opname_number,
           pr.return_number,
           sr.return_number,
-          isi.inspection_number
+          isi.inspection_number,
+          idr.resolution_number
         ) AS reference_number,
         im.notes,
         im.created_by,
@@ -205,6 +210,9 @@ const getAllInventoryMovements = async (req, res) => {
       LEFT JOIN app.inventory_stock_inspections isi
         ON im.reference_type = 'STOCK_INSPECTION'
         AND isi.id = im.reference_id
+      LEFT JOIN app.inventory_damage_resolutions idr
+        ON im.reference_type = 'DAMAGE_RESOLUTION'
+        AND idr.id = im.reference_id
 
       ${whereClause}
 
@@ -273,7 +281,8 @@ const getInventoryMovementById = async (req, res) => {
           so.opname_number,
           pr.return_number,
           sr.return_number,
-          isi.inspection_number
+          isi.inspection_number,
+          idr.resolution_number
         ) AS reference_number,
         im.notes,
         im.created_by,
@@ -304,6 +313,9 @@ const getInventoryMovementById = async (req, res) => {
       LEFT JOIN app.inventory_stock_inspections isi
         ON im.reference_type = 'STOCK_INSPECTION'
         AND isi.id = im.reference_id
+      LEFT JOIN app.inventory_damage_resolutions idr
+        ON im.reference_type = 'DAMAGE_RESOLUTION'
+        AND idr.id = im.reference_id
 
       WHERE im.id = $1
       `,
@@ -455,9 +467,126 @@ const createStockInspection = async (req, res) => {
   }
 };
 
+const getDamagedStocks = async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT p.id,p.sku,p.product_name,p.unit,p.damaged_stock
+       FROM app.products p
+       WHERE p.damaged_stock > 0
+       ORDER BY p.product_name ASC`,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Damaged stocks retrieved successfully",
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("Error fetching damaged stocks:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Stok rusak gagal dimuat",
+    });
+  }
+};
+
+const createDamageResolution = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const productId = typeof req.body.product_id === "string" ? req.body.product_id.trim() : "";
+    const resolutionAction = typeof req.body.resolution_action === "string" ? req.body.resolution_action.trim().toUpperCase() : "";
+    const resolutionDate = typeof req.body.resolution_date === "string" ? req.body.resolution_date.trim() : "";
+    const notes = typeof req.body.notes === "string" ? req.body.notes.trim().slice(0, 1000) : "";
+    const quantity = Number(req.body.quantity);
+
+    if (!productId || !["REWORK_TO_QUARANTINE", "DISPOSE"].includes(resolutionAction)) {
+      return res.status(400).json({ success: false, message: "Produk dan tindakan penanganan harus dipilih" });
+    }
+    if (!Number.isFinite(quantity) || quantity <= 0 || Math.abs(quantity * 1000 - Math.round(quantity * 1000)) > 1e-8) {
+      return res.status(400).json({ success: false, message: "Kuantitas penanganan tidak valid" });
+    }
+    if (resolutionDate && !/^\d{4}-\d{2}-\d{2}$/.test(resolutionDate)) {
+      return res.status(400).json({ success: false, message: "Tanggal penanganan tidak valid" });
+    }
+    if (resolutionAction === "DISPOSE" && !notes) {
+      return res.status(400).json({ success: false, message: "Alasan pemusnahan wajib diisi" });
+    }
+
+    await client.query("BEGIN");
+    const productResult = await client.query(
+      `SELECT id,sku,product_name,unit,damaged_stock
+       FROM app.products WHERE id=$1 FOR UPDATE`,
+      [productId],
+    );
+    if (!productResult.rows.length) {
+      const error = new Error("Produk tidak ditemukan"); error.statusCode = 404; throw error;
+    }
+    const product = productResult.rows[0];
+    if (quantity > Number(product.damaged_stock)) {
+      const error = new Error(`Kuantitas melebihi stok rusak (${Number(product.damaged_stock)})`); error.statusCode = 409; throw error;
+    }
+
+    const resolutionResult = await client.query(
+      `INSERT INTO app.inventory_damage_resolutions(
+         resolution_number,product_id,resolution_action,quantity,resolution_date,notes,created_by
+       ) VALUES(
+         CONCAT('DMG-',TO_CHAR(COALESCE($4::date,CURRENT_DATE),'YYYY'),'-',UPPER(LEFT(REPLACE(gen_random_uuid()::text,'-',''),8))),
+         $1,$2,$3,COALESCE($4::date,CURRENT_DATE),$5,$6
+       ) RETURNING *`,
+      [productId,resolutionAction,quantity,resolutionDate || null,notes || null,req.user.id],
+    );
+    const resolution = resolutionResult.rows[0];
+
+    await client.query(
+      `UPDATE app.products
+       SET damaged_stock=damaged_stock-$1,
+           quarantine_stock=quarantine_stock+CASE WHEN $2='REWORK_TO_QUARANTINE' THEN $1 ELSE 0 END,
+           updated_at=NOW()
+       WHERE id=$3`,
+      [quantity,resolutionAction,productId],
+    );
+
+    const movementNotes = resolutionAction === "REWORK_TO_QUARANTINE"
+      ? `Penanganan ${resolution.resolution_number}: keluar dari stok rusak untuk diperiksa ulang`
+      : `Pemusnahan ${resolution.resolution_number}: ${notes}`;
+    await client.query(
+      `INSERT INTO app.inventory_movements(
+         product_id,movement_type,quantity,reference_type,reference_id,stock_bucket,notes,created_by
+       ) VALUES($1,'ADJUSTMENT_OUT',$2,'DAMAGE_RESOLUTION',$3,'DAMAGED',$4,$5)`,
+      [productId,quantity,resolution.id,movementNotes,req.user.id],
+    );
+    if (resolutionAction === "REWORK_TO_QUARANTINE") {
+      await client.query(
+        `INSERT INTO app.inventory_movements(
+           product_id,movement_type,quantity,reference_type,reference_id,stock_bucket,notes,created_by
+         ) VALUES($1,'ADJUSTMENT_IN',$2,'DAMAGE_RESOLUTION',$3,'QUARANTINE',$4,$5)`,
+        [productId,quantity,resolution.id,`Penanganan ${resolution.resolution_number}: masuk stok karantina`,req.user.id],
+      );
+    }
+
+    await client.query("COMMIT");
+    return res.status(201).json({
+      success: true,
+      message: resolutionAction === "REWORK_TO_QUARANTINE" ? "Barang dipindahkan ke stok karantina" : "Pemusnahan stok rusak berhasil dicatat",
+      data: { ...resolution, sku: product.sku, product_name: product.product_name, unit: product.unit },
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error creating damage resolution:", error);
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.statusCode ? error.message : "Penanganan stok rusak gagal disimpan",
+    });
+  } finally {
+    client.release();
+  }
+};
+
 module.exports = {
   getAllInventoryMovements,
   getInventoryMovementById,
   getQuarantineStocks,
   createStockInspection,
+  getDamagedStocks,
+  createDamageResolution,
 };

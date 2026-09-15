@@ -5,12 +5,15 @@ import {
     RefreshCw,
     Save,
     Search,
+    Wrench,
     Warehouse,
     X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
     createStockInspectionRequest,
+    createDamageResolutionRequest,
+    getDamagedStocksRequest,
     getInventoryMovementByIdRequest,
     getInventoryMovementsRequest,
     getQuarantineStocksRequest,
@@ -120,6 +123,8 @@ const referenceTypeLabels = {
     STOCK_OPNAME: "Stok opname",
     PURCHASE_RETURN: "Retur pembelian",
     SALES_RETURN: "Retur penjualan",
+    STOCK_INSPECTION: "Pemeriksaan stok",
+    DAMAGE_RESOLUTION: "Penanganan stok rusak",
 };
 
 const stockBucketLabels = {
@@ -205,6 +210,59 @@ const StockInspectionDialog = ({ products, busy, error, onClose, onSubmit }) => 
     );
 };
 
+const damageResolutionOptions = [
+    { value: "REWORK_TO_QUARANTINE", code: "↻", label: "Diperbaiki → Periksa ulang di karantina" },
+    { value: "DISPOSE", code: "×", label: "Tidak dapat digunakan → Musnahkan" },
+];
+
+const DamageResolutionDialog = ({ products, busy, error, onClose, onSubmit }) => {
+    useModalDismiss(true, onClose, busy);
+    const [productId, setProductId] = useState(products[0]?.id || "");
+    const [quantity, setQuantity] = useState(normalizeQuantityInput(products[0]?.damaged_stock));
+    const [resolutionAction, setResolutionAction] = useState("REWORK_TO_QUARANTINE");
+    const [resolutionDate, setResolutionDate] = useState(new Date().toISOString().slice(0, 10));
+    const [notes, setNotes] = useState("");
+    const selectedProduct = products.find((product) => product.id === productId);
+    const maximumQuantity = Number(selectedProduct?.damaged_stock || 0);
+    const productOptions = products.map((product) => ({
+        value: product.id,
+        code: product.sku,
+        label: `${product.product_name} · rusak ${formatNumber(product.damaged_stock)} ${product.unit}`,
+        searchText: `${product.sku} ${product.product_name}`,
+    }));
+
+    const selectProduct = (value) => {
+        const product = products.find((item) => item.id === value);
+        setProductId(value);
+        setQuantity(product ? normalizeQuantityInput(product.damaged_stock) : "");
+    };
+
+    const submit = (event) => {
+        event.preventDefault();
+        onSubmit({ product_id: productId, quantity: Number(quantity), resolution_action: resolutionAction, resolution_date: resolutionDate, notes });
+    };
+
+    return (
+        <div className="inventory-inspection-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
+            <section className="inventory-inspection-dialog" role="dialog" aria-modal="true" aria-labelledby="damage-resolution-title">
+                <header><div><span>INVENTORY</span><h2 id="damage-resolution-title">Tangani stok rusak</h2><p>Pindahkan barang yang selesai diperbaiki ke karantina atau catat pemusnahannya.</p></div><button type="button" aria-label="Tutup" disabled={busy} onClick={onClose}><X aria-hidden="true" /></button></header>
+                <form onSubmit={submit}>
+                    <div className="inventory-inspection-body">
+                        <div className="inventory-inspection-field is-full"><FormSelect label="Produk" value={productId} options={productOptions} placeholder={products.length ? "Pilih produk" : "Tidak ada stok rusak"} searchPlaceholder="Cari SKU atau produk" disabled={busy || products.length === 0} onChange={selectProduct} /></div>
+                        <label className="inventory-inspection-field"><span>Kuantitas ditangani</span><input type="number" min="0.001" max={maximumQuantity} step="0.001" value={quantity} disabled={busy || !productId} onChange={(event) => setQuantity(event.target.value)} /><small>Maksimal {formatNumber(maximumQuantity)} {selectedProduct?.unit || "unit"}.</small></label>
+                        <FormSelect label="Tindakan" value={resolutionAction} options={damageResolutionOptions} searchable={false} disabled={busy} onChange={setResolutionAction} />
+                        <FormDatePicker label="Tanggal penanganan" value={resolutionDate} disabled={busy} onChange={setResolutionDate} />
+                        <label className="inventory-inspection-field"><span>{resolutionAction === "DISPOSE" ? "Alasan pemusnahan" : "Catatan penanganan"}</span><textarea rows={3} maxLength={1000} required={resolutionAction === "DISPOSE"} value={notes} placeholder={resolutionAction === "DISPOSE" ? "Jelaskan alasan barang harus dimusnahkan" : "Contoh: kemasan diganti dan siap diperiksa ulang"} disabled={busy} onChange={(event) => setNotes(event.target.value)} /></label>
+                        {products.length === 0 && <div className="inventory-inspection-info is-full">Tidak ada barang yang tercatat sebagai stok rusak.</div>}
+                        {error && <div className="data-error is-full" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Penanganan tidak dapat disimpan</strong><span>{error}</span></div></div>}
+                    </div>
+                    <footer><button type="button" className="secondary-action" disabled={busy} onClick={onClose}>Batal</button><button type="submit" className="primary-action" disabled={busy || !productId || Number(quantity) <= 0 || Number(quantity) > maximumQuantity || (resolutionAction === "DISPOSE" && !notes.trim())}><Save aria-hidden="true" /><span>{busy ? "Menyimpan..." : "Simpan penanganan"}</span></button></footer>
+                </form>
+            </section>
+        </div>
+    );
+};
+
 const InventoryPage = () => {
     const { user } = useAuth();
     const filtersRef = useStickyDataFilters();
@@ -254,6 +312,10 @@ const InventoryPage = () => {
     const [quarantineProducts, setQuarantineProducts] = useState([]);
     const [isInspectionBusy, setIsInspectionBusy] = useState(false);
     const [inspectionError, setInspectionError] = useState("");
+    const [isDamageResolutionOpen, setIsDamageResolutionOpen] = useState(false);
+    const [damagedProducts, setDamagedProducts] = useState([]);
+    const [isDamageResolutionBusy, setIsDamageResolutionBusy] = useState(false);
+    const [damageResolutionError, setDamageResolutionError] = useState("");
 
     useEffect(() => {
         let isCancelled = false;
@@ -413,6 +475,34 @@ const InventoryPage = () => {
         }
     };
 
+    const handleOpenDamageResolution = async () => {
+        try {
+            setIsDamageResolutionBusy(true);
+            setDamageResolutionError("");
+            setDamagedProducts(await getDamagedStocksRequest());
+            setIsDamageResolutionOpen(true);
+        } catch (error) {
+            setDamageResolutionError(error.response?.data?.message || "Stok rusak gagal dimuat.");
+        } finally {
+            setIsDamageResolutionBusy(false);
+        }
+    };
+
+    const handleSaveDamageResolution = async (payload) => {
+        try {
+            setIsDamageResolutionBusy(true);
+            setDamageResolutionError("");
+            await createDamageResolutionRequest(payload);
+            setIsDamageResolutionOpen(false);
+            setDamagedProducts([]);
+            setReloadKey((current) => current + 1);
+        } catch (error) {
+            setDamageResolutionError(error.response?.data?.message || "Penanganan stok rusak gagal disimpan.");
+        } finally {
+            setIsDamageResolutionBusy(false);
+        }
+    };
+
     const totalPages = Math.max(
         pagination.total_pages,
         1,
@@ -435,6 +525,12 @@ const InventoryPage = () => {
                         <button type="button" className="primary-action" disabled={isInspectionBusy} onClick={handleOpenInspection}>
                             <ClipboardCheck aria-hidden="true" />
                             <span>Periksa stok</span>
+                        </button>
+                    )}
+                    {["ADMIN", "WAREHOUSE", "MANAGER"].includes(user?.role) && (
+                        <button type="button" className="secondary-action" disabled={isDamageResolutionBusy} onClick={handleOpenDamageResolution}>
+                            <Wrench aria-hidden="true" />
+                            <span>Stok rusak</span>
                         </button>
                     )}
                     <button
@@ -541,6 +637,10 @@ const InventoryPage = () => {
                         <AlertTriangle aria-hidden="true" />
                         <div><strong>Pemeriksaan stok tidak dapat dibuka</strong><span>{inspectionError}</span></div>
                     </div>
+                )}
+
+                {damageResolutionError && !isDamageResolutionOpen && (
+                    <div className="data-error" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Penanganan stok rusak tidak dapat dibuka</strong><span>{damageResolutionError}</span></div></div>
                 )}
 
                 <div className="table-summary">
@@ -751,6 +851,15 @@ const InventoryPage = () => {
                     error={inspectionError}
                     onClose={() => { if (!isInspectionBusy) { setIsInspectionOpen(false); setInspectionError(""); } }}
                     onSubmit={handleSaveInspection}
+                />
+            )}
+            {isDamageResolutionOpen && (
+                <DamageResolutionDialog
+                    products={damagedProducts}
+                    busy={isDamageResolutionBusy}
+                    error={damageResolutionError}
+                    onClose={() => { if (!isDamageResolutionBusy) { setIsDamageResolutionOpen(false); setDamageResolutionError(""); } }}
+                    onSubmit={handleSaveDamageResolution}
                 />
             )}
         </div>
