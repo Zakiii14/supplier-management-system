@@ -9,6 +9,8 @@ import { Link } from "react-router-dom";
 import { forgotPasswordRequest } from "../api/auth";
 import "../styles/login.css";
 
+const SUCCESS_TITLE = "Permintaan reset berhasil diproses.";
+
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
   const [submittedEmail, setSubmittedEmail] = useState("");
@@ -34,7 +36,7 @@ const ForgotPasswordPage = () => {
       setSubmittedEmail(normalizedEmail);
       setMessage(
         response.message ||
-          "Permintaan reset berhasil diproses. Jika email tersebut terdaftar dan akun aktif, tautan reset akan dikirim. Periksa Kotak Masuk dan folder Spam.",
+          "Jika email tersebut terdaftar dan akun aktif, tautan reset akan dikirim. Periksa Kotak Masuk dan folder Spam.",
       );
     } catch (error) {
       setErrorMessage(
@@ -52,6 +54,10 @@ const ForgotPasswordPage = () => {
     setErrorMessage("");
     setEmail("");
   };
+
+  const successDetail = message.startsWith(SUCCESS_TITLE)
+    ? message.slice(SUCCESS_TITLE.length).trim()
+    : message;
 
   return (
     <main className="login-page">
@@ -83,20 +89,17 @@ const ForgotPasswordPage = () => {
           {message ? (
             <>
               <div className="login-success" role="status">
-                <strong>Permintaan reset berhasil diproses.</strong>
-                <br />
-                {message}
+                <strong>{SUCCESS_TITLE}</strong>
+                {successDetail && <p>{successDetail}</p>}
                 {submittedEmail && (
-                  <>
-                    <br />
-                    <br />
+                  <p className="login-success-email">
                     Email yang dimasukkan: <strong>{submittedEmail}</strong>
-                  </>
+                  </p>
                 )}
-                <br />
-                <br />
-                Jika email belum diterima, periksa folder Spam,
-                pastikan alamat email benar, atau hubungi administrator.
+                <p>
+                  Jika email belum diterima, periksa folder Spam,
+                  pastikan alamat email benar, atau hubungi administrator.
+                </p>
               </div>
 
               <button
