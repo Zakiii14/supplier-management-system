@@ -11,6 +11,7 @@ import "../styles/login.css";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
+  const [submittedEmail, setSubmittedEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -20,28 +21,36 @@ const ForgotPasswordPage = () => {
     setMessage("");
     setErrorMessage("");
 
-    if (!email.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail) {
       setErrorMessage("Email wajib diisi.");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const response = await forgotPasswordRequest(
-        email.trim().toLowerCase(),
-      );
+      const response = await forgotPasswordRequest(normalizedEmail);
+      setSubmittedEmail(normalizedEmail);
       setMessage(
         response.message ||
-          "Jika email terdaftar, instruksi reset password akan dikirim.",
+          "Permintaan reset berhasil diproses. Jika email tersebut terdaftar dan akun aktif, tautan reset akan dikirim. Periksa Kotak Masuk dan folder Spam.",
       );
     } catch (error) {
       setErrorMessage(
         error.response?.data?.message ||
-          "Permintaan reset password gagal diproses.",
+          "Permintaan reset password gagal diproses. Silakan coba lagi.",
       );
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleUseAnotherEmail = () => {
+    setMessage("");
+    setSubmittedEmail("");
+    setErrorMessage("");
+    setEmail("");
   };
 
   return (
@@ -68,51 +77,74 @@ const ForgotPasswordPage = () => {
         <div className="login-card">
           <div className="login-card-header">
             <h2>Lupa password</h2>
-            <p>Kami akan mengirim tautan reset ke email akun Anda.</p>
+            <p>Kami akan memproses permintaan reset untuk email akun Anda.</p>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            {errorMessage && (
-              <div className="login-error" role="alert">
-                {errorMessage}
-              </div>
-            )}
-
-            {message && (
+          {message ? (
+            <>
               <div className="login-success" role="status">
+                <strong>Permintaan reset berhasil diproses.</strong>
+                <br />
                 {message}
+                {submittedEmail && (
+                  <>
+                    <br />
+                    <br />
+                    Email yang dimasukkan: <strong>{submittedEmail}</strong>
+                  </>
+                )}
+                <br />
+                <br />
+                Jika email belum diterima, periksa folder Spam,
+                pastikan alamat email benar, atau hubungi administrator.
               </div>
-            )}
 
-            <label className="login-field">
-              <span>Email</span>
-              <div className="login-input-wrapper">
-                <Mail aria-hidden="true" />
-                <input
-                  type="email"
-                  value={email}
-                  placeholder="nama@perusahaan.com"
-                  autoComplete="email"
-                  disabled={isSubmitting}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </div>
-            </label>
-
-            <button
-              type="submit"
-              className="login-submit"
-              disabled={isSubmitting}
-            >
-              {isSubmitting && (
-                <LoaderCircle
-                  className="login-spinner"
-                  aria-hidden="true"
-                />
+              <button
+                type="button"
+                className="login-submit"
+                onClick={handleUseAnotherEmail}
+              >
+                Gunakan email lain
+              </button>
+            </>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              {errorMessage && (
+                <div className="login-error" role="alert">
+                  {errorMessage}
+                </div>
               )}
-              {isSubmitting ? "Mengirim..." : "Kirim tautan reset"}
-            </button>
-          </form>
+
+              <label className="login-field">
+                <span>Email</span>
+                <div className="login-input-wrapper">
+                  <Mail aria-hidden="true" />
+                  <input
+                    type="email"
+                    value={email}
+                    placeholder="nama@perusahaan.com"
+                    autoComplete="email"
+                    disabled={isSubmitting}
+                    onChange={(event) => setEmail(event.target.value)}
+                  />
+                </div>
+              </label>
+
+              <button
+                type="submit"
+                className="login-submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting && (
+                  <LoaderCircle
+                    className="login-spinner"
+                    aria-hidden="true"
+                  />
+                )}
+                {isSubmitting ? "Memproses..." : "Kirim tautan reset"}
+              </button>
+            </form>
+          )}
 
           <p className="login-footer">
             <Link to="/login">Kembali ke halaman login</Link>
