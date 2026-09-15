@@ -802,6 +802,11 @@
       align-items: stretch;
     }
 
+    .page-heading > .secondary-action {
+      align-self: flex-start;
+      height: 42px;
+    }
+
     .secondary-action {
       flex: 0 0 auto;
       width: 42px;
@@ -1015,7 +1020,8 @@
     }
 }
 
-.page-heading .primary-action span {
+.page-heading .primary-action span,
+.page-heading .secondary-action span {
   display: inline;
   margin: 0;
   color: inherit;
@@ -1024,7 +1030,8 @@
 }
 
 @media (max-width: 700px) {
-    .page-heading .primary-action span {
+    .page-heading .primary-action span,
+    .page-heading .secondary-action span {
       display: none;
     }
 }

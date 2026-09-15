@@ -204,7 +204,7 @@ const StockOpnamesPage = () => {
 
   return (
     <div className="stock-opnames-page">
-      <section className="page-heading"><div><p>Purchasing &amp; Inventory</p><h2>Stock Opname</h2><span>Cocokkan stok sistem dengan hasil penghitungan fisik secara terkontrol.</span></div><div className="page-heading-actions">{canCreate && <button type="button" className="primary-action" disabled={busy} onClick={openCreate}><Plus aria-hidden="true" /> Tambah stock opname</button>}<button type="button" className="secondary-action" disabled={loading} onClick={() => setReloadKey((value) => value + 1)}><RefreshCw className={loading ? "is-spinning" : ""} aria-hidden="true" /> Muat ulang</button></div></section>
+      <section className="page-heading"><div><p>Purchasing &amp; Inventory</p><h2>Stock Opname</h2><span>Cocokkan stok sistem dengan hasil penghitungan fisik secara terkontrol.</span></div><div className="page-heading-actions">{canCreate && <button type="button" className="primary-action" disabled={busy} onClick={openCreate}><Plus aria-hidden="true" /> <span>Tambah stock opname</span></button>}<button type="button" className="secondary-action" disabled={loading} onClick={() => setReloadKey((value) => value + 1)}><RefreshCw className={loading ? "is-spinning" : ""} aria-hidden="true" /> Muat ulang</button></div></section>
       {actionError && !formOpen && !detail && <div className="data-error" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Tindakan tidak dapat diproses</strong><span>{actionError}</span></div></div>}
       <section className="data-panel">
         <form ref={filtersRef} className="data-filters stock-opname-filters" onSubmit={(event) => { event.preventDefault(); setPage(1); setSearch(searchInput.trim()); }}>
