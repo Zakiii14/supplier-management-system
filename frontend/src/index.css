@@ -3,8 +3,8 @@
     Inter, "Segoe UI Variable Text", "Segoe UI",
     ui-sans-serif, system-ui, -apple-system,
     BlinkMacSystemFont, sans-serif;
-  color: #172033;
-  background: #f4f7fb;
+  color: var(--sf-text, #172033);
+  background: var(--sf-bg, #f4f7fb);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -18,7 +18,7 @@
 html {
   min-width: 320px;
   min-height: 100%;
-  background: #f4f7fb;
+  background: var(--sf-bg, #f4f7fb);
 }
 
 body {
@@ -29,12 +29,16 @@ body {
 
 body,
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
 button,
-input {
+input,
+select,
+textarea {
   color: inherit;
 }
 
@@ -61,8 +65,8 @@ svg {
 }
 
 ::selection {
-  color: #ffffff;
-  background: #2563eb;
+  color: var(--sf-on-primary, #ffffff);
+  background: var(--sf-primary, #2563eb);
 }
 
 .session-loading {
@@ -71,8 +75,8 @@ svg {
   place-content: center;
   justify-items: center;
   gap: 14px;
-  color: #64748b;
-  background: #f4f7fb;
+  color: var(--sf-text-muted, #64748b);
+  background: var(--sf-bg, #f4f7fb);
 }
 
 .session-loading p {
@@ -84,8 +88,8 @@ svg {
 .session-loading-spinner {
   width: 34px;
   height: 34px;
-  border: 3px solid #dbe4f0;
-  border-top-color: #2563eb;
+  border: 3px solid var(--sf-border, #dbe4f0);
+  border-top-color: var(--sf-primary, #2563eb);
   border-radius: 50%;
   animation: session-spin 0.8s linear infinite;
 }
