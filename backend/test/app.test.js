@@ -35,7 +35,7 @@ test(
     assert.equal(response.status, 401);
     assert.deepEqual(response.body, {
       success: false,
-      message: "Authentication token is required",
+      message: "Token autentikasi wajib tersedia.",
     });
   }
 );
