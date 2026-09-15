@@ -205,7 +205,7 @@ test(
     assert.deepEqual(response.body, {
       success: false,
       message:
-        "You do not have permission to access this resource",
+        "Anda tidak memiliki izin untuk mengakses halaman ini.",
     });
   }
 );
@@ -221,7 +221,7 @@ test(
     assert.equal(response.status, 401);
     assert.deepEqual(response.body, {
       success: false,
-      message: "Invalid credentials",
+      message: "Username/email atau password salah.",
     });
   }
 );
