@@ -63,10 +63,14 @@ const login = async (req, res) => {
 
     const user = result.rows[0];
 
+    // Invitation-created accounts stay INACTIVE and passwordless until their
+    // activation token is consumed. Keeping login gated by status + password
+    // preserves compatibility with legacy/internal accounts that predate email
+    // verification while still preventing invited accounts from signing in
+    // before activation.
     if (
       user.status !== "ACTIVE" ||
-      !user.password_hash ||
-      (user.email && !user.email_verified_at)
+      !user.password_hash
     ) {
       return res.status(401).json({
         success: false,
@@ -155,60 +159,57 @@ const forgotPassword = async (req, res) => {
 
     const user = result.rows[0];
 
-    if (!user || user.status !== "ACTIVE" || !user.password_hash) {
-      return res.status(200).json(genericResponse);
+    if (
+      user &&
+      user.status === "ACTIVE" &&
+      user.password_hash
+    ) {
+      const { rawToken, expiresAt } = await createAuthToken({
+        userId: user.id,
+        type: TOKEN_TYPES.PASSWORD_RESET,
+        ttlMinutes: Number(process.env.PASSWORD_RESET_TTL_MINUTES) || 30,
+      });
+
+      await sendPasswordResetEmail({
+        to: user.email,
+        fullName: user.full_name,
+        token: rawToken,
+        expiresAt,
+      });
     }
-
-    const { token, expiresAt } = await createAuthToken({
-      userId: user.id,
-      tokenType: TOKEN_TYPES.PASSWORD_RESET,
-    });
-
-    await sendPasswordResetEmail({
-      email: user.email,
-      fullName: user.full_name,
-      token,
-      expiresAt,
-    });
 
     return res.status(200).json(genericResponse);
   } catch (error) {
     console.error("Forgot password error:", error);
-
     return res.status(200).json(genericResponse);
   }
 };
 
 const validatePasswordResetToken = async (req, res) => {
   try {
-    const token =
-      typeof req.query?.token === "string"
-        ? req.query.token.trim()
-        : "";
+    const tokenRecord = await findValidAuthToken(
+      req.query?.token,
+      TOKEN_TYPES.PASSWORD_RESET,
+    );
 
-    const authToken = await findValidAuthToken({
-      token,
-      tokenType: TOKEN_TYPES.PASSWORD_RESET,
-    });
-
-    if (!authToken) {
+    if (!tokenRecord) {
       return res.status(400).json({
         success: false,
-        message: "Reset password link is invalid or expired",
+        message: "Reset password link is invalid or has expired",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Reset password link is valid",
+      message: "Reset password token is valid",
       data: {
-        email: authToken.email,
-        expires_at: authToken.expires_at,
+        email: tokenRecord.email,
+        full_name: tokenRecord.full_name,
+        expires_at: tokenRecord.expires_at,
       },
     });
   } catch (error) {
     console.error("Validate password reset token error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to validate reset password link",
@@ -217,8 +218,10 @@ const validatePasswordResetToken = async (req, res) => {
 };
 
 const resetPassword = async (req, res) => {
+  const client = await pool.connect();
+
   try {
-    const { token, password, password_confirmation } = req.body || {};
+    const { token, password, password_confirmation } = req.body ?? {};
 
     if (!token) {
       return res.status(400).json({
@@ -234,89 +237,100 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    if (
-      password_confirmation !== undefined &&
-      password !== password_confirmation
-    ) {
+    if (password !== password_confirmation) {
       return res.status(400).json({
         success: false,
         message: "Password confirmation does not match",
       });
     }
 
-    const authToken = await findValidAuthToken({
-      token,
-      tokenType: TOKEN_TYPES.PASSWORD_RESET,
-    });
+    await client.query("BEGIN");
 
-    if (!authToken) {
+    const tokenRecord = await findValidAuthToken(
+      token,
+      TOKEN_TYPES.PASSWORD_RESET,
+      client,
+    );
+
+    if (!tokenRecord) {
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: "Reset password link is invalid or expired",
+        message: "Reset password link is invalid or has expired",
       });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const consumed = await consumeAuthToken({
-      tokenId: authToken.id,
-      userId: authToken.user_id,
-      passwordHash,
-    });
+    await client.query(
+      `
+      UPDATE app.users
+      SET
+        password_hash = $1,
+        password_changed_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $2
+      `,
+      [passwordHash, tokenRecord.user_id],
+    );
 
-    if (!consumed) {
-      return res.status(400).json({
-        success: false,
-        message: "Reset password link is invalid or expired",
-      });
-    }
+    await consumeAuthToken(tokenRecord.id, client);
+
+    await client.query(
+      `
+      UPDATE app.auth_tokens
+      SET used_at = COALESCE(used_at, NOW())
+      WHERE user_id = $1
+        AND token_type = 'PASSWORD_RESET'
+        AND used_at IS NULL
+      `,
+      [tokenRecord.user_id],
+    );
+
+    await client.query("COMMIT");
 
     return res.status(200).json({
       success: true,
       message: "Password has been reset successfully",
     });
   } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
     console.error("Reset password error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to reset password",
     });
+  } finally {
+    client.release();
   }
 };
 
 const validateActivationToken = async (req, res) => {
   try {
-    const token =
-      typeof req.query?.token === "string"
-        ? req.query.token.trim()
-        : "";
+    const tokenRecord = await findValidAuthToken(
+      req.query?.token,
+      TOKEN_TYPES.ACCOUNT_ACTIVATION,
+    );
 
-    const authToken = await findValidAuthToken({
-      token,
-      tokenType: TOKEN_TYPES.ACCOUNT_ACTIVATION,
-    });
-
-    if (!authToken) {
+    if (!tokenRecord) {
       return res.status(400).json({
         success: false,
-        message: "Activation link is invalid or expired",
+        message: "Activation link is invalid or has expired",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Activation link is valid",
+      message: "Activation token is valid",
       data: {
-        username: authToken.username,
-        full_name: authToken.full_name,
-        email: authToken.email,
-        expires_at: authToken.expires_at,
+        username: tokenRecord.username,
+        email: tokenRecord.email,
+        full_name: tokenRecord.full_name,
+        expires_at: tokenRecord.expires_at,
       },
     });
   } catch (error) {
     console.error("Validate activation token error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to validate activation link",
@@ -325,8 +339,10 @@ const validateActivationToken = async (req, res) => {
 };
 
 const activateAccount = async (req, res) => {
+  const client = await pool.connect();
+
   try {
-    const { token, password, password_confirmation } = req.body || {};
+    const { token, password, password_confirmation } = req.body ?? {};
 
     if (!token) {
       return res.status(400).json({
@@ -342,55 +358,73 @@ const activateAccount = async (req, res) => {
       });
     }
 
-    if (
-      password_confirmation !== undefined &&
-      password !== password_confirmation
-    ) {
+    if (password !== password_confirmation) {
       return res.status(400).json({
         success: false,
         message: "Password confirmation does not match",
       });
     }
 
-    const authToken = await findValidAuthToken({
-      token,
-      tokenType: TOKEN_TYPES.ACCOUNT_ACTIVATION,
-    });
+    await client.query("BEGIN");
 
-    if (!authToken) {
+    const tokenRecord = await findValidAuthToken(
+      token,
+      TOKEN_TYPES.ACCOUNT_ACTIVATION,
+      client,
+    );
+
+    if (!tokenRecord) {
+      await client.query("ROLLBACK");
       return res.status(400).json({
         success: false,
-        message: "Activation link is invalid or expired",
+        message: "Activation link is invalid or has expired",
       });
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const consumed = await consumeAuthToken({
-      tokenId: authToken.id,
-      userId: authToken.user_id,
-      passwordHash,
-      verifyEmail: true,
-    });
+    await client.query(
+      `
+      UPDATE app.users
+      SET
+        password_hash = $1,
+        status = 'ACTIVE',
+        email_verified_at = COALESCE(email_verified_at, NOW()),
+        password_changed_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $2
+      `,
+      [passwordHash, tokenRecord.user_id],
+    );
 
-    if (!consumed) {
-      return res.status(400).json({
-        success: false,
-        message: "Activation link is invalid or expired",
-      });
-    }
+    await consumeAuthToken(tokenRecord.id, client);
+
+    await client.query(
+      `
+      UPDATE app.auth_tokens
+      SET used_at = COALESCE(used_at, NOW())
+      WHERE user_id = $1
+        AND token_type = 'ACCOUNT_ACTIVATION'
+        AND used_at IS NULL
+      `,
+      [tokenRecord.user_id],
+    );
+
+    await client.query("COMMIT");
 
     return res.status(200).json({
       success: true,
-      message: "Account activated successfully",
+      message: "Account activated successfully. You can now log in.",
     });
   } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
     console.error("Activate account error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to activate account",
     });
+  } finally {
+    client.release();
   }
 };
 
