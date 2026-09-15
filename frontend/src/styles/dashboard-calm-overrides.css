@@ -1,0 +1,71 @@
+/* Calm dashboard and sidebar visuals.
+ * Keep dashboard surfaces flat and neutral across light, dark, and system themes.
+ */
+
+.sidebar-brand-icon {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary);
+  border: 1px solid color-mix(in srgb, var(--sf-primary) 78%, var(--sf-border));
+  box-shadow: none;
+}
+
+.sidebar-link.is-active {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary);
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.sidebar-link.is-active svg {
+  color: currentColor;
+}
+
+.sidebar-account-card {
+  background: var(--sf-surface-muted);
+}
+
+.dashboard-welcome,
+html[data-theme="dark"] .dashboard-welcome {
+  color: var(--sf-text-strong);
+  background: var(--sf-accent-soft);
+  border-color: var(--sf-border);
+  box-shadow: var(--sf-shadow-card);
+}
+
+.dashboard-refresh-button {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary);
+  border-color: var(--sf-primary);
+  box-shadow: none;
+}
+
+.dashboard-refresh-button:hover:not(:disabled) {
+  color: var(--sf-on-primary);
+  background: var(--sf-primary-hover);
+  border-color: var(--sf-primary-hover);
+}
+
+.sidebar-instant-tooltip {
+  position: fixed;
+  z-index: 1400;
+  min-width: max-content;
+  max-width: 240px;
+  padding: 7px 10px;
+  color: var(--sf-surface);
+  background: var(--sf-text-strong);
+  border: 1px solid color-mix(in srgb, var(--sf-text-strong) 82%, transparent);
+  border-radius: 8px;
+  box-shadow: var(--sf-shadow-menu);
+  font-size: 0.72rem;
+  font-weight: 650;
+  line-height: 1.25;
+  pointer-events: none;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .sidebar-instant-tooltip {
+    display: none;
+  }
+}
