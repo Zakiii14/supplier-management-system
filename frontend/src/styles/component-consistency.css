@@ -1,0 +1,321 @@
+/* SupplyFlow component consistency layer.
+ * Standardizes visual treatment across mature modules without changing business logic.
+ */
+
+:root {
+  --sf-radius-panel: 12px;
+  --sf-radius-control: 10px;
+  --sf-radius-dialog: 18px;
+  --sf-backdrop: rgb(15 23 42 / 56%);
+  --sf-shadow-dialog: 0 24px 64px rgb(15 23 42 / 24%);
+}
+
+html[data-theme="dark"] {
+  --sf-backdrop: rgb(2 6 23 / 72%);
+  --sf-shadow-dialog: 0 24px 64px rgb(0 0 0 / 42%);
+}
+
+/* Shared panels and cards */
+.data-panel,
+.report-section,
+.report-summary-card,
+.code-setting-card,
+.dashboard-panel,
+.dashboard-operation-card,
+.module-placeholder {
+  border-radius: var(--sf-radius-panel);
+  border-color: var(--sf-border);
+  background: var(--sf-surface);
+  box-shadow: var(--sf-shadow-card);
+}
+
+.report-tabs > button,
+.report-filter-panel,
+.payment-settings-card,
+.master-data-import-card {
+  border-color: var(--sf-border);
+  box-shadow: var(--sf-shadow-card);
+}
+
+/* Shared detail dialog foundation */
+.purchase-order-detail-backdrop,
+.goods-receipt-detail-backdrop,
+.user-detail-backdrop,
+.payment-detail-backdrop,
+.invoice-detail-backdrop,
+.delivery-detail-backdrop,
+.supplier-invoice-detail-backdrop,
+.stock-opname-detail-backdrop,
+.purchase-return-detail-backdrop,
+.sales-return-detail-backdrop,
+.inventory-movement-detail-backdrop,
+.status-dialog-backdrop {
+  background: var(--sf-backdrop);
+  backdrop-filter: blur(3px);
+}
+
+.purchase-order-detail-dialog,
+.goods-receipt-detail-dialog,
+.user-detail-dialog,
+.payment-detail-dialog,
+.invoice-detail-dialog,
+.delivery-detail-dialog,
+.supplier-invoice-detail-dialog,
+.stock-opname-detail-dialog,
+.purchase-return-detail-dialog,
+.sales-return-detail-dialog,
+.inventory-movement-detail-dialog,
+.status-dialog {
+  border-color: var(--sf-border);
+  border-radius: var(--sf-radius-dialog);
+  background: var(--sf-surface);
+  box-shadow: var(--sf-shadow-dialog);
+}
+
+/* Standard detail headers */
+.purchase-order-detail-header,
+.goods-receipt-detail-header,
+.user-detail-header,
+.payment-detail-header,
+.invoice-detail-header,
+.delivery-detail-header,
+.supplier-invoice-detail-header,
+.stock-opname-detail-header,
+.purchase-return-detail-header,
+.sales-return-detail-header,
+.inventory-movement-detail-header {
+  gap: 18px;
+  padding: 20px 22px;
+  background: var(--sf-surface);
+  border-bottom: 1px solid var(--sf-border);
+}
+
+/* Standard dialog body spacing */
+.purchase-order-detail-content,
+.goods-receipt-detail-content,
+.user-detail-content,
+.payment-detail-content,
+.invoice-detail-content,
+.delivery-detail-content,
+.supplier-invoice-detail-content,
+.stock-opname-detail-content,
+.purchase-return-detail-content,
+.sales-return-detail-content,
+.inventory-movement-detail-content {
+  gap: 18px;
+  padding: 22px;
+}
+
+/* Standard detail footers */
+.purchase-order-detail-footer,
+.goods-receipt-detail-footer,
+.user-detail-footer,
+.payment-detail-footer,
+.invoice-detail-footer,
+.delivery-detail-footer,
+.supplier-invoice-detail-footer,
+.stock-opname-detail-footer,
+.purchase-return-detail-footer,
+.sales-return-detail-footer,
+.inventory-movement-detail-footer {
+  min-height: 66px;
+  padding: 12px 22px;
+  background: var(--sf-surface);
+  border-top: 1px solid var(--sf-border);
+}
+
+/* Standard detail close buttons */
+.purchase-order-detail-close,
+.goods-receipt-detail-close,
+.user-detail-close,
+.payment-detail-close,
+.invoice-detail-close,
+.delivery-detail-close,
+.supplier-invoice-detail-close,
+.stock-opname-detail-close,
+.purchase-return-detail-close,
+.sales-return-detail-close,
+.inventory-movement-detail-close,
+.status-dialog-close {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  color: var(--sf-text-muted);
+  background: var(--sf-surface-muted);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--sf-radius-control);
+  box-shadow: none;
+}
+
+.purchase-order-detail-close:hover,
+.goods-receipt-detail-close:hover,
+.user-detail-close:hover,
+.payment-detail-close:hover,
+.invoice-detail-close:hover,
+.delivery-detail-close:hover,
+.supplier-invoice-detail-close:hover,
+.stock-opname-detail-close:hover,
+.purchase-return-detail-close:hover,
+.sales-return-detail-close:hover,
+.inventory-movement-detail-close:hover,
+.status-dialog-close:hover {
+  color: var(--sf-text-strong);
+  background: var(--sf-surface-active);
+  border-color: var(--sf-border-strong);
+}
+
+.purchase-order-detail-close:focus-visible,
+.goods-receipt-detail-close:focus-visible,
+.user-detail-close:focus-visible,
+.payment-detail-close:focus-visible,
+.invoice-detail-close:focus-visible,
+.delivery-detail-close:focus-visible,
+.supplier-invoice-detail-close:focus-visible,
+.stock-opname-detail-close:focus-visible,
+.purchase-return-detail-close:focus-visible,
+.sales-return-detail-close:focus-visible,
+.inventory-movement-detail-close:focus-visible,
+.status-dialog-close:focus-visible {
+  outline: 3px solid var(--sf-focus);
+  outline-offset: 2px;
+}
+
+/* Common form modal containers */
+.product-form-modal,
+.category-form-modal,
+.purchase-order-form-modal,
+.goods-receipt-form-modal,
+.delivery-form-modal,
+.invoice-form-modal,
+.payment-form-modal,
+.user-form-modal,
+.user-password-modal,
+.stock-opname-form-modal,
+.purchase-return-form-modal,
+.sales-return-form-modal,
+.supplier-invoice-form-modal {
+  border-color: var(--sf-border);
+  border-radius: var(--sf-radius-dialog);
+  background: var(--sf-surface);
+  box-shadow: var(--sf-shadow-dialog);
+}
+
+/* Shared form controls should read as one family. */
+.product-form-field input,
+.product-form-field textarea,
+.purchase-order-form-field input,
+.purchase-order-form-field textarea,
+.form-select-trigger,
+.form-date-picker-trigger,
+.search-control,
+.status-filter-trigger {
+  border-radius: var(--sf-radius-control);
+}
+
+/* Empty/loading/error presentation */
+.table-message,
+.code-settings-loading,
+.notification-state {
+  color: var(--sf-text-muted);
+}
+
+.data-error,
+.status-dialog-error,
+.login-error {
+  border-radius: var(--sf-radius-control);
+}
+
+/* Report interactions align with the calmer application language. */
+.report-tabs > button,
+.report-trend-metrics button {
+  transform: none;
+}
+
+.report-tabs > button:hover,
+.report-trend-metrics button:hover {
+  transform: none;
+  box-shadow: var(--sf-shadow-card);
+}
+
+@media (max-width: 700px) {
+  .purchase-order-detail-backdrop,
+  .goods-receipt-detail-backdrop,
+  .user-detail-backdrop,
+  .payment-detail-backdrop,
+  .invoice-detail-backdrop,
+  .delivery-detail-backdrop,
+  .supplier-invoice-detail-backdrop,
+  .stock-opname-detail-backdrop,
+  .purchase-return-detail-backdrop,
+  .sales-return-detail-backdrop,
+  .inventory-movement-detail-backdrop,
+  .status-dialog-backdrop {
+    align-items: flex-end;
+    padding: 0;
+    backdrop-filter: none;
+  }
+
+  .purchase-order-detail-dialog,
+  .goods-receipt-detail-dialog,
+  .user-detail-dialog,
+  .payment-detail-dialog,
+  .invoice-detail-dialog,
+  .delivery-detail-dialog,
+  .supplier-invoice-detail-dialog,
+  .stock-opname-detail-dialog,
+  .purchase-return-detail-dialog,
+  .sales-return-detail-dialog,
+  .inventory-movement-detail-dialog {
+    width: 100%;
+    max-height: calc(100dvh - 8px);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: var(--sf-radius-dialog) var(--sf-radius-dialog) 0 0;
+  }
+
+  .purchase-order-detail-header,
+  .goods-receipt-detail-header,
+  .user-detail-header,
+  .payment-detail-header,
+  .invoice-detail-header,
+  .delivery-detail-header,
+  .supplier-invoice-detail-header,
+  .stock-opname-detail-header,
+  .purchase-return-detail-header,
+  .sales-return-detail-header,
+  .inventory-movement-detail-header {
+    padding: 16px;
+  }
+
+  .purchase-order-detail-content,
+  .goods-receipt-detail-content,
+  .user-detail-content,
+  .payment-detail-content,
+  .invoice-detail-content,
+  .delivery-detail-content,
+  .supplier-invoice-detail-content,
+  .stock-opname-detail-content,
+  .purchase-return-detail-content,
+  .sales-return-detail-content,
+  .inventory-movement-detail-content {
+    gap: 15px;
+    padding: 16px;
+  }
+
+  .purchase-order-detail-footer,
+  .goods-receipt-detail-footer,
+  .user-detail-footer,
+  .payment-detail-footer,
+  .invoice-detail-footer,
+  .delivery-detail-footer,
+  .supplier-invoice-detail-footer,
+  .stock-opname-detail-footer,
+  .purchase-return-detail-footer,
+  .sales-return-detail-footer,
+  .inventory-movement-detail-footer {
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+}
