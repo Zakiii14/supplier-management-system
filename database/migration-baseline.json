@@ -1,0 +1,5 @@
+{
+  "version": 20,
+  "schema_snapshot": "database/schema.sql",
+  "note": "Legacy migrations 001-020 predate schema_migrations tracking. Baseline only these versions; newer migrations must execute normally."
+}

@@ -8,6 +8,8 @@
     "dev": "nodemon src/server.js",
     "test": "node --test --test-concurrency=1",
     "migrate": "node scripts/runSqlMigration.js",
+    "migrate:status": "node scripts/runSqlMigration.js --status",
+    "migrate:baseline": "node scripts/runSqlMigration.js --baseline",
     "set-password": "node scripts/setUserPassword.js"
   },
   "keywords": [],
