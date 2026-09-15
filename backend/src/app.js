@@ -38,14 +38,21 @@ const stockOpnameRoutes = require("./routes/stockOpnameRoutes");
 const purchaseReturnRoutes = require("./routes/purchaseReturnRoutes");
 const salesReturnRoutes = require("./routes/salesReturnRoutes");
 const auditMiddleware = require("./middleware/auditMiddleware");
+const securityHeaders = require("./middleware/securityHeadersMiddleware");
+const corsMiddleware = require("./middleware/corsMiddleware");
 
 const authenticate = require("./middleware/authMiddleware");
 
 const app = express();
 
-// const PORT = Number(process.env.PORT) || 3000;
+app.disable("x-powered-by");
 
-// Wajib agar Express bisa membaca JSON body
+if (process.env.TRUST_PROXY === "true") {
+  app.set("trust proxy", 1);
+}
+
+app.use(securityHeaders);
+app.use(corsMiddleware);
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/", (req, res) => {
@@ -154,7 +161,3 @@ app.use((req, res) => {
 });
 
 module.exports = app;
-
-// app.listen(PORT, () => {
-//   console.log(`Server running at http://localhost:${PORT}`);
-// });
