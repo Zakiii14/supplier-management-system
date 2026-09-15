@@ -7,8 +7,18 @@ const {
   updateUser,
   resetUserPassword,
 } = require("../controllers/userController");
-const { getUserAvatar, replaceUserAvatar, deleteUserAvatar } = require("../controllers/userAvatarController");
-const { uploadUserAvatar } = require("../services/userAvatarService");
+const {
+  inviteUser,
+  resendInvitation,
+} = require("../controllers/userInvitationController");
+const {
+  getUserAvatar,
+  replaceUserAvatar,
+  deleteUserAvatar,
+} = require("../controllers/userAvatarController");
+const {
+  uploadUserAvatar,
+} = require("../services/userAvatarService");
 
 const authorizeRoles = require(
   "../middleware/authorizeRoles"
@@ -19,36 +29,56 @@ const router = express.Router();
 router.get(
   "/",
   authorizeRoles("ADMIN"),
-  getAllUsers
+  getAllUsers,
 );
 
 router.post(
   "/",
   authorizeRoles("ADMIN"),
-  createUser
+  createUser,
+);
+
+router.post(
+  "/invite",
+  authorizeRoles("ADMIN"),
+  inviteUser,
+);
+
+router.post(
+  "/:id/resend-invitation",
+  authorizeRoles("ADMIN"),
+  resendInvitation,
 );
 
 router.get("/:id/avatar", getUserAvatar);
-router.put("/:id/avatar", authorizeRoles("ADMIN"), uploadUserAvatar, replaceUserAvatar);
-router.delete("/:id/avatar", authorizeRoles("ADMIN"), deleteUserAvatar);
+router.put(
+  "/:id/avatar",
+  authorizeRoles("ADMIN"),
+  uploadUserAvatar,
+  replaceUserAvatar,
+);
+router.delete(
+  "/:id/avatar",
+  authorizeRoles("ADMIN"),
+  deleteUserAvatar,
+);
 
 router.get(
   "/:id",
   authorizeRoles("ADMIN"),
-  getUserById
+  getUserById,
 );
 
 router.patch(
   "/:id",
   authorizeRoles("ADMIN"),
-  updateUser
+  updateUser,
 );
-
 
 router.patch(
   "/:id/password",
   authorizeRoles("ADMIN"),
-  resetUserPassword
+  resetUserPassword,
 );
 
 module.exports = router;
