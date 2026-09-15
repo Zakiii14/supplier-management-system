@@ -13,6 +13,9 @@ const TRACKED_ENVIRONMENT_KEYS = [
   "DB_PASSWORD",
   "DB_SSL_MODE",
   "DB_SSL_CA",
+  "LOG_LEVEL",
+  "READINESS_TIMEOUT_MS",
+  "SHUTDOWN_TIMEOUT_MS",
   "JWT_SECRET",
   "FRONTEND_URL",
   "EMAIL_PROVIDER",
@@ -78,6 +81,9 @@ test("accepts production database settings with TLS required", () => {
     ...discreteDatabaseEnvironment,
     ...productionEnvironment,
     DB_SSL_MODE: "require",
+    LOG_LEVEL: "info",
+    READINESS_TIMEOUT_MS: "3000",
+    SHUTDOWN_TIMEOUT_MS: "10000",
   });
 
   assert.doesNotThrow(() => validateEnvironment());
@@ -117,5 +123,29 @@ test("rejects duplicate PostgreSQL SSL configuration", () => {
   assert.throws(
     () => validateEnvironment(),
     /Configure PostgreSQL SSL either with DB_SSL_MODE or SSL parameters in DATABASE_URL/,
+  );
+});
+
+test("rejects invalid production runtime settings", () => {
+  applyEnvironment({
+    ...discreteDatabaseEnvironment,
+    ...productionEnvironment,
+    DB_SSL_MODE: "require",
+    LOG_LEVEL: "verbose",
+    READINESS_TIMEOUT_MS: "0",
+    SHUTDOWN_TIMEOUT_MS: "not-a-number",
+  });
+
+  assert.throws(
+    () => validateEnvironment(),
+    /LOG_LEVEL must be debug, info, warn, error, or silent/,
+  );
+  assert.throws(
+    () => validateEnvironment(),
+    /READINESS_TIMEOUT_MS must be a positive integer/,
+  );
+  assert.throws(
+    () => validateEnvironment(),
+    /SHUTDOWN_TIMEOUT_MS must be a positive integer/,
   );
 });

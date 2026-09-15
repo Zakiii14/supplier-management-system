@@ -40,6 +40,9 @@ const salesReturnRoutes = require("./routes/salesReturnRoutes");
 const auditMiddleware = require("./middleware/auditMiddleware");
 const securityHeaders = require("./middleware/securityHeadersMiddleware");
 const corsMiddleware = require("./middleware/corsMiddleware");
+const errorHandler = require("./middleware/errorHandler");
+const { health, readiness } = require("./runtime/health");
+const logger = require("./utils/logger");
 
 const authenticate = require("./middleware/authMiddleware");
 
@@ -61,6 +64,9 @@ app.get("/", (req, res) => {
   });
 });
 
+app.get("/health", health);
+app.get("/ready", readiness);
+
 app.get(
   "/api/test-db",
   authenticate,
@@ -78,10 +84,7 @@ app.get(
         database_time: result.rows[0].now,
       });
     } catch (error) {
-      console.error(
-        "Database connection error:",
-        error
-      );
+      logger.error("database_test_failed", { error });
 
       res.status(500).json({
         success: false,
@@ -132,32 +135,13 @@ app.use(
 app.use("/api/tax-settings", authenticate, taxSettingRoutes);
 app.use("/api/auth", authRoutes);
 
-app.use((error, req, res, next) => {
-  if (error instanceof require("multer").MulterError) {
-    return res.status(400).json({
-      success: false,
-      message:
-        error.code === "LIMIT_FILE_SIZE"
-          ? "Ukuran file maksimal 2 MB"
-          : "File impor tidak dapat diproses",
-    });
-  }
-
-  if (error?.statusCode) {
-    return res.status(error.statusCode).json({
-      success: false,
-      message: error.message,
-    });
-  }
-
-  return next(error);
-});
-
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: "Endpoint not found",
   });
 });
+
+app.use(errorHandler);
 
 module.exports = app;

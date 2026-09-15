@@ -14,6 +14,17 @@ const INSECURE_DATABASE_URL_SSL_MODES = new Set([
   "allow",
   "prefer",
 ]);
+const SUPPORTED_LOG_LEVELS = new Set([
+  "debug",
+  "info",
+  "warn",
+  "error",
+  "silent",
+]);
+const POSITIVE_INTEGER_RUNTIME_VARIABLES = [
+  "READINESS_TIMEOUT_MS",
+  "SHUTDOWN_TIMEOUT_MS",
+];
 
 const parseDatabaseUrl = (value) => {
   if (!value) {
@@ -42,6 +53,7 @@ const validateEnvironment = () => {
   const databaseUrl = (process.env.DATABASE_URL || "").trim();
   const parsedDatabaseUrl = parseDatabaseUrl(databaseUrl);
   const dbSslMode = (process.env.DB_SSL_MODE || "").trim().toLowerCase();
+  const logLevel = (process.env.LOG_LEVEL || "").trim().toLowerCase();
 
   if (!databaseUrl) {
     for (const variable of ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"]) {
@@ -92,6 +104,20 @@ const validateEnvironment = () => {
       errors.push(
         `DATABASE_URL sslmode=${connectionStringSslMode} is not allowed in production`,
       );
+    }
+  }
+
+  if (logLevel && !SUPPORTED_LOG_LEVELS.has(logLevel)) {
+    errors.push("LOG_LEVEL must be debug, info, warn, error, or silent");
+  }
+
+  for (const variable of POSITIVE_INTEGER_RUNTIME_VARIABLES) {
+    if (
+      process.env[variable] &&
+      (!Number.isInteger(Number(process.env[variable])) ||
+        Number(process.env[variable]) <= 0)
+    ) {
+      errors.push(`${variable} must be a positive integer`);
     }
   }
 
