@@ -9,6 +9,7 @@ import "./styles/theme.css";
 import "./styles/modern-interactive-charts.css";
 import "./styles/modern-dashboard-layout.css";
 import "./styles/user-mobile-name-fix.css";
+import "./styles/dashboard-calm-overrides.css";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
