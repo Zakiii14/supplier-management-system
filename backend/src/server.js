@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const validateEnvironment = require("./config/validateEnvironment");
 
 validateEnvironment();
