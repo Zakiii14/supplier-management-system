@@ -8,6 +8,7 @@ import {
   UserRound,
 } from "lucide-react";
 import {
+  Link,
   useLocation,
   useNavigate,
 } from "react-router-dom";
@@ -41,7 +42,6 @@ const LoginPage = () => {
 
     try {
       setIsSubmitting(true);
-
       await login(identifier.trim(), password);
 
       const destination =
@@ -65,7 +65,6 @@ const LoginPage = () => {
           <span className="login-brand-icon">
             <PackageCheck aria-hidden="true" />
           </span>
-
           <span>SupplyFlow</span>
         </div>
 
@@ -73,12 +72,7 @@ const LoginPage = () => {
           <p className="login-eyebrow">
             Supplier Management System
           </p>
-
-          <h1>
-            Kelola seluruh proses bisnis dalam satu
-            tempat.
-          </h1>
-
+          <h1>Kelola seluruh proses bisnis dalam satu tempat.</h1>
           <p>
             Pantau pemasok, pembelian, persediaan,
             penjualan, pengiriman, dan keuangan melalui
@@ -103,10 +97,8 @@ const LoginPage = () => {
 
             <label className="login-field">
               <span>Username atau email</span>
-
               <div className="login-input-wrapper">
                 <UserRound aria-hidden="true" />
-
                 <input
                   type="text"
                   name="identifier"
@@ -123,14 +115,10 @@ const LoginPage = () => {
 
             <label className="login-field">
               <span>Password</span>
-
               <div className="login-input-wrapper">
                 <LockKeyhole aria-hidden="true" />
-
                 <input
-                  type={
-                    showPassword ? "text" : "password"
-                  }
+                  type={showPassword ? "text" : "password"}
                   name="password"
                   value={password}
                   onChange={(event) =>
@@ -163,6 +151,10 @@ const LoginPage = () => {
               </div>
             </label>
 
+            <div style={{ textAlign: "right", marginTop: "-10px" }}>
+              <Link to="/forgot-password">Lupa password?</Link>
+            </div>
+
             <button
               type="submit"
               className="login-submit"
@@ -174,7 +166,6 @@ const LoginPage = () => {
                   aria-hidden="true"
                 />
               )}
-
               {isSubmitting ? "Memproses..." : "Masuk"}
             </button>
           </form>

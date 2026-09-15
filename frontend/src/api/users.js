@@ -18,11 +18,19 @@ const getUserByIdRequest = async (userId) => {
 
 const createUserRequest = async (payload) => {
   const response = await apiClient.post(
-    "/users",
+    "/users/invite",
     payload,
   );
 
   return response.data.data;
+};
+
+const resendUserInvitationRequest = async (userId) => {
+  const response = await apiClient.post(
+    `/users/${userId}/resend-invitation`,
+  );
+
+  return response.data;
 };
 
 const updateUserRequest = async (
@@ -81,6 +89,7 @@ const deleteUserAvatarRequest = async (userId) => {
 
 export {
   createUserRequest,
+  resendUserInvitationRequest,
   getUserByIdRequest,
   getUsersRequest,
   getUserAvatarRequest,
