@@ -3,8 +3,7 @@ const pool = require("../config/database");
 
 const authenticate = async (req, res, next) => {
   try {
-    const authorization =
-      req.headers.authorization;
+    const authorization = req.headers.authorization;
 
     if (
       !authorization ||
@@ -25,9 +24,13 @@ const authenticate = async (req, res, next) => {
       });
     }
 
+    if (!process.env.JWT_SECRET) {
+      throw new Error("JWT_SECRET is not configured");
+    }
+
     const payload = jwt.verify(
       token,
-      process.env.JWT_SECRET
+      process.env.JWT_SECRET,
     );
 
     const result = await pool.query(
@@ -39,24 +42,53 @@ const authenticate = async (req, res, next) => {
         email,
         role,
         status,
+        password_changed_at,
         (avatar_storage_name IS NOT NULL) AS has_avatar,
         avatar_updated_at
       FROM app.users
       WHERE id = $1
         AND status = 'ACTIVE'
       `,
-      [payload.sub]
+      [payload.sub],
     );
 
     if (result.rows.length === 0) {
       return res.status(401).json({
         success: false,
-        message:
-          "User is not available or inactive",
+        message: "User is not available or inactive",
       });
     }
 
-    req.user = result.rows[0];
+    const user = result.rows[0];
+
+    if (user.password_changed_at) {
+      const currentPasswordVersion = new Date(
+        user.password_changed_at,
+      ).toISOString();
+
+      if (payload.pwd) {
+        if (payload.pwd !== currentPasswordVersion) {
+          return res.status(401).json({
+            success: false,
+            message: "Authentication token is no longer valid",
+          });
+        }
+      } else if (payload.iat) {
+        const passwordChangedAtSeconds = Math.floor(
+          new Date(user.password_changed_at).getTime() / 1000,
+        );
+
+        if (payload.iat < passwordChangedAtSeconds) {
+          return res.status(401).json({
+            success: false,
+            message: "Authentication token is no longer valid",
+          });
+        }
+      }
+    }
+
+    delete user.password_changed_at;
+    req.user = user;
 
     next();
   } catch (error) {
