@@ -1,6 +1,4 @@
 import {
-  Eye,
-  EyeOff,
   Camera,
   Save,
   Trash2,
@@ -16,41 +14,17 @@ import FormSelect from "../forms/FormSelect";
 import UserAvatar from "./UserAvatar";
 
 const roleOptions = [
-  {
-    value: "ADMIN",
-    label: "Administrator",
-  },
-  {
-    value: "PURCHASING",
-    label: "Purchasing",
-  },
-  {
-    value: "WAREHOUSE",
-    label: "Warehouse",
-  },
-  {
-    value: "SALES",
-    label: "Sales",
-  },
-  {
-    value: "FINANCE",
-    label: "Finance",
-  },
-  {
-    value: "MANAGER",
-    label: "Manager",
-  },
+  { value: "ADMIN", label: "Administrator" },
+  { value: "PURCHASING", label: "Purchasing" },
+  { value: "WAREHOUSE", label: "Warehouse" },
+  { value: "SALES", label: "Sales" },
+  { value: "FINANCE", label: "Finance" },
+  { value: "MANAGER", label: "Manager" },
 ];
 
 const statusOptions = [
-  {
-    value: "ACTIVE",
-    label: "Aktif",
-  },
-  {
-    value: "INACTIVE",
-    label: "Tidak aktif",
-  },
+  { value: "ACTIVE", label: "Aktif" },
+  { value: "INACTIVE", label: "Tidak aktif" },
 ];
 
 const emptyValues = {
@@ -59,8 +33,6 @@ const emptyValues = {
   email: "",
   role: "",
   status: "ACTIVE",
-  password: "",
-  password_confirmation: "",
 };
 
 const createInitialValues = (user) => {
@@ -74,8 +46,6 @@ const createInitialValues = (user) => {
     email: user.email ?? "",
     role: user.role ?? "",
     status: user.status ?? "ACTIVE",
-    password: "",
-    password_confirmation: "",
   };
 };
 
@@ -92,15 +62,20 @@ const UserFormModal = ({
   const [values, setValues] = useState(() =>
     createInitialValues(user),
   );
-
   const [validationError, setValidationError] =
     useState("");
-
-  const [showPassword, setShowPassword] =
-    useState(false);
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState("");
   const [removeAvatar, setRemoveAvatar] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setValues(createInitialValues(user));
+    setValidationError("");
+    setAvatarFile(null);
+    setAvatarPreview("");
+    setRemoveAvatar(false);
+  }, [isOpen, user]);
 
   useEffect(() => () => {
     if (avatarPreview) URL.revokeObjectURL(avatarPreview);
@@ -124,19 +99,11 @@ const UserFormModal = ({
     };
 
     document.body.style.overflow = "hidden";
-    window.addEventListener(
-      "keydown",
-      handleKeyDown,
-    );
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow =
-        previousOverflow;
-
-      window.removeEventListener(
-        "keydown",
-        handleKeyDown,
-      );
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, isSubmitting, onClose]);
 
@@ -160,7 +127,6 @@ const UserFormModal = ({
       ...currentValues,
       [name]: normalizedValue,
     }));
-
     setValidationError("");
   };
 
@@ -169,7 +135,6 @@ const UserFormModal = ({
       ...currentValues,
       role,
     }));
-
     setValidationError("");
   };
 
@@ -178,7 +143,6 @@ const UserFormModal = ({
       ...currentValues,
       status,
     }));
-
     setValidationError("");
   };
 
@@ -188,11 +152,10 @@ const UserFormModal = ({
     if (
       !values.full_name.trim() ||
       !values.role ||
-      !values.status ||
       (!isEditMode && !values.username.trim())
     ) {
       setValidationError(
-        "Username, nama lengkap, role, dan status wajib diisi.",
+        "Username, nama lengkap, dan role wajib diisi.",
       );
       return;
     }
@@ -200,48 +163,34 @@ const UserFormModal = ({
     const normalizedEmail =
       values.email.trim().toLowerCase();
 
-    if (
-      normalizedEmail &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-        normalizedEmail,
-      )
-    ) {
+    if (!normalizedEmail) {
       setValidationError(
-        "Format email tidak valid.",
+        isEditMode
+          ? "Email wajib diisi untuk autentikasi akun."
+          : "Email wajib diisi agar undangan aktivasi dapat dikirim.",
       );
       return;
     }
 
-    if (!isEditMode) {
-      if (values.password.length < 8) {
-        setValidationError(
-          "Password harus terdiri dari minimal 8 karakter.",
-        );
-        return;
-      }
-
-      if (
-        values.password !==
-        values.password_confirmation
-      ) {
-        setValidationError(
-          "Konfirmasi password tidak sesuai.",
-        );
-        return;
-      }
+    if (
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        normalizedEmail,
+      )
+    ) {
+      setValidationError("Format email tidak valid.");
+      return;
     }
 
     const payload = {
       full_name: values.full_name.trim(),
-      email: normalizedEmail || null,
+      email: normalizedEmail,
       role: values.role,
-      status: values.status,
     };
 
-    if (!isEditMode) {
-      payload.username =
-        values.username.trim().toLowerCase();
-      payload.password = values.password;
+    if (isEditMode) {
+      payload.status = values.status;
+    } else {
+      payload.username = values.username.trim().toLowerCase();
     }
 
     onSubmit(payload, { avatarFile, removeAvatar });
@@ -249,7 +198,7 @@ const UserFormModal = ({
 
   const title = isEditMode
     ? "Edit pengguna"
-    : "Tambah pengguna";
+    : "Undang pengguna";
 
   return (
     <div
@@ -275,7 +224,6 @@ const UserFormModal = ({
             <span className="product-modal-eyebrow">
               Administration
             </span>
-
             <h2 id="user-form-title">{title}</h2>
           </div>
 
@@ -297,25 +245,35 @@ const UserFormModal = ({
           <div className="user-form-content">
             <div className="user-form-intro">
               <UserCog aria-hidden="true" />
-
               <div>
                 <strong>
                   {isEditMode
                     ? "Perbarui akses pengguna"
-                    : "Buat akun pengguna baru"}
+                    : "Kirim undangan akun baru"}
                 </strong>
-
                 <span>
-                  Role menentukan modul yang dapat
-                  diakses oleh pengguna.
+                  {isEditMode
+                    ? "Role menentukan modul yang dapat diakses oleh pengguna."
+                    : "Pengguna akan menerima email aktivasi dan membuat password sendiri."}
                 </span>
               </div>
             </div>
 
             <div className="user-avatar-editor">
               <div className="user-avatar-editor-preview">
-                {avatarPreview ? <img src={avatarPreview} alt="Preview foto profil" /> : removeAvatar ? <span>{values.full_name.trim().charAt(0).toUpperCase() || "U"}</span> : <UserAvatar user={user || { full_name: values.full_name }} />}
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="Preview foto profil" />
+                ) : removeAvatar ? (
+                  <span>
+                    {values.full_name.trim().charAt(0).toUpperCase() || "U"}
+                  </span>
+                ) : (
+                  <UserAvatar
+                    user={user || { full_name: values.full_name }}
+                  />
+                )}
               </div>
+
               <div className="user-avatar-editor-copy">
                 <strong>Foto profil</strong>
                 <span>JPG, PNG, atau WebP. Maksimal 2 MB.</span>
@@ -323,62 +281,74 @@ const UserFormModal = ({
                   <FilePickerButton
                     icon={Camera}
                     accept="image/jpeg,image/png,image/webp"
-                    buttonText={user?.has_avatar || avatarFile ? "Ganti foto" : "Pilih foto"}
+                    buttonText={
+                      user?.has_avatar || avatarFile
+                        ? "Ganti foto"
+                        : "Pilih foto"
+                    }
                     disabled={isSubmitting}
                     onChange={(event) => {
                       const file = event.target.files?.[0];
                       if (!file) return;
+
                       if (file.size > 2 * 1024 * 1024) {
-                        setValidationError("Ukuran foto profil maksimal 2 MB.");
+                        setValidationError(
+                          "Ukuran foto profil maksimal 2 MB.",
+                        );
                         event.target.value = "";
                         return;
                       }
+
                       setAvatarFile(file);
                       setRemoveAvatar(false);
                       setAvatarPreview(URL.createObjectURL(file));
                       setValidationError("");
                     }}
                   />
+
                   {(user?.has_avatar || avatarFile) && !removeAvatar && (
-                    <button type="button" className="user-avatar-remove" disabled={isSubmitting} onClick={() => {
-                      setAvatarFile(null);
-                      setAvatarPreview("");
-                      setRemoveAvatar(true);
-                    }}>
+                    <button
+                      type="button"
+                      className="user-avatar-remove"
+                      disabled={isSubmitting}
+                      onClick={() => {
+                        setAvatarFile(null);
+                        setAvatarPreview("");
+                        setRemoveAvatar(true);
+                      }}
+                    >
                       <Trash2 aria-hidden="true" /> Hapus
                     </button>
                   )}
                 </div>
-                {removeAvatar && <small>Foto akan dihapus saat perubahan disimpan.</small>}
+
+                {removeAvatar && (
+                  <small>
+                    Foto akan dihapus saat perubahan disimpan.
+                  </small>
+                )}
               </div>
             </div>
 
             <div className="product-form-grid">
               <label className="product-form-field">
                 <span>Username</span>
-
                 <input
                   type="text"
                   name="username"
                   value={values.username}
                   placeholder="Contoh: finance01"
                   autoComplete="username"
-                  disabled={
-                    isSubmitting || isEditMode
-                  }
+                  disabled={isSubmitting || isEditMode}
                   onChange={handleChange}
                 />
-
                 {isEditMode && (
-                  <small>
-                    Username tidak dapat diubah.
-                  </small>
+                  <small>Username tidak dapat diubah.</small>
                 )}
               </label>
 
               <label className="product-form-field">
                 <span>Nama lengkap</span>
-
                 <input
                   type="text"
                   name="full_name"
@@ -392,7 +362,6 @@ const UserFormModal = ({
 
               <label className="product-form-field product-form-field-full">
                 <span>Email</span>
-
                 <input
                   type="email"
                   name="email"
@@ -402,6 +371,11 @@ const UserFormModal = ({
                   disabled={isSubmitting}
                   onChange={handleChange}
                 />
+                {!isEditMode && (
+                  <small>
+                    Tautan aktivasi akun akan dikirim ke email ini.
+                  </small>
+                )}
               </label>
 
               <div className="product-form-field">
@@ -410,130 +384,36 @@ const UserFormModal = ({
                   value={values.role}
                   placeholder="Pilih role"
                   searchable={false}
-                  disabled={
-                    isSubmitting ||
-                    isEditingCurrentUser
-                  }
+                  disabled={isSubmitting || isEditingCurrentUser}
                   options={roleOptions}
                   onChange={handleRoleChange}
                 />
 
                 {isEditingCurrentUser && (
                   <small>
-                    Role akun sendiri tidak dapat
-                    diubah.
+                    Role akun sendiri tidak dapat diubah.
                   </small>
                 )}
               </div>
 
-              <div className="product-form-field">
-                <FormSelect
-                  label="Status akun"
-                  value={values.status}
-                  placeholder="Pilih status"
-                  searchable={false}
-                  disabled={
-                    isSubmitting ||
-                    isEditingCurrentUser
-                  }
-                  options={statusOptions}
-                  onChange={handleStatusChange}
-                />
+              {isEditMode && (
+                <div className="product-form-field">
+                  <FormSelect
+                    label="Status akun"
+                    value={values.status}
+                    placeholder="Pilih status"
+                    searchable={false}
+                    disabled={isSubmitting || isEditingCurrentUser}
+                    options={statusOptions}
+                    onChange={handleStatusChange}
+                  />
 
-                {isEditingCurrentUser && (
-                  <small>
-                    Akun yang sedang digunakan tidak
-                    dapat dinonaktifkan.
-                  </small>
-                )}
-              </div>
-
-              {!isEditMode && (
-                <>
-                  <label className="product-form-field">
-                    <span>Password</span>
-
-                    <div className="user-password-input">
-                      <input
-                        type={
-                          showPassword
-                            ? "text"
-                            : "password"
-                        }
-                        name="password"
-                        value={values.password}
-                        placeholder="Minimal 8 karakter"
-                        autoComplete="new-password"
-                        disabled={isSubmitting}
-                        onChange={handleChange}
-                      />
-
-                      <button
-                        type="button"
-                        aria-label={
-                          showPassword
-                            ? "Sembunyikan password"
-                            : "Tampilkan password"
-                        }
-                        disabled={isSubmitting}
-                        onClick={() =>
-                          setShowPassword(
-                            (current) => !current,
-                          )
-                        }
-                      >
-                        {showPassword ? (
-                          <EyeOff aria-hidden="true" />
-                        ) : (
-                          <Eye aria-hidden="true" />
-                        )}
-                      </button>
-                    </div>
-                  </label>
-
-                  <label className="product-form-field">
-                    <span>Konfirmasi password</span>
-
-                    <div className="user-password-input">
-                      <input
-                        type={
-                          showPassword
-                            ? "text"
-                            : "password"
-                        }
-                        name="password_confirmation"
-                        value={
-                          values.password_confirmation
-                        }
-                        placeholder="Ulangi password"
-                        autoComplete="new-password"
-                        disabled={isSubmitting}
-                        onChange={handleChange}
-                      />
-
-                      <button
-                        type="button"
-                        aria-label={
-                          showPassword
-                            ? "Sembunyikan password"
-                            : "Tampilkan password"
-                        }
-                        disabled={isSubmitting}
-                        onClick={() =>
-                          setShowPassword(
-                            (current) => !current,
-                          )
-                        }
-                      >
-                        {showPassword ? (
-                          <EyeOff aria-hidden="true" />
-                        ) : (
-                          <Eye aria-hidden="true" />
-                        )}
-                      </button>
-                    </div>
-                  </label>
-                </>
+                  {isEditingCurrentUser && (
+                    <small>
+                      Akun yang sedang digunakan tidak dapat dinonaktifkan.
+                    </small>
+                  )}
+                </div>
               )}
             </div>
 
@@ -563,12 +443,13 @@ const UserFormModal = ({
               disabled={isSubmitting}
             >
               <Save aria-hidden="true" />
-
               {isSubmitting
-                ? "Menyimpan..."
+                ? isEditMode
+                  ? "Menyimpan..."
+                  : "Mengirim..."
                 : isEditMode
                   ? "Simpan perubahan"
-                  : "Tambah pengguna"}
+                  : "Kirim undangan"}
             </button>
           </footer>
         </form>
