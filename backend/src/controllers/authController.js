@@ -133,7 +133,7 @@ const forgotPassword = async (req, res) => {
   const genericResponse = {
     success: true,
     message:
-      "Jika email terdaftar, instruksi reset password akan dikirim.",
+      "Permintaan reset berhasil diproses. Jika email tersebut terdaftar dan akun aktif, tautan reset akan dikirim. Periksa Kotak Masuk dan folder Spam.",
   };
 
   try {
@@ -142,8 +142,18 @@ const forgotPassword = async (req, res) => {
         ? req.body.email.trim().toLowerCase()
         : "";
 
-    if (!normalizedEmail || !EMAIL_PATTERN.test(normalizedEmail)) {
-      return res.status(200).json(genericResponse);
+    if (!normalizedEmail) {
+      return res.status(400).json({
+        success: false,
+        message: "Email wajib diisi.",
+      });
+    }
+
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Format email tidak valid.",
+      });
     }
 
     const result = await pool.query(
