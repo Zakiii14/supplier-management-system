@@ -55,21 +55,21 @@ const inviteUser = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "username, full_name, email, and role are required",
+          "Username, nama lengkap, email, dan peran wajib diisi.",
       });
     }
 
     if (!EMAIL_PATTERN.test(normalizedEmail)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid email format",
+        message: "Format email tidak valid.",
       });
     }
 
     if (!USER_ROLES.includes(normalizedRole)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid user role",
+        message: "Peran pengguna tidak valid.",
       });
     }
 
@@ -139,7 +139,7 @@ const inviteUser = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "User invitation sent successfully",
+      message: "Undangan pengguna berhasil dikirim.",
       data: user,
     });
   } catch (error) {
@@ -147,14 +147,14 @@ const inviteUser = async (req, res) => {
       if (error.constraint === "users_username_key") {
         return res.status(409).json({
           success: false,
-          message: "Username already exists",
+          message: "Username sudah digunakan.",
         });
       }
 
       if (error.constraint === "users_email_key") {
         return res.status(409).json({
           success: false,
-          message: "Email already exists",
+          message: "Email sudah digunakan.",
         });
       }
     }
@@ -163,7 +163,7 @@ const inviteUser = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to invite user",
+      message: "Undangan pengguna gagal dikirim.",
     });
   }
 };
@@ -175,7 +175,7 @@ const resendInvitation = async (req, res) => {
     if (!UUID_PATTERN.test(id)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid user ID",
+        message: "ID pengguna tidak valid.",
       });
     }
 
@@ -201,21 +201,21 @@ const resendInvitation = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found",
+        message: "Pengguna tidak ditemukan.",
       });
     }
 
     if (user.password_hash || user.email_verified_at) {
       return res.status(400).json({
         success: false,
-        message: "User account is already activated",
+        message: "Akun pengguna sudah aktif.",
       });
     }
 
     if (!user.email) {
       return res.status(400).json({
         success: false,
-        message: "User does not have an email address",
+        message: "Pengguna tidak memiliki alamat email.",
       });
     }
 
@@ -243,14 +243,14 @@ const resendInvitation = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "User invitation resent successfully",
+      message: "Undangan pengguna berhasil dikirim ulang.",
     });
   } catch (error) {
     console.error("Error resending user invitation:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to resend user invitation",
+      message: "Undangan pengguna gagal dikirim ulang.",
     });
   }
 };

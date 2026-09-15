@@ -11,7 +11,7 @@ const authenticate = async (req, res, next) => {
     ) {
       return res.status(401).json({
         success: false,
-        message: "Authentication token is required",
+        message: "Token autentikasi wajib tersedia.",
       });
     }
 
@@ -20,7 +20,7 @@ const authenticate = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Authentication token is required",
+        message: "Token autentikasi wajib tersedia.",
       });
     }
 
@@ -55,7 +55,7 @@ const authenticate = async (req, res, next) => {
     if (result.rows.length === 0) {
       return res.status(401).json({
         success: false,
-        message: "User is not available or inactive",
+        message: "Pengguna tidak tersedia atau akun tidak aktif.",
       });
     }
 
@@ -70,7 +70,7 @@ const authenticate = async (req, res, next) => {
         if (payload.pwd !== currentPasswordVersion) {
           return res.status(401).json({
             success: false,
-            message: "Authentication token is no longer valid",
+            message: "Sesi login tidak lagi berlaku. Silakan login kembali.",
           });
         }
       } else if (payload.iat) {
@@ -81,7 +81,7 @@ const authenticate = async (req, res, next) => {
         if (payload.iat < passwordChangedAtSeconds) {
           return res.status(401).json({
             success: false,
-            message: "Authentication token is no longer valid",
+            message: "Sesi login tidak lagi berlaku. Silakan login kembali.",
           });
         }
       }
@@ -95,13 +95,13 @@ const authenticate = async (req, res, next) => {
     if (error.name === "TokenExpiredError") {
       return res.status(401).json({
         success: false,
-        message: "Authentication token has expired",
+        message: "Sesi login sudah kedaluwarsa. Silakan login kembali.",
       });
     }
 
     return res.status(401).json({
       success: false,
-      message: "Invalid authentication token",
+      message: "Token autentikasi tidak valid.",
     });
   }
 };

@@ -24,7 +24,7 @@ const login = async (req, res) => {
     if (!identifier || !password) {
       return res.status(400).json({
         success: false,
-        message: "Username/email and password are required",
+        message: "Username/email dan password wajib diisi.",
       });
     }
 
@@ -58,7 +58,7 @@ const login = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Username/email atau password salah.",
       });
     }
 
@@ -70,7 +70,7 @@ const login = async (req, res) => {
     ) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Username/email atau password salah.",
       });
     }
 
@@ -82,7 +82,7 @@ const login = async (req, res) => {
     if (!passwordMatches) {
       return res.status(401).json({
         success: false,
-        message: "Invalid credentials",
+        message: "Username/email atau password salah.",
       });
     }
 
@@ -103,7 +103,7 @@ const login = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Login successful",
+      message: "Login berhasil.",
       data: {
         access_token: token,
         token_type: "Bearer",
@@ -124,7 +124,7 @@ const login = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to login",
+      message: "Login gagal diproses.",
     });
   }
 };
@@ -133,7 +133,7 @@ const forgotPassword = async (req, res) => {
   const genericResponse = {
     success: true,
     message:
-      "If the email is registered, password reset instructions will be sent.",
+      "Jika email terdaftar, instruksi reset password akan dikirim.",
   };
 
   try {
@@ -193,13 +193,13 @@ const validatePasswordResetToken = async (req, res) => {
     if (!tokenRecord) {
       return res.status(400).json({
         success: false,
-        message: "Reset password link is invalid or has expired",
+        message: "Tautan reset password tidak valid atau sudah kedaluwarsa.",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Reset password token is valid",
+      message: "Tautan reset password valid.",
       data: {
         email: tokenRecord.email,
         full_name: tokenRecord.full_name,
@@ -210,7 +210,7 @@ const validatePasswordResetToken = async (req, res) => {
     console.error("Validate password reset token error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to validate reset password link",
+      message: "Tautan reset password gagal divalidasi.",
     });
   }
 };
@@ -222,21 +222,21 @@ const resetPassword = async (req, res) => {
     if (!token) {
       return res.status(400).json({
         success: false,
-        message: "Reset token is required",
+        message: "Token reset password wajib tersedia.",
       });
     }
 
     if (!isValidPassword(password)) {
       return res.status(400).json({
         success: false,
-        message: "Password must contain at least 8 characters",
+        message: "Password harus minimal 8 karakter.",
       });
     }
 
     if (password !== password_confirmation) {
       return res.status(400).json({
         success: false,
-        message: "Password confirmation does not match",
+        message: "Konfirmasi password tidak sesuai.",
       });
     }
 
@@ -248,7 +248,7 @@ const resetPassword = async (req, res) => {
     if (!tokenRecord) {
       return res.status(400).json({
         success: false,
-        message: "Reset password link is invalid or has expired",
+        message: "Tautan reset password tidak valid atau sudah kedaluwarsa.",
       });
     }
 
@@ -264,19 +264,19 @@ const resetPassword = async (req, res) => {
     if (!consumed) {
       return res.status(400).json({
         success: false,
-        message: "Reset password link is invalid or has expired",
+        message: "Tautan reset password tidak valid atau sudah kedaluwarsa.",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Password has been reset successfully",
+      message: "Password berhasil diatur ulang.",
     });
   } catch (error) {
     console.error("Reset password error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to reset password",
+      message: "Reset password gagal diproses.",
     });
   }
 };
@@ -291,13 +291,13 @@ const validateActivationToken = async (req, res) => {
     if (!tokenRecord) {
       return res.status(400).json({
         success: false,
-        message: "Activation link is invalid or has expired",
+        message: "Tautan aktivasi tidak valid atau sudah kedaluwarsa.",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Activation token is valid",
+      message: "Tautan aktivasi valid.",
       data: {
         username: tokenRecord.username,
         email: tokenRecord.email,
@@ -309,7 +309,7 @@ const validateActivationToken = async (req, res) => {
     console.error("Validate activation token error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to validate activation link",
+      message: "Tautan aktivasi gagal divalidasi.",
     });
   }
 };
@@ -321,21 +321,21 @@ const activateAccount = async (req, res) => {
     if (!token) {
       return res.status(400).json({
         success: false,
-        message: "Activation token is required",
+        message: "Token aktivasi wajib tersedia.",
       });
     }
 
     if (!isValidPassword(password)) {
       return res.status(400).json({
         success: false,
-        message: "Password must contain at least 8 characters",
+        message: "Password harus minimal 8 karakter.",
       });
     }
 
     if (password !== password_confirmation) {
       return res.status(400).json({
         success: false,
-        message: "Password confirmation does not match",
+        message: "Konfirmasi password tidak sesuai.",
       });
     }
 
@@ -347,7 +347,7 @@ const activateAccount = async (req, res) => {
     if (!tokenRecord) {
       return res.status(400).json({
         success: false,
-        message: "Activation link is invalid or has expired",
+        message: "Tautan aktivasi tidak valid atau sudah kedaluwarsa.",
       });
     }
 
@@ -363,19 +363,19 @@ const activateAccount = async (req, res) => {
     if (!consumed) {
       return res.status(400).json({
         success: false,
-        message: "Activation link is invalid or has expired",
+        message: "Tautan aktivasi tidak valid atau sudah kedaluwarsa.",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Account activated successfully. You can now log in.",
+      message: "Akun berhasil diaktifkan. Silakan login.",
     });
   } catch (error) {
     console.error("Activate account error:", error);
     return res.status(500).json({
       success: false,
-      message: "Failed to activate account",
+      message: "Aktivasi akun gagal diproses.",
     });
   }
 };
@@ -383,7 +383,7 @@ const activateAccount = async (req, res) => {
 const getCurrentUser = async (req, res) => {
   return res.status(200).json({
     success: true,
-    message: "Current user retrieved successfully",
+    message: "Data pengguna berhasil dimuat.",
     data: req.user,
   });
 };

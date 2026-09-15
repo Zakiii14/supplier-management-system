@@ -25,14 +25,14 @@ const loginLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.LOGIN_RATE_LIMIT_MAX) ||
     (isProduction ? 10 : 250),
-  message: "Too many login attempts. Please try again later.",
+  message: "Terlalu banyak percobaan login. Silakan coba lagi nanti.",
 });
 
 const recoveryLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.AUTH_RECOVERY_RATE_LIMIT_MAX) ||
     (isProduction ? 10 : 250),
-  message: "Too many authentication requests. Please try again later.",
+  message: "Terlalu banyak permintaan autentikasi. Silakan coba lagi nanti.",
 });
 
 router.post("/login", loginLimiter, login);
