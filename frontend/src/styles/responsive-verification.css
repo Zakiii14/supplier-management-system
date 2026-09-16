@@ -52,6 +52,41 @@
     line-height: 1.35;
   }
 
+  /* Keep the mobile account identity readable even though the header avatar
+   * itself removes surrounding spacing at narrow widths. */
+  .dashboard-user-dropdown-identity {
+    gap: 12px;
+  }
+
+  .dashboard-user-dropdown-identity .dashboard-user-avatar {
+    margin-right: 0;
+  }
+
+  .dashboard-user-dropdown-identity > div {
+    flex: 1 1 auto;
+  }
+
+  /* Master-data import actions follow the same compact icon-only treatment as
+   * shared mobile page actions instead of letting their labels overflow. */
+  .master-import-download,
+  .master-import-preview-action {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .master-import-download span,
+  .master-import-preview-action span {
+    display: none;
+  }
+
+  .master-import-download svg,
+  .master-import-preview-action svg {
+    margin-right: 0;
+  }
+
   /* Detail and form headers must be able to shrink around long document names. */
   :is(
     .purchase-order-detail-header,
