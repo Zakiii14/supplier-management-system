@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "express",
+  "functions": {
+    "src/server.js": {
+      "includeFiles": "node_modules/pdfkit/js/standard-fonts/**"
+    }
+  }
+}
