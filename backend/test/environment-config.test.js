@@ -6,7 +6,10 @@ const validateEnvironment = require("../src/config/validateEnvironment");
 
 const TRACKED_ENVIRONMENT_KEYS = [
   "NODE_ENV",
+  "VERCEL",
+  "DEPLOYMENT_TARGET",
   "DATABASE_URL",
+  "DATABASE_URL_UNPOOLED",
   "DB_HOST",
   "DB_PORT",
   "DB_NAME",
@@ -14,6 +17,9 @@ const TRACKED_ENVIRONMENT_KEYS = [
   "DB_PASSWORD",
   "DB_SSL_MODE",
   "DB_SSL_CA",
+  "DB_POOL_MAX",
+  "DB_IDLE_TIMEOUT_MS",
+  "DB_CONNECTION_TIMEOUT_MS",
   "LOG_LEVEL",
   "READINESS_TIMEOUT_MS",
   "SHUTDOWN_TIMEOUT_MS",
@@ -22,7 +28,10 @@ const TRACKED_ENVIRONMENT_KEYS = [
   "EMAIL_PROVIDER",
   "RESEND_API_KEY",
   "EMAIL_FROM",
+  "FILE_STORAGE_PROVIDER",
   "FILE_STORAGE_ROOT",
+  "BLOB_PATH_PREFIX",
+  "BLOB_READ_WRITE_TOKEN",
   "BACKUP_ROOT",
   "BACKUP_RETENTION_DAYS",
 ];
@@ -33,16 +42,20 @@ const originalEnvironment = Object.fromEntries(
 
 const applyEnvironment = (values) => {
   for (const key of TRACKED_ENVIRONMENT_KEYS) delete process.env[key];
-  for (const [key, value] of Object.entries(values)) process.env[key] = value;
+  for (const [key, value] of Object.entries(values)) {
+    process.env[key] = value;
+  }
 };
 
 const productionEnvironment = {
   NODE_ENV: "production",
+  DEPLOYMENT_TARGET: "node",
   JWT_SECRET: "12345678901234567890123456789012",
   FRONTEND_URL: "https://app.example.com",
   EMAIL_PROVIDER: "resend",
   RESEND_API_KEY: "test-key",
   EMAIL_FROM: "SupplyFlow <no-reply@example.com>",
+  FILE_STORAGE_PROVIDER: "filesystem",
   FILE_STORAGE_ROOT: path.resolve("production-storage"),
   BACKUP_ROOT: path.resolve("production-backups"),
   BACKUP_RETENTION_DAYS: "14",
@@ -67,9 +80,11 @@ test("accepts local database settings with SSL disabled", () => {
   applyEnvironment({
     ...discreteDatabaseEnvironment,
     NODE_ENV: "development",
+    DEPLOYMENT_TARGET: "node",
     DB_SSL_MODE: "disable",
     JWT_SECRET: "development-secret",
     EMAIL_PROVIDER: "console",
+    FILE_STORAGE_PROVIDER: "filesystem",
   });
   assert.doesNotThrow(() => validateEnvironment());
 });
@@ -91,8 +106,65 @@ test("accepts a managed DATABASE_URL with sslmode", () => {
     ...productionEnvironment,
     DATABASE_URL:
       "postgresql://user:password@db.example.com:5432/supplyflow?sslmode=require",
+    DATABASE_URL_UNPOOLED:
+      "postgresql://user:password@direct.example.com:5432/supplyflow?sslmode=require",
   });
   assert.doesNotThrow(() => validateEnvironment());
+});
+
+test("accepts Vercel production with private Blob and no filesystem roots", () => {
+  applyEnvironment({
+    NODE_ENV: "production",
+    DEPLOYMENT_TARGET: "vercel",
+    VERCEL: "1",
+    DATABASE_URL:
+      "postgresql://user:password@pooler.example.com:5432/supplyflow?sslmode=require",
+    DATABASE_URL_UNPOOLED:
+      "postgresql://user:password@direct.example.com:5432/supplyflow?sslmode=require",
+    DB_POOL_MAX: "3",
+    DB_IDLE_TIMEOUT_MS: "10000",
+    DB_CONNECTION_TIMEOUT_MS: "5000",
+    JWT_SECRET: "12345678901234567890123456789012",
+    FRONTEND_URL: "https://supplyflow-demo.vercel.app",
+    EMAIL_PROVIDER: "resend",
+    RESEND_API_KEY: "test-key",
+    EMAIL_FROM: "SupplyFlow <no-reply@example.com>",
+    FILE_STORAGE_PROVIDER: "vercel-blob",
+    BLOB_PATH_PREFIX: "supplyflow/demo",
+  });
+  assert.doesNotThrow(() => validateEnvironment());
+});
+
+test("rejects filesystem storage for Vercel production", () => {
+  applyEnvironment({
+    ...productionEnvironment,
+    DEPLOYMENT_TARGET: "vercel",
+    DATABASE_URL:
+      "postgresql://user:password@pooler.example.com:5432/supplyflow?sslmode=require",
+  });
+  assert.throws(
+    () => validateEnvironment(),
+    /FILE_STORAGE_PROVIDER must be vercel-blob when DEPLOYMENT_TARGET=vercel/,
+  );
+});
+
+test("requires a Blob token when vercel-blob runs outside Vercel", () => {
+  applyEnvironment({
+    NODE_ENV: "production",
+    DEPLOYMENT_TARGET: "node",
+    DATABASE_URL:
+      "postgresql://user:password@db.example.com:5432/supplyflow?sslmode=require",
+    JWT_SECRET: "12345678901234567890123456789012",
+    FRONTEND_URL: "https://app.example.com",
+    EMAIL_PROVIDER: "resend",
+    RESEND_API_KEY: "test-key",
+    EMAIL_FROM: "SupplyFlow <no-reply@example.com>",
+    FILE_STORAGE_PROVIDER: "vercel-blob",
+  });
+  assert.throws(
+    () => validateEnvironment(),
+    /BLOB_READ_WRITE_TOKEN is required for vercel-blob outside Vercel runtime/,
+  );
 });
 
 test("rejects disabled PostgreSQL TLS in production", () => {
@@ -129,6 +201,7 @@ test("rejects invalid production runtime settings", () => {
     READINESS_TIMEOUT_MS: "0",
     SHUTDOWN_TIMEOUT_MS: "not-a-number",
     BACKUP_RETENTION_DAYS: "0",
+    DB_POOL_MAX: "0",
   });
   assert.throws(
     () => validateEnvironment(),
@@ -146,9 +219,13 @@ test("rejects invalid production runtime settings", () => {
     () => validateEnvironment(),
     /BACKUP_RETENTION_DAYS must be a positive integer/,
   );
+  assert.throws(
+    () => validateEnvironment(),
+    /DB_POOL_MAX must be a positive integer/,
+  );
 });
 
-test("production requires an absolute file storage root", () => {
+test("production filesystem storage requires an absolute file storage root", () => {
   applyEnvironment({
     ...discreteDatabaseEnvironment,
     ...productionEnvironment,
@@ -172,7 +249,7 @@ test("production requires an absolute file storage root", () => {
   );
 });
 
-test("production requires a separate absolute backup root", () => {
+test("production filesystem storage requires a separate absolute backup root", () => {
   applyEnvironment({
     ...discreteDatabaseEnvironment,
     ...productionEnvironment,
@@ -199,7 +276,10 @@ test("production requires a separate absolute backup root", () => {
     ...discreteDatabaseEnvironment,
     ...productionEnvironment,
     DB_SSL_MODE: "require",
-    BACKUP_ROOT: path.join(productionEnvironment.FILE_STORAGE_ROOT, "backups"),
+    BACKUP_ROOT: path.join(
+      productionEnvironment.FILE_STORAGE_ROOT,
+      "backups",
+    ),
   });
   assert.throws(
     () => validateEnvironment(),

@@ -1,14 +1,15 @@
 const { Pool } = require("pg");
 require("dotenv").config();
 
-const SUPPORTED_SSL_MODES = new Set(["disable", "require", "verify-full"]);
+const SUPPORTED_SSL_MODES = new Set([
+  "disable",
+  "require",
+  "verify-full",
+]);
 const SSL_QUERY_KEYS = ["sslmode", "sslcert", "sslkey", "sslrootcert"];
 
 const connectionStringHasSslOptions = (connectionString) => {
-  if (!connectionString) {
-    return false;
-  }
-
+  if (!connectionString) return false;
   try {
     const url = new URL(connectionString);
     return SSL_QUERY_KEYS.some((key) => url.searchParams.has(key));
@@ -18,8 +19,11 @@ const connectionStringHasSslOptions = (connectionString) => {
 };
 
 const getSslConfig = (connectionString) => {
-  const configuredMode = (process.env.DB_SSL_MODE || "").trim().toLowerCase();
-  const hasConnectionStringSsl = connectionStringHasSslOptions(connectionString);
+  const configuredMode = (process.env.DB_SSL_MODE || "")
+    .trim()
+    .toLowerCase();
+  const hasConnectionStringSsl =
+    connectionStringHasSslOptions(connectionString);
 
   if (configuredMode && !SUPPORTED_SSL_MODES.has(configuredMode)) {
     throw new Error(
@@ -33,29 +37,31 @@ const getSslConfig = (connectionString) => {
     );
   }
 
-  if (!configuredMode && hasConnectionStringSsl) {
-    return undefined;
-  }
+  if (!configuredMode && hasConnectionStringSsl) return undefined;
 
   const sslMode =
     configuredMode ||
     (process.env.NODE_ENV === "production" ? "require" : "disable");
 
-  if (sslMode === "disable") {
-    return false;
-  }
+  if (sslMode === "disable") return false;
 
   const ssl = {
     rejectUnauthorized: sslMode === "verify-full",
   };
   const ca = (process.env.DB_SSL_CA || "").trim();
-
-  if (ca) {
-    ssl.ca = ca.replace(/\\n/g, "\n");
-  }
-
+  if (ca) ssl.ca = ca.replace(/\\n/g, "\n");
   return ssl;
 };
+
+const readPositiveInteger = (name, fallback) => {
+  const value = Number(process.env[name]);
+  return Number.isInteger(value) && value > 0 ? value : fallback;
+};
+
+const isVercelRuntime =
+  process.env.VERCEL === "1" ||
+  String(process.env.DEPLOYMENT_TARGET || "").trim().toLowerCase() ===
+    "vercel";
 
 const connectionString = (process.env.DATABASE_URL || "").trim();
 const poolConfig = connectionString
@@ -68,11 +74,21 @@ const poolConfig = connectionString
       password: process.env.DB_PASSWORD,
     };
 
-const ssl = getSslConfig(connectionString);
+poolConfig.max = readPositiveInteger(
+  "DB_POOL_MAX",
+  isVercelRuntime ? 3 : 10,
+);
+poolConfig.idleTimeoutMillis = readPositiveInteger(
+  "DB_IDLE_TIMEOUT_MS",
+  10000,
+);
+poolConfig.connectionTimeoutMillis = readPositiveInteger(
+  "DB_CONNECTION_TIMEOUT_MS",
+  5000,
+);
 
-if (ssl !== undefined) {
-  poolConfig.ssl = ssl;
-}
+const ssl = getSslConfig(connectionString);
+if (ssl !== undefined) poolConfig.ssl = ssl;
 
 const pool = new Pool(poolConfig);
 

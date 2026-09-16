@@ -1,115 +1,169 @@
 # Production Configuration
 
-This document defines the production configuration contract introduced in PR-1, runtime hardening added in PR-2, migration safety added in PR-3, durable private file storage added in PR-4, and backup/recovery controls added in PR-5. Provider-specific deployment still belongs to PR-6.
+This document defines SupplyFlow's runtime configuration contract through PR-6B: production environment validation, runtime hardening, tracked migrations, private storage, backup/recovery, demo safety, and provider-specific Vercel adaptation.
 
 ## Frontend and API routing
 
-The recommended production topology is **same-origin routing**:
+SupplyFlow supports either same-origin routing or separate frontend/API origins.
 
-- The frontend is served from the public application origin, for example `https://app.example.com`.
-- Requests under `/api` are reverse-proxied to the Express backend.
-- `VITE_API_BASE_URL=/api` remains the frontend default, so local development and production can use the same API path.
-- The production web server/platform must use SPA fallback routing so direct visits such as `/activate-account` and `/reset-password` serve `index.html` instead of returning 404.
+For the Vercel portfolio demo, frontend and backend are separate Vercel projects from the same repository. Configure:
 
-If the frontend and API use different origins, set an absolute frontend API URL such as `VITE_API_BASE_URL=https://api.example.com/api`. In that topology, configure the backend `FRONTEND_URL` and optional `CORS_ORIGINS` whitelist to contain only the intended HTTPS frontend origins.
+```env
+# frontend
+VITE_API_BASE_URL=https://<backend-project>.vercel.app/api
+
+# backend
+FRONTEND_URL=https://<frontend-project>.vercel.app
+```
+
+The backend CORS whitelist uses `FRONTEND_URL` plus optional comma-separated `CORS_ORIGINS`. Production origins must be HTTPS.
+
+The Vite frontend includes SPA fallback routing through `frontend/vercel.json`, so direct visits to React Router URLs resolve to `index.html`.
+
+## Deployment target
+
+`DEPLOYMENT_TARGET` selects runtime expectations:
+
+- `node` — traditional Node host/container/VM.
+- `vercel` — Vercel Functions/Fluid compute.
+
+When the Vercel platform injects `VERCEL=1`, the runtime also recognizes the Vercel target automatically. Setting `DEPLOYMENT_TARGET=vercel` explicitly is still recommended in deployment configuration.
 
 ## Backend runtime
 
 Production should set at least:
 
 - `NODE_ENV=production`
-- `PORT` when the hosting platform does not inject it automatically
+- `DEPLOYMENT_TARGET`
 - `FRONTEND_URL=https://...`
 - `JWT_SECRET` with at least 32 characters
-- a non-console `EMAIL_PROVIDER` and its provider credentials
-- `FILE_STORAGE_ROOT` as an absolute path on a durable mounted volume
-- `BACKUP_ROOT` as a separate absolute durable path
-- `BACKUP_RETENTION_DAYS` according to the retention policy
-- `TRUST_PROXY=true` only when Express is behind the trusted reverse proxy/load balancer expected by the deployment
+- `EMAIL_PROVIDER=resend`, `RESEND_API_KEY`, and `EMAIL_FROM`
+- a supported private file-storage provider
+- PostgreSQL connection configuration
+- `TRUST_PROXY=true` only behind the trusted deployment proxy expected by the application
 
-Runtime controls introduced in PR-2:
+Runtime controls:
 
-- `LOG_LEVEL` controls structured application logging. Supported values are `debug`, `info`, `warn`, `error`, and `silent`.
-- `READINESS_TIMEOUT_MS` limits how long `/ready` waits for PostgreSQL before returning `503`. The default is 3000 ms.
-- `SHUTDOWN_TIMEOUT_MS` limits graceful shutdown before the process is forced to exit. The default is 10000 ms.
+- `LOG_LEVEL`: `debug`, `info`, `warn`, `error`, or `silent`
+- `READINESS_TIMEOUT_MS`: PostgreSQL readiness timeout
+- `SHUTDOWN_TIMEOUT_MS`: traditional Node graceful-shutdown timeout
 
 See `backend/.env.example` for the complete variable list.
 
 ## Health and readiness
 
-The backend exposes two unauthenticated platform endpoints:
+The backend exposes:
 
-- `GET /health` is a liveness check. It verifies that the Express process is serving requests and does not depend on PostgreSQL.
-- `GET /ready` is a readiness check. It executes a lightweight PostgreSQL query and returns `200` only when the database dependency is reachable. If the check fails or times out, it returns `503` without exposing database error details.
-
-Use `/health` for liveness probes and `/ready` for traffic/readiness probes on the production platform.
+- `GET /health` — liveness, independent of PostgreSQL
+- `GET /ready` — readiness, verifies PostgreSQL connectivity and returns `503` on failure without exposing database internals
 
 ## Error handling and logging
 
-Unhandled API errors are converted to JSON by the final Express error handler. Explicit operational errors keep their existing status/message behavior, while unexpected `5xx` errors use a generic `Internal server error` response in production so internal exception details are not exposed to clients.
-
-Runtime and unexpected server errors are written as structured JSON logs to standard output/error. Secrets and request bodies are not intentionally included in these runtime log events.
-
-## Graceful shutdown
-
-The production server listens for `SIGTERM` and `SIGINT`. During shutdown it:
-
-1. stops accepting new HTTP connections,
-2. waits for the HTTP server to close,
-3. closes the PostgreSQL pool with `pool.end()`, and
-4. exits successfully when cleanup completes.
-
-If cleanup does not finish within `SHUTDOWN_TIMEOUT_MS`, the process exits with a failure code so the deployment platform cannot leave a stuck instance running indefinitely.
+Unexpected production `5xx` errors are converted to a generic `Internal server error` response. Explicit operational status/messages remain available to clients. Runtime events are written as structured logs without intentionally logging secrets or request bodies.
 
 ## PostgreSQL
 
-SupplyFlow accepts either:
+SupplyFlow accepts either `DATABASE_URL` or the discrete `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` variables.
 
-1. `DATABASE_URL`, which is convenient for managed PostgreSQL providers, or
-2. the existing `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD` variables.
+For Neon/Vercel:
 
-TLS can be configured with `DB_SSL_MODE`:
+- `DATABASE_URL` should be the pooled connection URL used by the HTTP API.
+- `DATABASE_URL_UNPOOLED` can hold the direct connection URL used by migration/reset/backup operator commands.
 
-- `disable` — intended for local development only and rejected by production validation.
-- `require` — encrypts the connection without enforcing certificate verification.
-- `verify-full` — encrypts the connection and verifies the server certificate. `DB_SSL_CA` can provide a custom CA when required by the database provider.
+When `DATABASE_URL_UNPOOLED` is present, tracked migration and demo-reset scripts prefer it automatically.
 
-When `DATABASE_URL` already contains PostgreSQL SSL query parameters such as `sslmode`, do not also set `DB_SSL_MODE`. This avoids ambiguous node-postgres SSL configuration.
+Serverless pool controls:
 
-If production has no explicit SSL configuration, the backend defaults to `require`. Prefer `verify-full` when the managed database provider supplies a verifiable certificate chain.
+- `DB_POOL_MAX` — defaults to 3 on Vercel and 10 otherwise
+- `DB_IDLE_TIMEOUT_MS` — defaults to 10000
+- `DB_CONNECTION_TIMEOUT_MS` — defaults to 5000
+
+TLS can be configured with `DB_SSL_MODE=disable|require|verify-full`. `disable` is rejected in production. When `DATABASE_URL` already contains PostgreSQL SSL query parameters such as `sslmode`, leave `DB_SSL_MODE` empty.
 
 ## Private file storage
 
-SupplyFlow stores payment proofs, user avatars, and supplier invoice attachments as private files. Their existing authenticated API endpoints remain unchanged; the frontend does not receive a public filesystem path.
+`FILE_STORAGE_PROVIDER` supports:
 
-Production must configure `FILE_STORAGE_ROOT` as an **absolute path on a durable mounted volume**. The backend creates these namespaces below that root:
+- `filesystem`
+- `vercel-blob`
 
-- `payment-proofs/`
-- `user-avatars/`
-- `supplier-invoices/`
+The same logical namespaces are preserved across providers:
 
-The backend performs a write/read/delete probe for every storage namespace before starting the HTTP listener. If the mount is missing, read-only, or otherwise unusable, startup fails instead of silently accepting uploads onto an ephemeral application filesystem.
+- `payment-proofs`
+- `user-avatars`
+- `supplier-invoices`
 
-Do not point `FILE_STORAGE_ROOT` at a container/image root directory that is discarded on redeploy. The deployment platform must mount storage whose lifecycle is independent from the API process.
+Database rows continue to store generated UUID filenames rather than provider URLs. Reads remain behind authenticated SupplyFlow routes, so existing RBAC remains the access boundary.
 
-For a single API instance, one durable mounted volume is sufficient. If the API is horizontally scaled, every instance must see the same shared persistent filesystem. A future object-storage adapter can be placed behind the same storage service boundary when a deployment requires fully stateless multi-instance storage.
+### Filesystem provider
 
-For development and tests, leaving `FILE_STORAGE_ROOT` empty keeps the existing `backend/storage` default. `PAYMENT_PROOF_STORAGE_DIR`, `USER_AVATAR_STORAGE_DIR`, and `SUPPLIER_INVOICE_STORAGE_DIR` remain available as legacy development/test overrides. When `FILE_STORAGE_ROOT` is configured by normal server startup, it takes precedence and maps all three namespaces under the central root.
+Filesystem is the default for local development and remains supported for traditional production hosts.
+
+Production filesystem deployments require:
+
+```env
+FILE_STORAGE_PROVIDER=filesystem
+FILE_STORAGE_ROOT=/absolute/durable/storage
+BACKUP_ROOT=/absolute/separate/backup/storage
+```
+
+SupplyFlow performs local write/read/delete storage probes before starting the traditional Node listener.
+
+### Vercel Private Blob provider
+
+Vercel production requires:
+
+```env
+DEPLOYMENT_TARGET=vercel
+FILE_STORAGE_PROVIDER=vercel-blob
+BLOB_PATH_PREFIX=supplyflow/demo
+```
+
+The backend uses Private Blob for uploaded files. A Vercel-linked private store can authenticate through project OIDC, so a static `BLOB_READ_WRITE_TOKEN` is not required by the HTTP runtime. External operators such as GitHub Actions must provide a Blob token explicitly.
+
+Files are placed under `<BLOB_PATH_PREFIX>/<namespace>/<uuid filename>`.
+
+Vercel server uploads use a 4 MB per-file ceiling for payment proofs and supplier invoice attachments so multipart requests stay below the platform request-body limit. Avatar uploads retain the existing 2 MB limit.
+
+## Email
+
+Local development may use `EMAIL_PROVIDER=console`. Production rejects the console provider.
+
+Resend configuration:
+
+```env
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=...
+EMAIL_FROM=SupplyFlow <verified-sender@example.com>
+```
+
+Activation and reset URLs are generated from `FRONTEND_URL`.
 
 ## Backup and recovery
 
-Production must configure `BACKUP_ROOT` as an absolute path separate from `FILE_STORAGE_ROOT`. Nested backup/live-storage paths are rejected to avoid recursive backups and accidental deletion through retention cleanup.
+The PR-5 backup bundle workflow remains the supported backup/restore mechanism for `FILE_STORAGE_PROVIDER=filesystem`:
 
-SupplyFlow provides:
+```bash
+npm run backup:create -- --maintenance
+npm run backup:verify -- <backup-directory>
+npm run backup:restore -- <backup-directory> --confirm-restore --maintenance
+```
 
-- `npm run backup:create -- --maintenance`
-- `npm run backup:verify -- <backup-directory>`
-- `npm run backup:restore -- <backup-directory> --confirm-restore --maintenance`
+`backup:create` and `backup:restore` intentionally reject non-filesystem application storage rather than create an incomplete bundle. `backup:verify` can still verify an existing bundle.
 
-Backup bundles contain a PostgreSQL custom-format dump, all private file namespaces, and a SHA-256 manifest. Production create/restore commands require the explicit `--maintenance` assertion because application-level database and filesystem snapshots are only consistent when writes are stopped.
+The portfolio live demo uses a deterministic shared-demo reset for both Neon data and Blob files. This reset is not a replacement for disaster recovery in a future real Blob-backed commercial deployment; a provider-aware object-storage backup workflow would be required for that topology.
 
-`BACKUP_RETENTION_DAYS` controls automatic cleanup after a successful backup and defaults to 14 in the command. `PG_DUMP_BIN` and `PG_RESTORE_BIN` can override PostgreSQL client executable locations.
+See `docs/backup-recovery.md` and `docs/vercel-demo-deployment.md`.
 
-Completed bundles should be copied to a separate failure domain/off-host location. Keeping the only backup on the same machine or physical storage as the live application does not provide disaster recovery.
+## Demo mode
 
-See `docs/backup-recovery.md` for the full creation, verification, restore, rollback, retention, and recovery-drill runbook.
+Demo behavior is controlled independently from provider selection:
+
+```env
+DEMO_MODE=true
+DEMO_RESET_ENABLED=true
+```
+
+Real installations keep both disabled. `VITE_DEMO_MODE=false` hides the frontend demo login surface.
+
+See `docs/demo-mode.md` for demo accounts, restrictions, reset safeguards, and GitHub Actions configuration.

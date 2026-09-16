@@ -16,6 +16,10 @@ dotenv.config(
     : undefined,
 );
 
+if (process.env.DATABASE_URL_UNPOOLED) {
+  process.env.DATABASE_URL = process.env.DATABASE_URL_UNPOOLED;
+}
+
 const databaseOnly = rawArguments.includes("--database-only");
 const supported = new Set([
   "--database-only",
@@ -40,7 +44,9 @@ const main = async () => {
       clearStorage: !databaseOnly,
     });
 
-    console.log(`Demo reset completed for database: ${result.databaseName}`);
+    console.log(
+      `Demo reset completed for database: ${result.databaseName}`,
+    );
     console.log(`Reset tables: ${result.tableCount}`);
     console.log(`Seeded demo accounts: ${result.seeded.accounts}`);
     console.log(

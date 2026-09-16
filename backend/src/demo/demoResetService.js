@@ -1,6 +1,3 @@
-const fs = require("node:fs/promises");
-const path = require("node:path");
-
 const {
   getApplicationStorageTargets,
 } = require("../services/fileStorageService");
@@ -40,7 +37,9 @@ const assertDemoResetEnvironment = async (client, env = process.env) => {
 
   const password = String(env.DEMO_ACCOUNT_PASSWORD || "");
   if (password.length < 8) {
-    throw new Error("DEMO_ACCOUNT_PASSWORD must contain at least 8 characters");
+    throw new Error(
+      "DEMO_ACCOUNT_PASSWORD must contain at least 8 characters",
+    );
   }
 
   return {
@@ -81,20 +80,11 @@ const snapshotDemoFileStorage = async () => {
   const snapshot = [];
 
   for (const target of targets) {
-    let names = [];
-    try {
-      names = await fs.readdir(target.directory);
-    } catch (error) {
-      if (error.code !== "ENOENT") throw error;
-    }
-
     snapshot.push({
-      ...target,
-      names: names.filter(
-        (name) =>
-          name &&
-          name === path.basename(name),
-      ),
+      namespace: target.namespace,
+      provider: target.provider,
+      storage: target.storage,
+      names: await target.storage.listNames(),
     });
   }
 
@@ -105,16 +95,7 @@ const clearDemoFileStorage = async (snapshot) => {
   const clearedNamespaces = [];
 
   for (const target of snapshot || []) {
-    for (const name of target.names) {
-      await fs.rm(
-        path.join(target.directory, name),
-        {
-          recursive: true,
-          force: true,
-        },
-      );
-    }
-    await fs.mkdir(target.directory, { recursive: true });
+    await target.storage.clearNames(target.names);
     clearedNamespaces.push(target.namespace);
   }
 
@@ -174,10 +155,9 @@ const resetDemoDatabase = async ({
       throw error;
     }
   } finally {
-    await client.query(
-      "SELECT pg_advisory_unlock($1)",
-      [DEMO_RESET_LOCK_KEY],
-    ).catch(() => {});
+    await client
+      .query("SELECT pg_advisory_unlock($1)", [DEMO_RESET_LOCK_KEY])
+      .catch(() => {});
   }
 };
 

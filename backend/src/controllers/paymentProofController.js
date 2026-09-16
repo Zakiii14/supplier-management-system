@@ -26,8 +26,10 @@ const getContext = (req, kind) => {
 
   return {
     ...config,
-    ownerId: kind === "customer" ? req.params.id : req.params.paymentId,
-    parentId: kind === "supplier" ? req.params.purchaseOrderId : null,
+    ownerId:
+      kind === "customer" ? req.params.id : req.params.paymentId,
+    parentId:
+      kind === "supplier" ? req.params.purchaseOrderId : null,
     proofId: req.params.proofId,
   };
 };
@@ -105,7 +107,10 @@ const addProofs = (kind) => async (req, res) => {
       [context.ownerId],
     );
 
-    if (countResult.rows[0].total + files.length > MAX_PROOF_FILES) {
+    if (
+      countResult.rows[0].total + files.length >
+      MAX_PROOF_FILES
+    ) {
       const error = new Error(
         `Maksimal ${MAX_PROOF_FILES} bukti untuk setiap pembayaran`,
       );
@@ -152,7 +157,9 @@ const addProofs = (kind) => async (req, res) => {
     console.error("Error adding payment proofs:", error);
     res.status(error.statusCode || 500).json({
       success: false,
-      message: error.message || "Bukti pembayaran gagal ditambahkan",
+      message:
+        error.message ||
+        "Bukti pembayaran gagal ditambahkan",
     });
   } finally {
     client.release();
@@ -229,9 +236,14 @@ const replaceProof = (kind) => async (req, res) => {
     transactionStarted = false;
 
     try {
-      await removeStoredProofFile(currentResult.rows[0].storage_name);
+      await removeStoredProofFile(
+        currentResult.rows[0].storage_name,
+      );
     } catch (cleanupError) {
-      console.error("Error removing replaced payment proof:", cleanupError);
+      console.error(
+        "Error removing replaced payment proof:",
+        cleanupError,
+      );
     }
     newStored = null;
 
@@ -259,7 +271,8 @@ const replaceProof = (kind) => async (req, res) => {
     console.error("Error replacing payment proof:", error);
     res.status(error.statusCode || 500).json({
       success: false,
-      message: error.message || "Bukti pembayaran gagal diganti",
+      message:
+        error.message || "Bukti pembayaran gagal diganti",
     });
   } finally {
     client.release();
@@ -347,11 +360,11 @@ const serveProof = (kind) => async (req, res) => {
     }
 
     if (
-      !streamStoredProof(
+      !(await streamStoredProof(
         res,
         result.rows[0],
         req.query.download === "1",
-      )
+      ))
     ) {
       return res.status(404).json({
         success: false,

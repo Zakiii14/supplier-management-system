@@ -37,8 +37,15 @@ const envPath = environmentArg
 
 require("dotenv").config({ path: envPath, override: true });
 
+if (process.env.DATABASE_URL_UNPOOLED) {
+  process.env.DATABASE_URL = process.env.DATABASE_URL_UNPOOLED;
+}
+
 const pool = require("../src/config/database");
-const { discoverMigrations, formatVersion } = require("../src/database/migrationFiles");
+const {
+  discoverMigrations,
+  formatVersion,
+} = require("../src/database/migrationFiles");
 const {
   applyPendingMigrations,
   baselineLegacyMigrations,
@@ -90,9 +97,13 @@ const run = async () => {
     }
 
     for (const migration of applied) {
-      console.log(`Applied ${migration.filename} (${migration.executionMs} ms)`);
+      console.log(
+        `Applied ${migration.filename} (${migration.executionMs} ms)`,
+      );
     }
-    console.log(`Applied ${applied.length} migration(s) successfully.`);
+    console.log(
+      `Applied ${applied.length} migration(s) successfully.`,
+    );
   } finally {
     client.release();
     await pool.end();

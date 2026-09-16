@@ -1,6 +1,6 @@
 # Shared Live Demo
 
-SupplyFlow uses one shared demo database for portfolio testing. The demo is intentionally collaborative: visitors using different roles see the same company data.
+SupplyFlow uses one shared demo database for portfolio testing. The demo is intentionally collaborative: visitors using different roles see the same fictional company data.
 
 ## Required demo environment
 
@@ -42,22 +42,35 @@ All accounts are reseeded with deterministic UUIDs so role identity remains stab
 3. `DEMO_DATABASE_NAME` exactly matches PostgreSQL `current_database()`
 4. `DEMO_ACCOUNT_PASSWORD` is at least 8 characters
 
-The reset obtains a PostgreSQL advisory lock, truncates application tables except `app.schema_migrations`, reseeds configuration/accounts/demo data in one transaction, and then removes only files that existed before that reset started.
+The reset obtains a PostgreSQL advisory lock, truncates application tables except `app.schema_migrations`, reseeds configuration/accounts/demo data in one transaction, and then removes the files that existed in the configured application-storage namespaces when the reset started.
 
-The shared demo workflow is scheduled every 15 minutes. Scheduled GitHub Actions can start late, so the UI should describe the reset interval as approximate rather than promise an exact countdown.
+Storage clearing uses the active storage provider. Local/traditional deployments use the filesystem adapter, while the Vercel live demo uses Private Blob.
+
+The shared demo workflow is scheduled approximately every 15 minutes. Scheduled GitHub Actions can start late, so the UI must describe the interval as approximate rather than promise an exact countdown.
 
 ## GitHub Actions activation
 
 The workflow stays inert until repository variable `DEMO_RESET_ENABLED` is set to `true`.
 
-Required repository configuration:
+Required repository variables:
 
-- Variable `DEMO_RESET_ENABLED=true`
-- Variable `DEMO_DATABASE_NAME=<dedicated demo database name>`
-- Secret `DEMO_DATABASE_URL=<demo PostgreSQL connection string>`
-- Secret `DEMO_ACCOUNT_PASSWORD=<shared demo password>`
+- `DEMO_RESET_ENABLED=true`
+- `DEMO_DATABASE_NAME=<dedicated demo database name>`
+- `DEMO_BLOB_PATH_PREFIX=supplyflow/demo`
 
-Do not point these values at development or real production databases.
+Required repository secrets:
+
+- `DEMO_DATABASE_URL_UNPOOLED=<direct demo PostgreSQL connection string>`
+- `DEMO_ACCOUNT_PASSWORD=<shared demo password>`
+- `DEMO_BLOB_READ_WRITE_TOKEN=<Blob token used only by the external GitHub runner>`
+
+Do not point these values at development or real production databases. Do not reuse the Blob prefix used by another installation.
+
+## Public demo restrictions
+
+When `DEMO_MODE=true`, server-side protection blocks sensitive mutations such as user creation/invitation/password administration, global numbering/tax/payment settings changes, and master-data import writes. Normal business workflows remain available according to RBAC, and each demo user can manage only their own profile avatar.
+
+Frontend hiding is not treated as a security boundary; restricted actions are rejected by the backend.
 
 ## Production installations
 
@@ -70,3 +83,5 @@ VITE_DEMO_MODE=false
 ```
 
 The demo login surface, demo restrictions, and scheduled reset are not part of the real production experience.
+
+See `docs/vercel-demo-deployment.md` for the provider-specific Vercel + Neon + Private Blob + Resend deployment runbook.

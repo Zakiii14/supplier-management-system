@@ -25,8 +25,11 @@ jobs:
       DEMO_RESET_ENABLED: "true"
       DEMO_DATABASE_NAME: ${{ vars.DEMO_DATABASE_NAME }}
       DEMO_ACCOUNT_PASSWORD: ${{ secrets.DEMO_ACCOUNT_PASSWORD }}
-      DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+      DATABASE_URL_UNPOOLED: ${{ secrets.DEMO_DATABASE_URL_UNPOOLED }}
       DB_SSL_MODE: ""
+      FILE_STORAGE_PROVIDER: vercel-blob
+      BLOB_PATH_PREFIX: ${{ vars.DEMO_BLOB_PATH_PREFIX }}
+      BLOB_READ_WRITE_TOKEN: ${{ secrets.DEMO_BLOB_READ_WRITE_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -41,5 +44,5 @@ jobs:
       - name: Install backend dependencies
         run: npm ci
 
-      - name: Reset demo database
+      - name: Reset demo database and files
         run: npm run demo:reset

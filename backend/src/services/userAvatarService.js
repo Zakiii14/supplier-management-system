@@ -2,13 +2,13 @@ const crypto = require("node:crypto");
 const path = require("node:path");
 const multer = require("multer");
 const {
-  createDirectoryStorage,
-  resolveStorageDirectory,
+  createApplicationStorage,
 } = require("./fileStorageService");
 
 const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024;
-const avatarStorage = createDirectoryStorage(
-  resolveStorageDirectory("user-avatars", "USER_AVATAR_STORAGE_DIR"),
+const avatarStorage = createApplicationStorage(
+  "user-avatars",
+  "USER_AVATAR_STORAGE_DIR",
 );
 
 const upload = multer({
@@ -88,23 +88,23 @@ const removeAvatar = async (storageName) => {
   await avatarStorage.remove(storageName);
 };
 
-const streamAvatar = (res, avatar) => {
+const streamAvatar = async (res, avatar) => {
   const storageName = avatar.avatar_storage_name;
-  if (
-    !/^[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(storageName || "") ||
-    !avatarStorage.exists(storageName)
-  ) {
+  if (!/^[0-9a-f-]{36}\.(jpg|png|webp)$/i.test(storageName || "")) {
     return false;
   }
 
+  const buffer = await avatarStorage.readBuffer(storageName);
+  if (!buffer) return false;
+
   res.set({
     "Content-Type": avatar.avatar_mime_type,
-    "Content-Length": String(avatar.avatar_size_bytes),
+    "Content-Length": String(buffer.length),
     "Cache-Control": "private, max-age=300",
     "X-Content-Type-Options": "nosniff",
     "Content-Disposition": `inline; filename="${normalizeName(avatar.avatar_original_name).replace(/"/g, "")}"`,
   });
-  avatarStorage.createReadStream(storageName).pipe(res);
+  res.end(buffer);
   return true;
 };
 

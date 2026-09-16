@@ -23,10 +23,18 @@ const SUPPORTED_LOG_LEVELS = new Set([
   "error",
   "silent",
 ]);
+const SUPPORTED_DEPLOYMENT_TARGETS = new Set(["node", "vercel"]);
+const SUPPORTED_STORAGE_PROVIDERS = new Set([
+  "filesystem",
+  "vercel-blob",
+]);
 const POSITIVE_INTEGER_RUNTIME_VARIABLES = [
   "READINESS_TIMEOUT_MS",
   "SHUTDOWN_TIMEOUT_MS",
   "BACKUP_RETENTION_DAYS",
+  "DB_POOL_MAX",
+  "DB_IDLE_TIMEOUT_MS",
+  "DB_CONNECTION_TIMEOUT_MS",
 ];
 
 const parseDatabaseUrl = (value) => {
@@ -46,37 +54,106 @@ const pathsOverlap = (left, right) => {
   const leftToRight = path.relative(resolvedLeft, resolvedRight);
   const rightToLeft = path.relative(resolvedRight, resolvedLeft);
   const isContained = (relative) =>
-    relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+    relative === "" ||
+    (!relative.startsWith("..") && !path.isAbsolute(relative));
   return isContained(leftToRight) || isContained(rightToLeft);
+};
+
+const isValidBlobPrefix = (value) => {
+  if (!value) return true;
+  const normalized = String(value)
+    .trim()
+    .replace(/^\/+|\/+$/g, "");
+  if (!normalized) return false;
+  return normalized
+    .split("/")
+    .every(
+      (segment) =>
+        segment &&
+        segment !== "." &&
+        segment !== ".." &&
+        /^[A-Za-z0-9._-]+$/.test(segment),
+    );
 };
 
 const validateEnvironment = () => {
   const errors = [];
   const isProduction = process.env.NODE_ENV === "production";
   const jwtSecret = process.env.JWT_SECRET || "";
-  const emailProvider = (process.env.EMAIL_PROVIDER || "console").toLowerCase();
+  const emailProvider = (
+    process.env.EMAIL_PROVIDER || "console"
+  ).toLowerCase();
   const frontendUrl = process.env.FRONTEND_URL || "";
   const databaseUrl = (process.env.DATABASE_URL || "").trim();
+  const databaseUrlUnpooled = (
+    process.env.DATABASE_URL_UNPOOLED || ""
+  ).trim();
   const parsedDatabaseUrl = parseDatabaseUrl(databaseUrl);
-  const dbSslMode = (process.env.DB_SSL_MODE || "").trim().toLowerCase();
-  const logLevel = (process.env.LOG_LEVEL || "").trim().toLowerCase();
-  const fileStorageRoot = String(process.env.FILE_STORAGE_ROOT || "").trim();
+  const parsedUnpooledDatabaseUrl = parseDatabaseUrl(
+    databaseUrlUnpooled,
+  );
+  const dbSslMode = (process.env.DB_SSL_MODE || "")
+    .trim()
+    .toLowerCase();
+  const logLevel = (process.env.LOG_LEVEL || "")
+    .trim()
+    .toLowerCase();
+  const fileStorageRoot = String(
+    process.env.FILE_STORAGE_ROOT || "",
+  ).trim();
   const backupRoot = String(process.env.BACKUP_ROOT || "").trim();
+  const deploymentTarget = String(
+    process.env.DEPLOYMENT_TARGET ||
+      (process.env.VERCEL === "1" ? "vercel" : "node"),
+  )
+    .trim()
+    .toLowerCase();
+  const storageProvider = String(
+    process.env.FILE_STORAGE_PROVIDER || "filesystem",
+  )
+    .trim()
+    .toLowerCase();
+  const blobPathPrefix = String(
+    process.env.BLOB_PATH_PREFIX || "",
+  ).trim();
+
+  if (!SUPPORTED_DEPLOYMENT_TARGETS.has(deploymentTarget)) {
+    errors.push("DEPLOYMENT_TARGET must be node or vercel");
+  }
+  if (!SUPPORTED_STORAGE_PROVIDERS.has(storageProvider)) {
+    errors.push(
+      "FILE_STORAGE_PROVIDER must be filesystem or vercel-blob",
+    );
+  }
 
   if (!databaseUrl) {
-    for (const variable of ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"]) {
+    for (const variable of [
+      "DB_HOST",
+      "DB_NAME",
+      "DB_USER",
+      "DB_PASSWORD",
+    ]) {
       if (!process.env[variable]) {
-        errors.push(`${variable} is required when DATABASE_URL is not configured`);
+        errors.push(
+          `${variable} is required when DATABASE_URL is not configured`,
+        );
       }
     }
     if (
       process.env.DB_PORT &&
-      (!Number.isInteger(Number(process.env.DB_PORT)) || Number(process.env.DB_PORT) <= 0)
+      (!Number.isInteger(Number(process.env.DB_PORT)) ||
+        Number(process.env.DB_PORT) <= 0)
     ) {
       errors.push("DB_PORT must be a positive integer");
     }
   } else if (!parsedDatabaseUrl) {
     errors.push("DATABASE_URL must be a valid PostgreSQL connection URL");
+  }
+
+  if (databaseUrlUnpooled && !parsedUnpooledDatabaseUrl) {
+    errors.push(
+      "DATABASE_URL_UNPOOLED must be a valid PostgreSQL connection URL",
+    );
   }
 
   if (dbSslMode && !SUPPORTED_DB_SSL_MODES.has(dbSslMode)) {
@@ -94,6 +171,10 @@ const validateEnvironment = () => {
     }
   }
 
+  if (!isValidBlobPrefix(blobPathPrefix)) {
+    errors.push("BLOB_PATH_PREFIX contains an invalid path segment");
+  }
+
   if (isProduction) {
     if (dbSslMode === "disable") {
       errors.push("DB_SSL_MODE cannot be disable in production");
@@ -109,33 +190,64 @@ const validateEnvironment = () => {
         `DATABASE_URL sslmode=${connectionStringSslMode} is not allowed in production`,
       );
     }
-    if (!fileStorageRoot) {
-      errors.push("FILE_STORAGE_ROOT is required in production");
-    } else if (!path.isAbsolute(fileStorageRoot)) {
-      errors.push("FILE_STORAGE_ROOT must be an absolute path in production");
-    }
-    if (!backupRoot) {
-      errors.push("BACKUP_ROOT is required in production");
-    } else if (!path.isAbsolute(backupRoot)) {
-      errors.push("BACKUP_ROOT must be an absolute path in production");
-    }
+
     if (
-      path.isAbsolute(fileStorageRoot) &&
-      path.isAbsolute(backupRoot) &&
-      pathsOverlap(fileStorageRoot, backupRoot)
+      deploymentTarget === "vercel" &&
+      storageProvider !== "vercel-blob"
     ) {
-      errors.push("BACKUP_ROOT must be separate from FILE_STORAGE_ROOT");
+      errors.push(
+        "FILE_STORAGE_PROVIDER must be vercel-blob when DEPLOYMENT_TARGET=vercel",
+      );
+    }
+
+    if (storageProvider === "filesystem") {
+      if (!fileStorageRoot) {
+        errors.push("FILE_STORAGE_ROOT is required in production");
+      } else if (!path.isAbsolute(fileStorageRoot)) {
+        errors.push(
+          "FILE_STORAGE_ROOT must be an absolute path in production",
+        );
+      }
+      if (!backupRoot) {
+        errors.push("BACKUP_ROOT is required in production");
+      } else if (!path.isAbsolute(backupRoot)) {
+        errors.push(
+          "BACKUP_ROOT must be an absolute path in production",
+        );
+      }
+      if (
+        path.isAbsolute(fileStorageRoot) &&
+        path.isAbsolute(backupRoot) &&
+        pathsOverlap(fileStorageRoot, backupRoot)
+      ) {
+        errors.push(
+          "BACKUP_ROOT must be separate from FILE_STORAGE_ROOT",
+        );
+      }
+    }
+
+    if (
+      storageProvider === "vercel-blob" &&
+      deploymentTarget !== "vercel" &&
+      !process.env.BLOB_READ_WRITE_TOKEN
+    ) {
+      errors.push(
+        "BLOB_READ_WRITE_TOKEN is required for vercel-blob outside Vercel runtime",
+      );
     }
   }
 
   if (logLevel && !SUPPORTED_LOG_LEVELS.has(logLevel)) {
-    errors.push("LOG_LEVEL must be debug, info, warn, error, or silent");
+    errors.push(
+      "LOG_LEVEL must be debug, info, warn, error, or silent",
+    );
   }
 
   for (const variable of POSITIVE_INTEGER_RUNTIME_VARIABLES) {
     if (
       process.env[variable] &&
-      (!Number.isInteger(Number(process.env[variable])) || Number(process.env[variable]) <= 0)
+      (!Number.isInteger(Number(process.env[variable])) ||
+        Number(process.env[variable]) <= 0)
     ) {
       errors.push(`${variable} must be a positive integer`);
     }
@@ -143,12 +255,18 @@ const validateEnvironment = () => {
 
   if (!jwtSecret) errors.push("JWT_SECRET is required");
   if (isProduction && jwtSecret.length < 32) {
-    errors.push("JWT_SECRET must contain at least 32 characters in production");
+    errors.push(
+      "JWT_SECRET must contain at least 32 characters in production",
+    );
   }
   if (isProduction && !frontendUrl) {
     errors.push("FRONTEND_URL is required in production");
   }
-  if (isProduction && frontendUrl && !frontendUrl.startsWith("https://")) {
+  if (
+    isProduction &&
+    frontendUrl &&
+    !frontendUrl.startsWith("https://")
+  ) {
     errors.push("FRONTEND_URL must use HTTPS in production");
   }
   if (isProduction && emailProvider === "console") {
@@ -157,7 +275,9 @@ const validateEnvironment = () => {
 
   if (emailProvider === "resend") {
     if (!process.env.RESEND_API_KEY) {
-      errors.push("RESEND_API_KEY is required when EMAIL_PROVIDER=resend");
+      errors.push(
+        "RESEND_API_KEY is required when EMAIL_PROVIDER=resend",
+      );
     }
     if (!process.env.EMAIL_FROM) {
       errors.push("EMAIL_FROM is required when EMAIL_PROVIDER=resend");
@@ -168,7 +288,9 @@ const validateEnvironment = () => {
   }
 
   if (errors.length > 0) {
-    throw new Error(`Invalid environment configuration:\n- ${errors.join("\n- ")}`);
+    throw new Error(
+      `Invalid environment configuration:\n- ${errors.join("\n- ")}`,
+    );
   }
 };
 

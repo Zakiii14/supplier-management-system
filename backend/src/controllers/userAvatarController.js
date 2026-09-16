@@ -55,7 +55,7 @@ const getUserAvatar = async (req, res) => {
   if (
     !result.rows.length ||
     !result.rows[0].avatar_storage_name ||
-    !streamAvatar(res, result.rows[0])
+    !(await streamAvatar(res, result.rows[0]))
   ) {
     return res.status(404).json({
       success: false,

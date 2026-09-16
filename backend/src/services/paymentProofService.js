@@ -2,15 +2,19 @@ const crypto = require("node:crypto");
 const path = require("node:path");
 const multer = require("multer");
 const {
-  createDirectoryStorage,
-  resolveStorageDirectory,
+  createApplicationStorage,
+  getServerUploadLimitBytes,
 } = require("./fileStorageService");
 
 const MAX_PROOF_FILES = 3;
-const MAX_PROOF_SIZE_BYTES = 5 * 1024 * 1024;
+const DEFAULT_MAX_PROOF_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_PROOF_SIZE_BYTES = getServerUploadLimitBytes(
+  DEFAULT_MAX_PROOF_SIZE_BYTES,
+);
 
-const proofStorage = createDirectoryStorage(
-  resolveStorageDirectory("payment-proofs", "PAYMENT_PROOF_STORAGE_DIR"),
+const proofStorage = createApplicationStorage(
+  "payment-proofs",
+  "PAYMENT_PROOF_STORAGE_DIR",
 );
 
 const upload = multer({
@@ -28,9 +32,10 @@ const wrapUpload = (middleware) => (req, res, next) => {
       return;
     }
 
+    const sizeLimitMb = Math.floor(MAX_PROOF_SIZE_BYTES / (1024 * 1024));
     const message =
       error.code === "LIMIT_FILE_SIZE"
-        ? "Ukuran setiap bukti pembayaran maksimal 5 MB"
+        ? `Ukuran setiap bukti pembayaran maksimal ${sizeLimitMb} MB`
         : error.code === "LIMIT_FILE_COUNT"
           ? "Maksimal 3 bukti pembayaran dalam satu transaksi"
           : "Bukti pembayaran gagal diunggah";
@@ -108,7 +113,10 @@ const storeProofFile = async (file) => {
   }
 
   const storageName = `${crypto.randomUUID()}${detectedType.extension}`;
-  const checksum = crypto.createHash("sha256").update(file.buffer).digest("hex");
+  const checksum = crypto
+    .createHash("sha256")
+    .update(file.buffer)
+    .digest("hex");
   await proofStorage.write(storageName, file.buffer);
 
   return {
@@ -126,17 +134,19 @@ const removeStoredProofFile = async (storageName) => {
 };
 
 const removeStoredProofFiles = async (proofs) => {
-  await Promise.all(proofs.map((proof) => removeStoredProofFile(proof.storageName)));
+  await Promise.all(
+    proofs.map((proof) => removeStoredProofFile(proof.storageName)),
+  );
 };
 
-const streamStoredProof = (res, proof, download = false) => {
+const streamStoredProof = async (res, proof, download = false) => {
   const storageName = proof.storage_name;
-  if (
-    !/^[0-9a-f-]{36}\.(pdf|jpg|png|webp)$/i.test(storageName || "") ||
-    !proofStorage.exists(storageName)
-  ) {
+  if (!/^[0-9a-f-]{36}\.(pdf|jpg|png|webp)$/i.test(storageName || "")) {
     return false;
   }
+
+  const buffer = await proofStorage.readBuffer(storageName);
+  if (!buffer) return false;
 
   const disposition = download ? "attachment" : "inline";
   const safeName = normalizeOriginalName(proof.original_name).replace(/"/g, "");
@@ -144,13 +154,12 @@ const streamStoredProof = (res, proof, download = false) => {
 
   res.set({
     "Content-Type": proof.mime_type,
-    "Content-Length": String(proof.size_bytes),
+    "Content-Length": String(buffer.length),
     "Content-Disposition": `${disposition}; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`,
     "Cache-Control": "private, no-store",
     "X-Content-Type-Options": "nosniff",
   });
-
-  proofStorage.createReadStream(storageName).pipe(res);
+  res.end(buffer);
   return true;
 };
 
@@ -209,7 +218,9 @@ const storeAndInsertProofs = async ({
 };
 
 module.exports = {
+  DEFAULT_MAX_PROOF_SIZE_BYTES,
   MAX_PROOF_FILES,
+  MAX_PROOF_SIZE_BYTES,
   removeStoredProofFile,
   removeStoredProofFiles,
   serializeProof,
