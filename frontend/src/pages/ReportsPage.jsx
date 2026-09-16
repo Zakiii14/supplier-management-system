@@ -716,6 +716,23 @@ const ReportsPage = () => {
         </div>
       </section>
 
+      {exportError && (
+        <div
+          className="data-error"
+          role="alert"
+        >
+          <AlertTriangle aria-hidden="true" />
+
+          <div>
+            <strong>
+              Laporan gagal diunduh
+            </strong>
+
+            <span>{exportError}</span>
+          </div>
+        </div>
+      )}
+
       <section
         className="report-tabs"
         role="tablist"
@@ -903,23 +920,6 @@ const ReportsPage = () => {
               </strong>
 
               <span>{errorMessage}</span>
-            </div>
-          </div>
-        )}
-
-        {exportError && (
-          <div
-            className="data-error"
-            role="alert"
-          >
-            <AlertTriangle aria-hidden="true" />
-
-            <div>
-              <strong>
-                Laporan gagal diunduh
-              </strong>
-
-              <span>{exportError}</span>
             </div>
           </div>
         )}
