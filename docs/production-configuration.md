@@ -1,6 +1,6 @@
 # Production Configuration
 
-This document defines the production configuration contract introduced in PR-1, runtime hardening added in PR-2, migration safety added in PR-3, and durable private file storage added in PR-4. Provider-specific deployment still belongs to PR-6.
+This document defines the production configuration contract introduced in PR-1, runtime hardening added in PR-2, migration safety added in PR-3, durable private file storage added in PR-4, and backup/recovery controls added in PR-5. Provider-specific deployment still belongs to PR-6.
 
 ## Frontend and API routing
 
@@ -23,6 +23,8 @@ Production should set at least:
 - `JWT_SECRET` with at least 32 characters
 - a non-console `EMAIL_PROVIDER` and its provider credentials
 - `FILE_STORAGE_ROOT` as an absolute path on a durable mounted volume
+- `BACKUP_ROOT` as a separate absolute durable path
+- `BACKUP_RETENTION_DAYS` according to the retention policy
 - `TRUST_PROXY=true` only when Express is behind the trusted reverse proxy/load balancer expected by the deployment
 
 Runtime controls introduced in PR-2:
@@ -88,8 +90,26 @@ Production must configure `FILE_STORAGE_ROOT` as an **absolute path on a durable
 
 The backend performs a write/read/delete probe for every storage namespace before starting the HTTP listener. If the mount is missing, read-only, or otherwise unusable, startup fails instead of silently accepting uploads onto an ephemeral application filesystem.
 
-Do not point `FILE_STORAGE_ROOT` at a container/image root directory that is discarded on redeploy. The deployment platform must mount storage whose lifecycle is independent from the API process. Backup and restore procedures for this volume are covered by PR-5.
+Do not point `FILE_STORAGE_ROOT` at a container/image root directory that is discarded on redeploy. The deployment platform must mount storage whose lifecycle is independent from the API process.
 
 For a single API instance, one durable mounted volume is sufficient. If the API is horizontally scaled, every instance must see the same shared persistent filesystem. A future object-storage adapter can be placed behind the same storage service boundary when a deployment requires fully stateless multi-instance storage.
 
 For development and tests, leaving `FILE_STORAGE_ROOT` empty keeps the existing `backend/storage` default. `PAYMENT_PROOF_STORAGE_DIR`, `USER_AVATAR_STORAGE_DIR`, and `SUPPLIER_INVOICE_STORAGE_DIR` remain available as legacy development/test overrides. When `FILE_STORAGE_ROOT` is configured by normal server startup, it takes precedence and maps all three namespaces under the central root.
+
+## Backup and recovery
+
+Production must configure `BACKUP_ROOT` as an absolute path separate from `FILE_STORAGE_ROOT`. Nested backup/live-storage paths are rejected to avoid recursive backups and accidental deletion through retention cleanup.
+
+SupplyFlow provides:
+
+- `npm run backup:create -- --maintenance`
+- `npm run backup:verify -- <backup-directory>`
+- `npm run backup:restore -- <backup-directory> --confirm-restore --maintenance`
+
+Backup bundles contain a PostgreSQL custom-format dump, all private file namespaces, and a SHA-256 manifest. Production create/restore commands require the explicit `--maintenance` assertion because application-level database and filesystem snapshots are only consistent when writes are stopped.
+
+`BACKUP_RETENTION_DAYS` controls automatic cleanup after a successful backup and defaults to 14 in the command. `PG_DUMP_BIN` and `PG_RESTORE_BIN` can override PostgreSQL client executable locations.
+
+Completed bundles should be copied to a separate failure domain/off-host location. Keeping the only backup on the same machine or physical storage as the live application does not provide disaster recovery.
+
+See `docs/backup-recovery.md` for the full creation, verification, restore, rollback, retention, and recovery-drill runbook.

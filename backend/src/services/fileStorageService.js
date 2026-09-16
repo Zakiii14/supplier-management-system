@@ -83,10 +83,14 @@ const createDirectoryStorage = (directory) => {
   };
 };
 
+const getApplicationStorageTargets = () =>
+  STORAGE_TARGETS.map(([namespace, variable]) => ({
+    namespace,
+    directory: resolveStorageDirectory(namespace, variable),
+  }));
+
 const getApplicationStorageDirectories = () =>
-  STORAGE_TARGETS.map(([namespace, variable]) =>
-    resolveStorageDirectory(namespace, variable),
-  );
+  getApplicationStorageTargets().map((target) => target.directory);
 
 const ensureApplicationFileStorageReady = () => {
   const directories = [...new Set(getApplicationStorageDirectories())];
@@ -109,5 +113,6 @@ module.exports = {
   createDirectoryStorage,
   ensureApplicationFileStorageReady,
   getApplicationStorageDirectories,
+  getApplicationStorageTargets,
   resolveStorageDirectory,
 };

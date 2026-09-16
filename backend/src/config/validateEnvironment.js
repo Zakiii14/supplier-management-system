@@ -26,6 +26,7 @@ const SUPPORTED_LOG_LEVELS = new Set([
 const POSITIVE_INTEGER_RUNTIME_VARIABLES = [
   "READINESS_TIMEOUT_MS",
   "SHUTDOWN_TIMEOUT_MS",
+  "BACKUP_RETENTION_DAYS",
 ];
 
 const parseDatabaseUrl = (value) => {
@@ -39,6 +40,16 @@ const parseDatabaseUrl = (value) => {
   }
 };
 
+const pathsOverlap = (left, right) => {
+  const resolvedLeft = path.resolve(left);
+  const resolvedRight = path.resolve(right);
+  const leftToRight = path.relative(resolvedLeft, resolvedRight);
+  const rightToLeft = path.relative(resolvedRight, resolvedLeft);
+  const isContained = (relative) =>
+    relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  return isContained(leftToRight) || isContained(rightToLeft);
+};
+
 const validateEnvironment = () => {
   const errors = [];
   const isProduction = process.env.NODE_ENV === "production";
@@ -50,6 +61,7 @@ const validateEnvironment = () => {
   const dbSslMode = (process.env.DB_SSL_MODE || "").trim().toLowerCase();
   const logLevel = (process.env.LOG_LEVEL || "").trim().toLowerCase();
   const fileStorageRoot = String(process.env.FILE_STORAGE_ROOT || "").trim();
+  const backupRoot = String(process.env.BACKUP_ROOT || "").trim();
 
   if (!databaseUrl) {
     for (const variable of ["DB_HOST", "DB_NAME", "DB_USER", "DB_PASSWORD"]) {
@@ -101,6 +113,18 @@ const validateEnvironment = () => {
       errors.push("FILE_STORAGE_ROOT is required in production");
     } else if (!path.isAbsolute(fileStorageRoot)) {
       errors.push("FILE_STORAGE_ROOT must be an absolute path in production");
+    }
+    if (!backupRoot) {
+      errors.push("BACKUP_ROOT is required in production");
+    } else if (!path.isAbsolute(backupRoot)) {
+      errors.push("BACKUP_ROOT must be an absolute path in production");
+    }
+    if (
+      path.isAbsolute(fileStorageRoot) &&
+      path.isAbsolute(backupRoot) &&
+      pathsOverlap(fileStorageRoot, backupRoot)
+    ) {
+      errors.push("BACKUP_ROOT must be separate from FILE_STORAGE_ROOT");
     }
   }
 

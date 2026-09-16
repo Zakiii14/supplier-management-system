@@ -23,6 +23,8 @@ const TRACKED_ENVIRONMENT_KEYS = [
   "RESEND_API_KEY",
   "EMAIL_FROM",
   "FILE_STORAGE_ROOT",
+  "BACKUP_ROOT",
+  "BACKUP_RETENTION_DAYS",
 ];
 
 const originalEnvironment = Object.fromEntries(
@@ -42,6 +44,8 @@ const productionEnvironment = {
   RESEND_API_KEY: "test-key",
   EMAIL_FROM: "SupplyFlow <no-reply@example.com>",
   FILE_STORAGE_ROOT: path.resolve("production-storage"),
+  BACKUP_ROOT: path.resolve("production-backups"),
+  BACKUP_RETENTION_DAYS: "14",
 };
 
 const discreteDatabaseEnvironment = {
@@ -70,7 +74,7 @@ test("accepts local database settings with SSL disabled", () => {
   assert.doesNotThrow(() => validateEnvironment());
 });
 
-test("accepts production database settings with TLS and durable storage", () => {
+test("accepts production database settings with TLS, durable storage, and backups", () => {
   applyEnvironment({
     ...discreteDatabaseEnvironment,
     ...productionEnvironment,
@@ -124,6 +128,7 @@ test("rejects invalid production runtime settings", () => {
     LOG_LEVEL: "verbose",
     READINESS_TIMEOUT_MS: "0",
     SHUTDOWN_TIMEOUT_MS: "not-a-number",
+    BACKUP_RETENTION_DAYS: "0",
   });
   assert.throws(
     () => validateEnvironment(),
@@ -136,6 +141,10 @@ test("rejects invalid production runtime settings", () => {
   assert.throws(
     () => validateEnvironment(),
     /SHUTDOWN_TIMEOUT_MS must be a positive integer/,
+  );
+  assert.throws(
+    () => validateEnvironment(),
+    /BACKUP_RETENTION_DAYS must be a positive integer/,
   );
 });
 
@@ -160,5 +169,40 @@ test("production requires an absolute file storage root", () => {
   assert.throws(
     () => validateEnvironment(),
     /FILE_STORAGE_ROOT must be an absolute path in production/,
+  );
+});
+
+test("production requires a separate absolute backup root", () => {
+  applyEnvironment({
+    ...discreteDatabaseEnvironment,
+    ...productionEnvironment,
+    DB_SSL_MODE: "require",
+    BACKUP_ROOT: "",
+  });
+  assert.throws(
+    () => validateEnvironment(),
+    /BACKUP_ROOT is required in production/,
+  );
+
+  applyEnvironment({
+    ...discreteDatabaseEnvironment,
+    ...productionEnvironment,
+    DB_SSL_MODE: "require",
+    BACKUP_ROOT: "relative-backups",
+  });
+  assert.throws(
+    () => validateEnvironment(),
+    /BACKUP_ROOT must be an absolute path in production/,
+  );
+
+  applyEnvironment({
+    ...discreteDatabaseEnvironment,
+    ...productionEnvironment,
+    DB_SSL_MODE: "require",
+    BACKUP_ROOT: path.join(productionEnvironment.FILE_STORAGE_ROOT, "backups"),
+  });
+  assert.throws(
+    () => validateEnvironment(),
+    /BACKUP_ROOT must be separate from FILE_STORAGE_ROOT/,
   );
 });

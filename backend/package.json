@@ -10,6 +10,9 @@
     "migrate": "node scripts/runSqlMigration.js",
     "migrate:status": "node scripts/runSqlMigration.js --status",
     "migrate:baseline": "node scripts/runSqlMigration.js --baseline",
+    "backup:create": "node scripts/backup.js create",
+    "backup:verify": "node scripts/backup.js verify",
+    "backup:restore": "node scripts/backup.js restore",
     "set-password": "node scripts/setUserPassword.js"
   },
   "keywords": [],
