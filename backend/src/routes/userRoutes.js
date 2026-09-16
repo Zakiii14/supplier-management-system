@@ -23,6 +23,9 @@ const {
 const authorizeRoles = require(
   "../middleware/authorizeRoles"
 );
+const {
+  blockDemoMutation,
+} = require("../middleware/demoModeMiddleware");
 
 const router = express.Router();
 
@@ -35,18 +38,21 @@ router.get(
 router.post(
   "/",
   authorizeRoles("ADMIN"),
+  blockDemoMutation,
   createUser,
 );
 
 router.post(
   "/invite",
   authorizeRoles("ADMIN"),
+  blockDemoMutation,
   inviteUser,
 );
 
 router.post(
   "/:id/resend-invitation",
   authorizeRoles("ADMIN"),
+  blockDemoMutation,
   resendInvitation,
 );
 
@@ -70,12 +76,14 @@ router.get(
 router.patch(
   "/:id",
   authorizeRoles("ADMIN"),
+  blockDemoMutation,
   updateUser,
 );
 
 router.patch(
   "/:id/password",
   authorizeRoles("ADMIN"),
+  blockDemoMutation,
   resetUserPassword,
 );
 

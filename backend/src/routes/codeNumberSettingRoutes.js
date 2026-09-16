@@ -3,6 +3,9 @@ const authorizeRoles = require(
   "../middleware/authorizeRoles",
 );
 const {
+  blockDemoMutation,
+} = require("../middleware/demoModeMiddleware");
+const {
   getAllCodeNumberSettings,
   getCodeNumberSetting,
   updateCodeNumberSetting,
@@ -23,6 +26,7 @@ router.get("/:moduleKey", getCodeNumberSetting);
 router.put(
   "/:moduleKey",
   authorizeRoles("ADMIN"),
+  blockDemoMutation,
   updateCodeNumberSetting,
 );
 

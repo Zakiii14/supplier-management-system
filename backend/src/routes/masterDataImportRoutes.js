@@ -2,6 +2,9 @@ const express = require("express");
 const multer = require("multer");
 const authorizeRoles = require("../middleware/authorizeRoles");
 const {
+  blockDemoMutation,
+} = require("../middleware/demoModeMiddleware");
+const {
   downloadImportTemplate,
   getImportModules,
   previewImport,
@@ -27,7 +30,16 @@ const upload = multer({
 router.use(authorizeRoles("ADMIN"));
 router.get("/modules", getImportModules);
 router.get("/template/:module", downloadImportTemplate);
-router.post("/preview", upload.single("file"), previewImport);
-router.post("/commit", saveImport);
+router.post(
+  "/preview",
+  blockDemoMutation,
+  upload.single("file"),
+  previewImport,
+);
+router.post(
+  "/commit",
+  blockDemoMutation,
+  saveImport,
+);
 
 module.exports = router;

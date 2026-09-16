@@ -16,6 +16,9 @@ const authenticate = require(
 const createRateLimiter = require(
   "../middleware/rateLimitMiddleware"
 );
+const {
+  blockDemoMutation,
+} = require("../middleware/demoModeMiddleware");
 
 const router = express.Router();
 
@@ -36,24 +39,33 @@ const recoveryLimiter = createRateLimiter({
 });
 
 router.post("/login", loginLimiter, login);
-router.post("/forgot-password", recoveryLimiter, forgotPassword);
+router.post(
+  "/forgot-password",
+  blockDemoMutation,
+  recoveryLimiter,
+  forgotPassword,
+);
 router.get(
   "/reset-password/validate",
+  blockDemoMutation,
   recoveryLimiter,
   validatePasswordResetToken,
 );
 router.post(
   "/reset-password",
+  blockDemoMutation,
   recoveryLimiter,
   resetPassword,
 );
 router.get(
   "/activate-account/validate",
+  blockDemoMutation,
   recoveryLimiter,
   validateActivationToken,
 );
 router.post(
   "/activate-account",
+  blockDemoMutation,
   recoveryLimiter,
   activateAccount,
 );

@@ -1,6 +1,9 @@
 const express = require("express");
 const authorizeRoles = require("../middleware/authorizeRoles");
 const {
+  blockDemoMutation,
+} = require("../middleware/demoModeMiddleware");
+const {
   getPaymentSettings,
   updatePaymentSettings,
 } = require("../controllers/paymentSettingController");
@@ -22,6 +25,7 @@ router.get(
 router.put(
   "/",
   authorizeRoles("ADMIN"),
+  blockDemoMutation,
   updatePaymentSettings,
 );
 
