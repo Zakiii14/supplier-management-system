@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict eadBpzqdf6zSNtlqVI9PXkFsY0fpK5Rkf8RMQUnoGJMsk1z8BCm8tDnlsSLGlBd
+\restrict H73HuAcOdPgtn6HI7mIrp3h3WpfPPDPgdDwl4kbyVxR5FiJjybS8rVHTfdFJc5y
 
 -- Dumped from database version 18.6
 -- Dumped by pg_dump version 18.6
@@ -24,6 +24,30 @@ SET row_security = off;
 --
 
 CREATE SCHEMA app;
+
+
+--
+-- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
+--
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+
+
+--
+-- Name: EXTENSION pgcrypto; Type: COMMENT; Schema: -; Owner: -
+--
+
+COMMENT ON EXTENSION pgcrypto IS 'cryptographic functions';
+
+
+--
+-- Name: auth_token_type; Type: TYPE; Schema: app; Owner: -
+--
+
+CREATE TYPE app.auth_token_type AS ENUM (
+    'ACCOUNT_ACTIVATION',
+    'PASSWORD_RESET'
+);
 
 
 --
@@ -128,6 +152,107 @@ CREATE TYPE app.user_role AS ENUM (
 
 
 --
+-- Name: enforce_single_supplier_invoice_per_po(); Type: FUNCTION; Schema: app; Owner: -
+--
+
+CREATE FUNCTION app.enforce_single_supplier_invoice_per_po() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    po_total numeric(18,2);
+BEGIN
+    SELECT COALESCE(SUM(quantity * unit_price), 0)::numeric(18,2)
+    INTO po_total
+    FROM app.purchase_order_items
+    WHERE purchase_order_id = NEW.purchase_order_id;
+
+    IF NEW.total_amount <> po_total THEN
+        RAISE EXCEPTION 'Total tagihan supplier harus sama dengan total purchase order (%)', po_total
+            USING ERRCODE = '23514',
+                  CONSTRAINT = 'supplier_invoices_total_matches_po';
+    END IF;
+
+    IF TG_OP = 'INSERT'
+       OR NEW.purchase_order_id IS DISTINCT FROM OLD.purchase_order_id THEN
+        IF EXISTS (
+            SELECT 1
+            FROM app.supplier_invoices si
+            WHERE si.purchase_order_id = NEW.purchase_order_id
+              AND si.id <> NEW.id
+        ) THEN
+            RAISE EXCEPTION 'Purchase order sudah memiliki tagihan supplier'
+                USING ERRCODE = '23505',
+                      CONSTRAINT = 'supplier_invoices_purchase_order_unique';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: enforce_supplier_payment_invoice_link(); Type: FUNCTION; Schema: app; Owner: -
+--
+
+CREATE FUNCTION app.enforce_supplier_payment_invoice_link() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    invoice_po_id uuid;
+    invoice_number_value varchar(100);
+BEGIN
+    IF NEW.supplier_invoice_id IS NULL THEN
+        RAISE EXCEPTION 'Pembayaran supplier harus terhubung ke tagihan supplier'
+            USING ERRCODE = '23502',
+                  COLUMN = 'supplier_invoice_id';
+    END IF;
+
+    SELECT purchase_order_id, invoice_number
+    INTO invoice_po_id, invoice_number_value
+    FROM app.supplier_invoices
+    WHERE id = NEW.supplier_invoice_id;
+
+    IF invoice_po_id IS NULL THEN
+        RAISE EXCEPTION 'Tagihan supplier tidak ditemukan'
+            USING ERRCODE = '23503',
+                  CONSTRAINT = 'supplier_payments_supplier_invoice_id_fkey';
+    END IF;
+
+    IF invoice_po_id <> NEW.purchase_order_id THEN
+        RAISE EXCEPTION 'Tagihan supplier tidak berasal dari purchase order yang dipilih'
+            USING ERRCODE = '23514',
+                  CONSTRAINT = 'supplier_payments_invoice_po_match';
+    END IF;
+
+    NEW.supplier_invoice_number := invoice_number_value;
+    RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: set_password_changed_at(); Type: FUNCTION; Schema: app; Owner: -
+--
+
+CREATE FUNCTION app.set_password_changed_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.password_hash IS NOT NULL AND NEW.password_changed_at IS NULL THEN
+            NEW.password_changed_at = NOW();
+        END IF;
+    ELSIF NEW.password_hash IS DISTINCT FROM OLD.password_hash THEN
+        NEW.password_changed_at = NOW();
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: set_updated_at(); Type: FUNCTION; Schema: app; Owner: -
 --
 
@@ -143,74 +268,51 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION app.enforce_single_supplier_invoice_per_po() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    po_total numeric(18,2);
-BEGIN
-    SELECT COALESCE(SUM(quantity * unit_price), 0)::numeric(18,2)
-    INTO po_total
-    FROM app.purchase_order_items
-    WHERE purchase_order_id = NEW.purchase_order_id;
-
-    IF NEW.total_amount <> po_total THEN
-        RAISE EXCEPTION 'Total tagihan supplier harus sama dengan total purchase order (%)', po_total
-            USING ERRCODE = '23514', CONSTRAINT = 'supplier_invoices_total_matches_po';
-    END IF;
-
-    IF TG_OP = 'INSERT'
-       OR NEW.purchase_order_id IS DISTINCT FROM OLD.purchase_order_id THEN
-        IF EXISTS (
-            SELECT 1 FROM app.supplier_invoices si
-            WHERE si.purchase_order_id = NEW.purchase_order_id
-              AND si.id <> NEW.id
-        ) THEN
-            RAISE EXCEPTION 'Purchase order sudah memiliki tagihan supplier'
-                USING ERRCODE = '23505', CONSTRAINT = 'supplier_invoices_purchase_order_unique';
-        END IF;
-    END IF;
-
-    RETURN NEW;
-END;
-$$;
-
-CREATE FUNCTION app.enforce_supplier_payment_invoice_link() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    invoice_po_id uuid;
-    invoice_number_value varchar(100);
-BEGIN
-    IF NEW.supplier_invoice_id IS NULL THEN
-        RAISE EXCEPTION 'Pembayaran supplier harus terhubung ke tagihan supplier'
-            USING ERRCODE = '23502', COLUMN = 'supplier_invoice_id';
-    END IF;
-
-    SELECT purchase_order_id, invoice_number
-    INTO invoice_po_id, invoice_number_value
-    FROM app.supplier_invoices
-    WHERE id = NEW.supplier_invoice_id;
-
-    IF invoice_po_id IS NULL THEN
-        RAISE EXCEPTION 'Tagihan supplier tidak ditemukan'
-            USING ERRCODE = '23503', CONSTRAINT = 'supplier_payments_supplier_invoice_id_fkey';
-    END IF;
-
-    IF invoice_po_id <> NEW.purchase_order_id THEN
-        RAISE EXCEPTION 'Tagihan supplier tidak berasal dari purchase order yang dipilih'
-            USING ERRCODE = '23514', CONSTRAINT = 'supplier_payments_invoice_po_match';
-    END IF;
-
-    NEW.supplier_invoice_number := invoice_number_value;
-    RETURN NEW;
-END;
-$$;
-
 
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: audit_logs; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.audit_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid,
+    username character varying(50),
+    user_role character varying(30),
+    action character varying(20) NOT NULL,
+    module character varying(60) NOT NULL,
+    entity_id character varying(120),
+    entity_label character varying(180),
+    request_method character varying(10) NOT NULL,
+    request_path character varying(300) NOT NULL,
+    previous_data jsonb,
+    submitted_data jsonb,
+    result_data jsonb,
+    ip_address character varying(80),
+    user_agent character varying(500),
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: auth_tokens; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.auth_tokens (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    token_hash character(64) NOT NULL,
+    token_type app.auth_token_type NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    used_at timestamp with time zone,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT auth_tokens_expiry_check CHECK ((expires_at > created_at))
+);
+
 
 --
 -- Name: categories; Type: TABLE; Schema: app; Owner: -
@@ -253,33 +355,6 @@ CREATE TABLE app.code_number_settings (
     CONSTRAINT code_number_settings_reset_tokens_check CHECK ((((reset_rule)::text = 'NEVER'::text) OR (((reset_rule)::text = 'YEARLY'::text) AND include_year) OR (((reset_rule)::text = 'MONTHLY'::text) AND include_year AND include_month))),
     CONSTRAINT code_number_settings_separator_check CHECK (((separator)::text = ANY ((ARRAY[''::character varying, '-'::character varying, '/'::character varying, '.'::character varying])::text[])))
 );
-
-
-INSERT INTO app.code_number_settings (
-    module_key,
-    module_label,
-    field_name,
-    prefix,
-    digit_length,
-    include_year,
-    include_month,
-    reset_rule,
-    last_period
-)
-VALUES
-    ('SUPPLIER', 'Supplier', 'supplier_code', 'SUP', 4, false, false, 'NEVER', 'GLOBAL'),
-    ('CATEGORY', 'Kategori', 'category_code', 'CAT', 4, false, false, 'NEVER', 'GLOBAL'),
-    ('PRODUCT', 'Produk', 'sku', 'SKU', 5, false, false, 'NEVER', 'GLOBAL'),
-    ('PURCHASE_ORDER', 'Purchase Order', 'po_number', 'PO', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('GOODS_RECEIPT', 'Goods Receipt', 'receipt_number', 'GR', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('CUSTOMER', 'Pelanggan', 'customer_code', 'CUS', 4, false, false, 'NEVER', 'GLOBAL'),
-    ('SALES_ORDER', 'Sales Order', 'so_number', 'SO', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('DELIVERY', 'Delivery', 'delivery_number', 'DEL', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('INVOICE', 'Invoice', 'invoice_number', 'INV', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('PAYMENT', 'Pembayaran', 'payment_number', 'PAY', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('SUPPLIER_PAYMENT', 'Pembayaran Supplier', 'payment_number', 'SPAY', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('STOCK_OPNAME', 'Stock Opname', 'opname_number', 'SOF', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY')),
-    ('PURCHASE_RETURN', 'Retur Pembelian', 'return_number', 'PRT', 4, true, false, 'YEARLY', TO_CHAR(CURRENT_DATE, 'YYYY'));
 
 
 --
@@ -373,6 +448,25 @@ CREATE TABLE app.goods_receipts (
 
 
 --
+-- Name: inventory_damage_resolutions; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.inventory_damage_resolutions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    resolution_number character varying(40) NOT NULL,
+    product_id uuid NOT NULL,
+    resolution_action character varying(30) NOT NULL,
+    quantity numeric(18,3) NOT NULL,
+    resolution_date date DEFAULT CURRENT_DATE NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT inventory_damage_resolutions_quantity_check CHECK ((quantity > (0)::numeric)),
+    CONSTRAINT inventory_damage_resolutions_resolution_action_check CHECK (((resolution_action)::text = ANY ((ARRAY['REWORK_TO_QUARANTINE'::character varying, 'DISPOSE'::character varying])::text[])))
+);
+
+
+--
 -- Name: inventory_movements; Type: TABLE; Schema: app; Owner: -
 --
 
@@ -383,12 +477,33 @@ CREATE TABLE app.inventory_movements (
     quantity numeric(18,3) NOT NULL,
     reference_type character varying(50),
     reference_id uuid,
-    stock_bucket character varying(20) DEFAULT 'AVAILABLE'::character varying NOT NULL,
     movement_date timestamp with time zone DEFAULT now() NOT NULL,
     notes text,
     created_by uuid,
+    stock_bucket character varying(20) DEFAULT 'AVAILABLE'::character varying NOT NULL,
     CONSTRAINT inventory_movements_quantity_check CHECK ((quantity > (0)::numeric)),
     CONSTRAINT inventory_movements_stock_bucket_check CHECK (((stock_bucket)::text = ANY ((ARRAY['AVAILABLE'::character varying, 'QUARANTINE'::character varying, 'DAMAGED'::character varying])::text[])))
+);
+
+
+--
+-- Name: inventory_stock_inspections; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.inventory_stock_inspections (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    inspection_number character varying(40) NOT NULL,
+    product_id uuid NOT NULL,
+    source_bucket character varying(20) DEFAULT 'QUARANTINE'::character varying NOT NULL,
+    target_bucket character varying(20) NOT NULL,
+    quantity numeric(18,3) NOT NULL,
+    inspection_date date DEFAULT CURRENT_DATE NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT inventory_stock_inspections_quantity_check CHECK ((quantity > (0)::numeric)),
+    CONSTRAINT inventory_stock_inspections_source_bucket_check CHECK (((source_bucket)::text = 'QUARANTINE'::text)),
+    CONSTRAINT inventory_stock_inspections_target_bucket_check CHECK (((target_bucket)::text = ANY ((ARRAY['AVAILABLE'::character varying, 'DAMAGED'::character varying])::text[])))
 );
 
 
@@ -412,12 +527,68 @@ CREATE TABLE app.invoices (
     notes text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    credit_amount numeric(18,2) DEFAULT 0 NOT NULL,
     CONSTRAINT invoices_check CHECK ((paid_amount <= grand_total)),
+    CONSTRAINT invoices_credit_amount_check CHECK (((credit_amount >= (0)::numeric) AND (credit_amount <= grand_total))),
     CONSTRAINT invoices_discount_amount_check CHECK ((discount_amount >= (0)::numeric)),
     CONSTRAINT invoices_grand_total_check CHECK ((grand_total >= (0)::numeric)),
     CONSTRAINT invoices_paid_amount_check CHECK ((paid_amount >= (0)::numeric)),
+    CONSTRAINT invoices_settlement_amount_check CHECK (((paid_amount + credit_amount) <= grand_total)),
     CONSTRAINT invoices_subtotal_check CHECK ((subtotal >= (0)::numeric)),
     CONSTRAINT invoices_tax_amount_check CHECK ((tax_amount >= (0)::numeric))
+);
+
+
+--
+-- Name: notification_reads; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.notification_reads (
+    user_id uuid NOT NULL,
+    notification_key character varying(180) NOT NULL,
+    read_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: payment_proofs; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.payment_proofs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    customer_payment_id uuid,
+    supplier_payment_id uuid,
+    original_name character varying(255) NOT NULL,
+    storage_name character varying(120) NOT NULL,
+    mime_type character varying(100) NOT NULL,
+    size_bytes bigint NOT NULL,
+    checksum_sha256 character(64) NOT NULL,
+    uploaded_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT payment_proofs_owner_check CHECK ((((customer_payment_id IS NOT NULL) AND (supplier_payment_id IS NULL)) OR ((customer_payment_id IS NULL) AND (supplier_payment_id IS NOT NULL)))),
+    CONSTRAINT payment_proofs_size_check CHECK ((size_bytes > 0))
+);
+
+
+--
+-- Name: payment_settings; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.payment_settings (
+    id smallint DEFAULT 1 NOT NULL,
+    default_purchase_scheme character varying(20) DEFAULT 'TERM'::character varying NOT NULL,
+    default_purchase_term_days integer DEFAULT 0 NOT NULL,
+    default_down_payment_percent numeric(5,2) DEFAULT 30 NOT NULL,
+    require_purchase_transfer_proof boolean DEFAULT false NOT NULL,
+    require_sales_transfer_proof boolean DEFAULT false NOT NULL,
+    updated_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT payment_settings_down_payment_check CHECK (((default_down_payment_percent >= (0)::numeric) AND (default_down_payment_percent <= (100)::numeric))),
+    CONSTRAINT payment_settings_scheme_check CHECK (((default_purchase_scheme)::text = ANY ((ARRAY['DIRECT'::character varying, 'TERM'::character varying, 'DOWN_PAYMENT'::character varying, 'COD'::character varying])::text[]))),
+    CONSTRAINT payment_settings_singleton_check CHECK ((id = 1)),
+    CONSTRAINT payment_settings_term_days_check CHECK (((default_purchase_term_days >= 0) AND (default_purchase_term_days <= 365)))
 );
 
 
@@ -455,52 +626,19 @@ CREATE TABLE app.products (
     selling_price numeric(18,2) DEFAULT 0 NOT NULL,
     minimum_stock numeric(18,3) DEFAULT 0 NOT NULL,
     current_stock numeric(18,3) DEFAULT 0 NOT NULL,
-    quarantine_stock numeric(18,3) DEFAULT 0 NOT NULL,
-    damaged_stock numeric(18,3) DEFAULT 0 NOT NULL,
     status app.record_status DEFAULT 'ACTIVE'::app.record_status NOT NULL,
     description text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    quarantine_stock numeric(18,3) DEFAULT 0 NOT NULL,
+    damaged_stock numeric(18,3) DEFAULT 0 NOT NULL,
     CONSTRAINT products_current_stock_check CHECK ((current_stock >= (0)::numeric)),
-    CONSTRAINT products_quarantine_stock_check CHECK ((quarantine_stock >= (0)::numeric)),
     CONSTRAINT products_damaged_stock_check CHECK ((damaged_stock >= (0)::numeric)),
     CONSTRAINT products_minimum_stock_check CHECK ((minimum_stock >= (0)::numeric)),
     CONSTRAINT products_purchase_price_check CHECK ((purchase_price >= (0)::numeric)),
+    CONSTRAINT products_quarantine_stock_check CHECK ((quarantine_stock >= (0)::numeric)),
     CONSTRAINT products_selling_price_check CHECK ((selling_price >= (0)::numeric))
 );
-
-CREATE TABLE app.inventory_stock_inspections (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    inspection_number character varying(40) NOT NULL UNIQUE,
-    product_id uuid NOT NULL,
-    source_bucket character varying(20) DEFAULT 'QUARANTINE' NOT NULL,
-    target_bucket character varying(20) NOT NULL,
-    quantity numeric(18,3) NOT NULL,
-    inspection_date date DEFAULT CURRENT_DATE NOT NULL,
-    notes text,
-    created_by uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT inventory_stock_inspections_source_check CHECK (source_bucket = 'QUARANTINE'),
-    CONSTRAINT inventory_stock_inspections_target_check CHECK (target_bucket IN ('AVAILABLE','DAMAGED')),
-    CONSTRAINT inventory_stock_inspections_quantity_check CHECK (quantity > 0)
-);
-
-CREATE TABLE app.inventory_damage_resolutions (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    resolution_number character varying(40) NOT NULL UNIQUE,
-    product_id uuid NOT NULL,
-    resolution_action character varying(30) NOT NULL,
-    quantity numeric(18,3) NOT NULL,
-    resolution_date date DEFAULT CURRENT_DATE NOT NULL,
-    notes text,
-    created_by uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT inventory_damage_resolutions_action_check CHECK (resolution_action IN ('REWORK_TO_QUARANTINE','DISPOSE')),
-    CONSTRAINT inventory_damage_resolutions_quantity_check CHECK (quantity > 0)
-);
-
-CREATE INDEX idx_inventory_stock_inspections_product ON app.inventory_stock_inspections (product_id, inspection_date DESC);
-CREATE INDEX idx_inventory_damage_resolutions_product ON app.inventory_damage_resolutions (product_id, resolution_date DESC);
 
 
 --
@@ -532,12 +670,79 @@ CREATE TABLE app.purchase_orders (
     order_date date DEFAULT CURRENT_DATE NOT NULL,
     expected_date date,
     status app.purchase_order_status DEFAULT 'DRAFT'::app.purchase_order_status NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
     payment_scheme character varying(20) DEFAULT 'TERM'::character varying NOT NULL,
     payment_terms_days integer DEFAULT 0 NOT NULL,
     down_payment_percent numeric(5,2) DEFAULT 0 NOT NULL,
+    approval_status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
+    submitted_by uuid,
+    submitted_at timestamp with time zone,
+    decided_by uuid,
+    decided_at timestamp with time zone,
+    rejection_reason text,
+    CONSTRAINT purchase_orders_approval_status_check CHECK (((approval_status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[]))),
+    CONSTRAINT purchase_orders_check CHECK (((expected_date IS NULL) OR (expected_date >= order_date))),
+    CONSTRAINT purchase_orders_down_payment_percent_check CHECK (((down_payment_percent >= (0)::numeric) AND (down_payment_percent <= (100)::numeric))),
+    CONSTRAINT purchase_orders_payment_scheme_check CHECK (((payment_scheme)::text = ANY ((ARRAY['DIRECT'::character varying, 'TERM'::character varying, 'DOWN_PAYMENT'::character varying, 'COD'::character varying])::text[]))),
+    CONSTRAINT purchase_orders_payment_terms_days_check CHECK (((payment_terms_days >= 0) AND (payment_terms_days <= 365)))
+);
+
+
+--
+-- Name: purchase_return_items; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.purchase_return_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    purchase_return_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    quantity numeric(18,3) NOT NULL,
+    unit_price numeric(18,2) NOT NULL,
+    item_condition character varying(30) DEFAULT 'DAMAGED'::character varying NOT NULL,
+    notes character varying(300),
+    CONSTRAINT purchase_return_items_condition_check CHECK (((item_condition)::text = ANY ((ARRAY['DAMAGED'::character varying, 'WRONG_ITEM'::character varying, 'QUALITY_ISSUE'::character varying, 'UNOPENED'::character varying, 'OTHER'::character varying])::text[]))),
+    CONSTRAINT purchase_return_items_quantity_check CHECK ((quantity > (0)::numeric)),
+    CONSTRAINT purchase_return_items_unit_price_check CHECK ((unit_price >= (0)::numeric))
+);
+
+
+--
+-- Name: purchase_return_settlements; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.purchase_return_settlements (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    purchase_return_id uuid NOT NULL,
+    supplier_invoice_id uuid,
+    settlement_type character varying(30) NOT NULL,
+    settlement_date date DEFAULT CURRENT_DATE NOT NULL,
+    amount numeric(18,2) NOT NULL,
+    reference_number character varying(100),
     notes text,
     created_by uuid,
-    approval_status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT purchase_return_settlements_amount_check CHECK ((amount > (0)::numeric)),
+    CONSTRAINT purchase_return_settlements_invoice_check CHECK (((((settlement_type)::text = ANY ((ARRAY['INVOICE_DEDUCTION'::character varying, 'SUPPLIER_CREDIT'::character varying])::text[])) AND (supplier_invoice_id IS NOT NULL)) OR (((settlement_type)::text = ANY ((ARRAY['REFUND'::character varying, 'REPLACEMENT'::character varying])::text[])) AND (supplier_invoice_id IS NULL)))),
+    CONSTRAINT purchase_return_settlements_type_check CHECK (((settlement_type)::text = ANY ((ARRAY['INVOICE_DEDUCTION'::character varying, 'REFUND'::character varying, 'REPLACEMENT'::character varying, 'SUPPLIER_CREDIT'::character varying])::text[])))
+);
+
+
+--
+-- Name: purchase_returns; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.purchase_returns (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    return_number character varying(40) NOT NULL,
+    goods_receipt_id uuid NOT NULL,
+    return_date date DEFAULT CURRENT_DATE NOT NULL,
+    status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
+    reason character varying(50) NOT NULL,
+    notes text,
+    created_by uuid,
     submitted_by uuid,
     submitted_at timestamp with time zone,
     decided_by uuid,
@@ -545,204 +750,8 @@ CREATE TABLE app.purchase_orders (
     rejection_reason text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT purchase_orders_check CHECK (((expected_date IS NULL) OR (expected_date >= order_date))),
-    CONSTRAINT purchase_orders_payment_scheme_check CHECK (((payment_scheme)::text = ANY ((ARRAY['DIRECT'::character varying, 'TERM'::character varying, 'DOWN_PAYMENT'::character varying, 'COD'::character varying])::text[]))),
-    CONSTRAINT purchase_orders_payment_terms_days_check CHECK (((payment_terms_days >= 0) AND (payment_terms_days <= 365))),
-    CONSTRAINT purchase_orders_down_payment_percent_check CHECK (((down_payment_percent >= (0)::numeric) AND (down_payment_percent <= (100)::numeric))),
-    CONSTRAINT purchase_orders_approval_status_check CHECK (((approval_status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[])))
-);
-
-
---
--- Name: payment_settings; Type: TABLE; Schema: app; Owner: -
---
-
-CREATE TABLE app.payment_settings (
-    id smallint DEFAULT 1 NOT NULL,
-    default_purchase_scheme character varying(20) DEFAULT 'TERM'::character varying NOT NULL,
-    default_purchase_term_days integer DEFAULT 0 NOT NULL,
-    default_down_payment_percent numeric(5,2) DEFAULT 30 NOT NULL,
-    require_purchase_transfer_proof boolean DEFAULT false NOT NULL,
-    require_sales_transfer_proof boolean DEFAULT false NOT NULL,
-    updated_by uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT payment_settings_singleton_check CHECK ((id = 1)),
-    CONSTRAINT payment_settings_scheme_check CHECK (((default_purchase_scheme)::text = ANY ((ARRAY['DIRECT'::character varying, 'TERM'::character varying, 'DOWN_PAYMENT'::character varying, 'COD'::character varying])::text[]))),
-    CONSTRAINT payment_settings_term_days_check CHECK (((default_purchase_term_days >= 0) AND (default_purchase_term_days <= 365))),
-    CONSTRAINT payment_settings_down_payment_check CHECK (((default_down_payment_percent >= (0)::numeric) AND (default_down_payment_percent <= (100)::numeric))),
-    CONSTRAINT payment_settings_pkey PRIMARY KEY (id)
-);
-
-INSERT INTO app.payment_settings (id) VALUES (1);
-
-CREATE TABLE app.tax_settings (
-    id smallint DEFAULT 1 PRIMARY KEY,
-    is_enabled boolean DEFAULT true NOT NULL,
-    tax_name character varying(40) DEFAULT 'PPN' NOT NULL,
-    default_rate numeric(5,2) DEFAULT 0 NOT NULL,
-    allow_invoice_override boolean DEFAULT true NOT NULL,
-    updated_by uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT tax_settings_singleton_check CHECK (id = 1),
-    CONSTRAINT tax_settings_name_check CHECK (BTRIM(tax_name) <> ''),
-    CONSTRAINT tax_settings_rate_check CHECK (default_rate >= 0 AND default_rate <= 100)
-);
-
-INSERT INTO app.tax_settings (id) VALUES (1);
-
-
---
--- Name: supplier_payments; Type: TABLE; Schema: app; Owner: -
---
-
-CREATE TABLE app.supplier_invoices (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    invoice_number character varying(100) NOT NULL,
-    purchase_order_id uuid NOT NULL REFERENCES app.purchase_orders(id) ON DELETE RESTRICT,
-    invoice_date date DEFAULT CURRENT_DATE NOT NULL,
-    due_date date NOT NULL,
-    total_amount numeric(18,2) NOT NULL,
-    notes text,
-    created_by uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT supplier_invoices_total_check CHECK (total_amount > 0),
-    CONSTRAINT supplier_invoices_due_date_check CHECK (due_date >= invoice_date),
-    CONSTRAINT supplier_invoices_purchase_order_unique UNIQUE (purchase_order_id)
-);
-
-CREATE TABLE app.stock_opnames (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    opname_number character varying(40) NOT NULL UNIQUE,
-    opname_date date DEFAULT CURRENT_DATE NOT NULL,
-    status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
-    notes text,
-    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    submitted_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    submitted_at timestamp with time zone,
-    decided_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    decided_at timestamp with time zone,
-    rejection_reason text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT stock_opnames_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[])))
-);
-
-CREATE TABLE app.stock_opname_items (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    stock_opname_id uuid NOT NULL REFERENCES app.stock_opnames(id) ON DELETE CASCADE,
-    product_id uuid NOT NULL REFERENCES app.products(id),
-    system_quantity numeric(18,3) NOT NULL,
-    counted_quantity numeric(18,3) NOT NULL,
-    notes character varying(300),
-    CONSTRAINT stock_opname_items_product_unique UNIQUE (stock_opname_id, product_id),
-    CONSTRAINT stock_opname_items_system_quantity_check CHECK ((system_quantity >= (0)::numeric)),
-    CONSTRAINT stock_opname_items_counted_quantity_check CHECK ((counted_quantity >= (0)::numeric))
-);
-
-CREATE TABLE app.purchase_returns (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    return_number character varying(40) NOT NULL UNIQUE,
-    goods_receipt_id uuid NOT NULL REFERENCES app.goods_receipts(id) ON DELETE RESTRICT,
-    return_date date DEFAULT CURRENT_DATE NOT NULL,
-    status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
-    reason character varying(50) NOT NULL,
-    notes text,
-    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    submitted_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    submitted_at timestamp with time zone,
-    decided_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    decided_at timestamp with time zone,
-    rejection_reason text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT purchase_returns_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[]))),
-    CONSTRAINT purchase_returns_reason_check CHECK (((reason)::text = ANY ((ARRAY['DAMAGED'::character varying, 'WRONG_ITEM'::character varying, 'QUALITY_ISSUE'::character varying, 'EXCESS'::character varying, 'OTHER'::character varying])::text[])))
-);
-
-CREATE TABLE app.purchase_return_items (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    purchase_return_id uuid NOT NULL REFERENCES app.purchase_returns(id) ON DELETE CASCADE,
-    product_id uuid NOT NULL REFERENCES app.products(id) ON DELETE RESTRICT,
-    quantity numeric(18,3) NOT NULL,
-    unit_price numeric(18,2) NOT NULL,
-    item_condition character varying(30) DEFAULT 'DAMAGED'::character varying NOT NULL,
-    notes character varying(300),
-    CONSTRAINT purchase_return_items_product_unique UNIQUE (purchase_return_id, product_id),
-    CONSTRAINT purchase_return_items_quantity_check CHECK ((quantity > (0)::numeric)),
-    CONSTRAINT purchase_return_items_unit_price_check CHECK ((unit_price >= (0)::numeric)),
-    CONSTRAINT purchase_return_items_condition_check CHECK (((item_condition)::text = ANY ((ARRAY['DAMAGED'::character varying, 'WRONG_ITEM'::character varying, 'QUALITY_ISSUE'::character varying, 'UNOPENED'::character varying, 'OTHER'::character varying])::text[])))
-);
-
-CREATE TABLE app.purchase_return_settlements (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    purchase_return_id uuid NOT NULL REFERENCES app.purchase_returns(id) ON DELETE RESTRICT,
-    supplier_invoice_id uuid REFERENCES app.supplier_invoices(id) ON DELETE RESTRICT,
-    settlement_type character varying(30) NOT NULL,
-    settlement_date date DEFAULT CURRENT_DATE NOT NULL,
-    amount numeric(18,2) NOT NULL,
-    reference_number character varying(100),
-    notes text,
-    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT purchase_return_settlements_type_check CHECK (((settlement_type)::text = ANY ((ARRAY['INVOICE_DEDUCTION'::character varying, 'REFUND'::character varying, 'REPLACEMENT'::character varying, 'SUPPLIER_CREDIT'::character varying])::text[]))),
-    CONSTRAINT purchase_return_settlements_amount_check CHECK ((amount > (0)::numeric)),
-    CONSTRAINT purchase_return_settlements_invoice_check CHECK ((((settlement_type)::text = ANY ((ARRAY['INVOICE_DEDUCTION'::character varying, 'SUPPLIER_CREDIT'::character varying])::text[])) AND (supplier_invoice_id IS NOT NULL)) OR (((settlement_type)::text = ANY ((ARRAY['REFUND'::character varying, 'REPLACEMENT'::character varying])::text[])) AND (supplier_invoice_id IS NULL)))
-);
-
-CREATE TABLE app.supplier_invoice_attachments (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    supplier_invoice_id uuid NOT NULL REFERENCES app.supplier_invoices(id) ON DELETE CASCADE,
-    original_name character varying(255) NOT NULL,
-    storage_name character varying(120) NOT NULL UNIQUE,
-    mime_type character varying(100) NOT NULL,
-    size_bytes bigint NOT NULL CHECK (size_bytes > 0),
-    uploaded_by uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-CREATE TABLE app.supplier_payments (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    payment_number character varying(40) NOT NULL,
-    purchase_order_id uuid NOT NULL,
-    payment_date date DEFAULT CURRENT_DATE NOT NULL,
-    amount numeric(18,2) NOT NULL,
-    method app.payment_method NOT NULL,
-    reference_number character varying(100),
-    supplier_invoice_number character varying(100),
-    supplier_invoice_id uuid REFERENCES app.supplier_invoices(id) ON DELETE RESTRICT,
-    notes text,
-    paid_by uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT supplier_payments_amount_check CHECK ((amount > (0)::numeric)),
-    CONSTRAINT supplier_payments_pkey PRIMARY KEY (id),
-    CONSTRAINT supplier_payments_payment_number_key UNIQUE (payment_number)
-);
-
-
---
--- Name: payment_proofs; Type: TABLE; Schema: app; Owner: -
---
-
-CREATE TABLE app.payment_proofs (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    customer_payment_id uuid,
-    supplier_payment_id uuid,
-    original_name character varying(255) NOT NULL,
-    storage_name character varying(120) NOT NULL,
-    mime_type character varying(100) NOT NULL,
-    size_bytes bigint NOT NULL,
-    checksum_sha256 character(64) NOT NULL,
-    uploaded_by uuid,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT payment_proofs_owner_check CHECK ((((customer_payment_id IS NOT NULL) AND (supplier_payment_id IS NULL)) OR ((customer_payment_id IS NULL) AND (supplier_payment_id IS NOT NULL)))),
-    CONSTRAINT payment_proofs_size_check CHECK ((size_bytes > 0)),
-    CONSTRAINT payment_proofs_pkey PRIMARY KEY (id),
-    CONSTRAINT payment_proofs_storage_name_key UNIQUE (storage_name)
+    CONSTRAINT purchase_returns_reason_check CHECK (((reason)::text = ANY ((ARRAY['DAMAGED'::character varying, 'WRONG_ITEM'::character varying, 'QUALITY_ISSUE'::character varying, 'EXCESS'::character varying, 'OTHER'::character varying])::text[]))),
+    CONSTRAINT purchase_returns_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[])))
 );
 
 
@@ -776,7 +785,71 @@ CREATE TABLE app.sales_orders (
     status app.sales_order_status DEFAULT 'DRAFT'::app.sales_order_status NOT NULL,
     notes text,
     created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
     approval_status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
+    submitted_by uuid,
+    submitted_at timestamp with time zone,
+    decided_by uuid,
+    decided_at timestamp with time zone,
+    rejection_reason text,
+    CONSTRAINT sales_orders_approval_status_check CHECK (((approval_status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[]))),
+    CONSTRAINT sales_orders_check CHECK (((requested_delivery_date IS NULL) OR (requested_delivery_date >= order_date)))
+);
+
+
+--
+-- Name: sales_return_items; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.sales_return_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    sales_return_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    quantity numeric(18,3) NOT NULL,
+    unit_price numeric(18,2) NOT NULL,
+    item_condition character varying(20) DEFAULT 'SALEABLE'::character varying NOT NULL,
+    notes character varying(300),
+    CONSTRAINT sales_return_items_condition_check CHECK (((item_condition)::text = ANY ((ARRAY['SALEABLE'::character varying, 'DAMAGED'::character varying, 'QUARANTINE'::character varying])::text[]))),
+    CONSTRAINT sales_return_items_quantity_check CHECK ((quantity > (0)::numeric)),
+    CONSTRAINT sales_return_items_unit_price_check CHECK ((unit_price >= (0)::numeric))
+);
+
+
+--
+-- Name: sales_return_settlements; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.sales_return_settlements (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    sales_return_id uuid NOT NULL,
+    invoice_id uuid,
+    settlement_type character varying(30) NOT NULL,
+    settlement_date date DEFAULT CURRENT_DATE NOT NULL,
+    amount numeric(18,2) NOT NULL,
+    reference_number character varying(100),
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT sales_return_settlements_amount_check CHECK ((amount > (0)::numeric)),
+    CONSTRAINT sales_return_settlements_invoice_check CHECK (((((settlement_type)::text = ANY ((ARRAY['INVOICE_DEDUCTION'::character varying, 'CUSTOMER_CREDIT'::character varying])::text[])) AND (invoice_id IS NOT NULL)) OR (((settlement_type)::text = ANY ((ARRAY['REFUND'::character varying, 'REPLACEMENT'::character varying])::text[])) AND (invoice_id IS NULL)))),
+    CONSTRAINT sales_return_settlements_type_check CHECK (((settlement_type)::text = ANY ((ARRAY['INVOICE_DEDUCTION'::character varying, 'REFUND'::character varying, 'REPLACEMENT'::character varying, 'CUSTOMER_CREDIT'::character varying])::text[])))
+);
+
+
+--
+-- Name: sales_returns; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.sales_returns (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    return_number character varying(40) NOT NULL,
+    delivery_id uuid NOT NULL,
+    return_date date DEFAULT CURRENT_DATE NOT NULL,
+    status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
+    reason character varying(50) NOT NULL,
+    notes text,
+    created_by uuid,
     submitted_by uuid,
     submitted_at timestamp with time zone,
     decided_by uuid,
@@ -784,8 +857,122 @@ CREATE TABLE app.sales_orders (
     rejection_reason text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT sales_orders_check CHECK (((requested_delivery_date IS NULL) OR (requested_delivery_date >= order_date))),
-    CONSTRAINT sales_orders_approval_status_check CHECK (((approval_status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[])))
+    CONSTRAINT sales_returns_reason_check CHECK (((reason)::text = ANY ((ARRAY['DAMAGED'::character varying, 'WRONG_ITEM'::character varying, 'QUALITY_ISSUE'::character varying, 'CUSTOMER_REQUEST'::character varying, 'OTHER'::character varying])::text[]))),
+    CONSTRAINT sales_returns_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[])))
+);
+
+
+--
+-- Name: schema_migrations; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.schema_migrations (
+    version integer NOT NULL,
+    filename text NOT NULL,
+    checksum text NOT NULL,
+    applied_at timestamp with time zone DEFAULT now() NOT NULL,
+    execution_ms integer DEFAULT 0 NOT NULL,
+    is_baseline boolean DEFAULT false NOT NULL,
+    CONSTRAINT schema_migrations_checksum_check CHECK ((length(checksum) = 64)),
+    CONSTRAINT schema_migrations_execution_ms_check CHECK ((execution_ms >= 0)),
+    CONSTRAINT schema_migrations_version_check CHECK ((version > 0))
+);
+
+
+--
+-- Name: stock_opname_items; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.stock_opname_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    stock_opname_id uuid NOT NULL,
+    product_id uuid NOT NULL,
+    system_quantity numeric(18,3) NOT NULL,
+    counted_quantity numeric(18,3) NOT NULL,
+    notes character varying(300),
+    CONSTRAINT stock_opname_items_counted_quantity_check CHECK ((counted_quantity >= (0)::numeric)),
+    CONSTRAINT stock_opname_items_system_quantity_check CHECK ((system_quantity >= (0)::numeric))
+);
+
+
+--
+-- Name: stock_opnames; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.stock_opnames (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    opname_number character varying(40) NOT NULL,
+    opname_date date DEFAULT CURRENT_DATE NOT NULL,
+    status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
+    notes text,
+    created_by uuid,
+    submitted_by uuid,
+    submitted_at timestamp with time zone,
+    decided_by uuid,
+    decided_at timestamp with time zone,
+    rejection_reason text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT stock_opnames_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PENDING'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[])))
+);
+
+
+--
+-- Name: supplier_invoice_attachments; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.supplier_invoice_attachments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    supplier_invoice_id uuid NOT NULL,
+    original_name character varying(255) NOT NULL,
+    storage_name character varying(120) NOT NULL,
+    mime_type character varying(100) NOT NULL,
+    size_bytes bigint NOT NULL,
+    uploaded_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT supplier_invoice_attachments_size_bytes_check CHECK ((size_bytes > 0))
+);
+
+
+--
+-- Name: supplier_invoices; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.supplier_invoices (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    invoice_number character varying(100) NOT NULL,
+    purchase_order_id uuid NOT NULL,
+    invoice_date date DEFAULT CURRENT_DATE NOT NULL,
+    due_date date NOT NULL,
+    total_amount numeric(18,2) NOT NULL,
+    notes text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT supplier_invoices_due_date_check CHECK ((due_date >= invoice_date)),
+    CONSTRAINT supplier_invoices_total_check CHECK ((total_amount > (0)::numeric))
+);
+
+
+--
+-- Name: supplier_payments; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.supplier_payments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    payment_number character varying(40) NOT NULL,
+    purchase_order_id uuid NOT NULL,
+    payment_date date DEFAULT CURRENT_DATE NOT NULL,
+    amount numeric(18,2) NOT NULL,
+    method app.payment_method NOT NULL,
+    reference_number character varying(100),
+    supplier_invoice_number character varying(100),
+    notes text,
+    paid_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    supplier_invoice_id uuid,
+    CONSTRAINT supplier_payments_amount_check CHECK ((amount > (0)::numeric))
 );
 
 
@@ -803,15 +990,51 @@ CREATE TABLE app.suppliers (
     address text,
     city character varying(100),
     payment_terms_days integer DEFAULT 0 NOT NULL,
-    payment_scheme character varying(20),
-    down_payment_percent numeric(5,2),
     status app.record_status DEFAULT 'ACTIVE'::app.record_status NOT NULL,
     notes text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT suppliers_payment_terms_days_check CHECK ((payment_terms_days >= 0)),
+    payment_scheme character varying(20),
+    down_payment_percent numeric(5,2),
+    CONSTRAINT suppliers_down_payment_percent_check CHECK (((down_payment_percent IS NULL) OR ((down_payment_percent >= (0)::numeric) AND (down_payment_percent <= (100)::numeric)))),
     CONSTRAINT suppliers_payment_scheme_check CHECK (((payment_scheme IS NULL) OR ((payment_scheme)::text = ANY ((ARRAY['DIRECT'::character varying, 'TERM'::character varying, 'DOWN_PAYMENT'::character varying, 'COD'::character varying])::text[])))),
-    CONSTRAINT suppliers_down_payment_percent_check CHECK (((down_payment_percent IS NULL) OR ((down_payment_percent >= (0)::numeric) AND (down_payment_percent <= (100)::numeric))))
+    CONSTRAINT suppliers_payment_terms_days_check CHECK ((payment_terms_days >= 0))
+);
+
+
+--
+-- Name: tax_settings; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.tax_settings (
+    id smallint DEFAULT 1 NOT NULL,
+    is_enabled boolean DEFAULT true NOT NULL,
+    tax_name character varying(40) DEFAULT 'PPN'::character varying NOT NULL,
+    default_rate numeric(5,2) DEFAULT 0 NOT NULL,
+    allow_invoice_override boolean DEFAULT true NOT NULL,
+    updated_by uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT tax_settings_name_check CHECK ((btrim((tax_name)::text) <> ''::text)),
+    CONSTRAINT tax_settings_rate_check CHECK (((default_rate >= (0)::numeric) AND (default_rate <= (100)::numeric))),
+    CONSTRAINT tax_settings_singleton_check CHECK ((id = 1))
+);
+
+
+--
+-- Name: transaction_approvals; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.transaction_approvals (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    transaction_type character varying(30) NOT NULL,
+    transaction_id uuid NOT NULL,
+    action character varying(20) NOT NULL,
+    reason text,
+    acted_by uuid,
+    acted_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT transaction_approvals_action_check CHECK (((action)::text = ANY ((ARRAY['SUBMITTED'::character varying, 'RESUBMITTED'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying])::text[]))),
+    CONSTRAINT transaction_approvals_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['PURCHASE_ORDER'::character varying, 'SALES_ORDER'::character varying, 'STOCK_OPNAME'::character varying, 'PURCHASE_RETURN'::character varying, 'SALES_RETURN'::character varying])::text[])))
 );
 
 
@@ -833,45 +1056,10 @@ CREATE TABLE app.users (
     avatar_original_name character varying(255),
     avatar_mime_type character varying(50),
     avatar_size_bytes integer,
-    avatar_updated_at timestamp with time zone
-);
-
-CREATE TABLE app.notification_reads (
-    user_id uuid NOT NULL REFERENCES app.users(id) ON DELETE CASCADE,
-    notification_key character varying(180) NOT NULL,
-    read_at timestamp with time zone DEFAULT now() NOT NULL,
-    PRIMARY KEY (user_id, notification_key)
-);
-
-CREATE TABLE app.audit_logs (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    user_id uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    username character varying(50),
-    user_role character varying(30),
-    action character varying(20) NOT NULL,
-    module character varying(60) NOT NULL,
-    entity_id character varying(120),
-    entity_label character varying(180),
-    request_method character varying(10) NOT NULL,
-    request_path character varying(300) NOT NULL,
-    previous_data jsonb,
-    submitted_data jsonb,
-    result_data jsonb,
-    ip_address character varying(80),
-    user_agent character varying(500),
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-CREATE TABLE app.transaction_approvals (
-    id uuid DEFAULT gen_random_uuid() NOT NULL PRIMARY KEY,
-    transaction_type character varying(30) NOT NULL,
-    transaction_id uuid NOT NULL,
-    action character varying(20) NOT NULL,
-    reason text,
-    acted_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    acted_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT transaction_approvals_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['PURCHASE_ORDER'::character varying, 'SALES_ORDER'::character varying, 'STOCK_OPNAME'::character varying, 'PURCHASE_RETURN'::character varying])::text[]))),
-    CONSTRAINT transaction_approvals_action_check CHECK (((action)::text = ANY ((ARRAY['SUBMITTED'::character varying, 'RESUBMITTED'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying])::text[])))
+    avatar_updated_at timestamp with time zone,
+    email_verified_at timestamp with time zone,
+    invited_at timestamp with time zone,
+    password_changed_at timestamp with time zone
 );
 
 
@@ -907,16 +1095,16 @@ CREATE VIEW app.v_outstanding_invoices AS
     i.due_date,
     i.grand_total,
     i.paid_amount,
-    (i.grand_total - i.paid_amount) AS outstanding_amount,
+    ((i.grand_total - i.paid_amount) - i.credit_amount) AS outstanding_amount,
         CASE
-            WHEN (i.paid_amount >= i.grand_total) THEN 'PAID'::text
+            WHEN ((i.paid_amount + i.credit_amount) >= i.grand_total) THEN 'PAID'::text
             WHEN (CURRENT_DATE > i.due_date) THEN 'OVERDUE'::text
             WHEN (i.paid_amount > (0)::numeric) THEN 'PARTIAL'::text
             ELSE 'UNPAID'::text
         END AS calculated_status
    FROM (app.invoices i
      JOIN app.customers c ON ((c.id = i.customer_id)))
-  WHERE ((i.status <> 'CANCELLED'::app.invoice_status) AND (i.paid_amount < i.grand_total));
+  WHERE ((i.status <> 'CANCELLED'::app.invoice_status) AND ((i.paid_amount + i.credit_amount) < i.grand_total));
 
 
 --
@@ -937,6 +1125,30 @@ CREATE VIEW app.v_purchase_order_summary AS
      JOIN app.suppliers s ON ((s.id = po.supplier_id)))
      LEFT JOIN app.purchase_order_items poi ON ((poi.purchase_order_id = po.id)))
   GROUP BY po.id, po.po_number, s.supplier_name, po.order_date, po.expected_date, po.status;
+
+
+--
+-- Name: audit_logs audit_logs_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.audit_logs
+    ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: auth_tokens auth_tokens_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.auth_tokens
+    ADD CONSTRAINT auth_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: auth_tokens auth_tokens_token_hash_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.auth_tokens
+    ADD CONSTRAINT auth_tokens_token_hash_key UNIQUE (token_hash);
 
 
 --
@@ -1036,11 +1248,43 @@ ALTER TABLE ONLY app.goods_receipts
 
 
 --
+-- Name: inventory_damage_resolutions inventory_damage_resolutions_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.inventory_damage_resolutions
+    ADD CONSTRAINT inventory_damage_resolutions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inventory_damage_resolutions inventory_damage_resolutions_resolution_number_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.inventory_damage_resolutions
+    ADD CONSTRAINT inventory_damage_resolutions_resolution_number_key UNIQUE (resolution_number);
+
+
+--
 -- Name: inventory_movements inventory_movements_pkey; Type: CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.inventory_movements
     ADD CONSTRAINT inventory_movements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inventory_stock_inspections inventory_stock_inspections_inspection_number_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.inventory_stock_inspections
+    ADD CONSTRAINT inventory_stock_inspections_inspection_number_key UNIQUE (inspection_number);
+
+
+--
+-- Name: inventory_stock_inspections inventory_stock_inspections_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.inventory_stock_inspections
+    ADD CONSTRAINT inventory_stock_inspections_pkey PRIMARY KEY (id);
 
 
 --
@@ -1065,6 +1309,38 @@ ALTER TABLE ONLY app.invoices
 
 ALTER TABLE ONLY app.invoices
     ADD CONSTRAINT invoices_sales_order_id_key UNIQUE (sales_order_id);
+
+
+--
+-- Name: notification_reads notification_reads_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.notification_reads
+    ADD CONSTRAINT notification_reads_pkey PRIMARY KEY (user_id, notification_key);
+
+
+--
+-- Name: payment_proofs payment_proofs_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.payment_proofs
+    ADD CONSTRAINT payment_proofs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payment_proofs payment_proofs_storage_name_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.payment_proofs
+    ADD CONSTRAINT payment_proofs_storage_name_key UNIQUE (storage_name);
+
+
+--
+-- Name: payment_settings payment_settings_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.payment_settings
+    ADD CONSTRAINT payment_settings_pkey PRIMARY KEY (id);
 
 
 --
@@ -1132,6 +1408,46 @@ ALTER TABLE ONLY app.purchase_orders
 
 
 --
+-- Name: purchase_return_items purchase_return_items_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_return_items
+    ADD CONSTRAINT purchase_return_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: purchase_return_items purchase_return_items_product_unique; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_return_items
+    ADD CONSTRAINT purchase_return_items_product_unique UNIQUE (purchase_return_id, product_id);
+
+
+--
+-- Name: purchase_return_settlements purchase_return_settlements_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_return_settlements
+    ADD CONSTRAINT purchase_return_settlements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: purchase_returns purchase_returns_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_returns
+    ADD CONSTRAINT purchase_returns_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: purchase_returns purchase_returns_return_number_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_returns
+    ADD CONSTRAINT purchase_returns_return_number_key UNIQUE (return_number);
+
+
+--
 -- Name: sales_order_items sales_order_items_pkey; Type: CONSTRAINT; Schema: app; Owner: -
 --
 
@@ -1164,6 +1480,142 @@ ALTER TABLE ONLY app.sales_orders
 
 
 --
+-- Name: sales_return_items sales_return_items_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_return_items
+    ADD CONSTRAINT sales_return_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sales_return_items sales_return_items_product_unique; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_return_items
+    ADD CONSTRAINT sales_return_items_product_unique UNIQUE (sales_return_id, product_id);
+
+
+--
+-- Name: sales_return_settlements sales_return_settlements_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_return_settlements
+    ADD CONSTRAINT sales_return_settlements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sales_returns sales_returns_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_returns
+    ADD CONSTRAINT sales_returns_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sales_returns sales_returns_return_number_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_returns
+    ADD CONSTRAINT sales_returns_return_number_key UNIQUE (return_number);
+
+
+--
+-- Name: schema_migrations schema_migrations_filename_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.schema_migrations
+    ADD CONSTRAINT schema_migrations_filename_key UNIQUE (filename);
+
+
+--
+-- Name: schema_migrations schema_migrations_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.schema_migrations
+    ADD CONSTRAINT schema_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: stock_opname_items stock_opname_items_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.stock_opname_items
+    ADD CONSTRAINT stock_opname_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stock_opname_items stock_opname_items_product_unique; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.stock_opname_items
+    ADD CONSTRAINT stock_opname_items_product_unique UNIQUE (stock_opname_id, product_id);
+
+
+--
+-- Name: stock_opnames stock_opnames_opname_number_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.stock_opnames
+    ADD CONSTRAINT stock_opnames_opname_number_key UNIQUE (opname_number);
+
+
+--
+-- Name: stock_opnames stock_opnames_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.stock_opnames
+    ADD CONSTRAINT stock_opnames_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: supplier_invoice_attachments supplier_invoice_attachments_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_invoice_attachments
+    ADD CONSTRAINT supplier_invoice_attachments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: supplier_invoice_attachments supplier_invoice_attachments_storage_name_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_invoice_attachments
+    ADD CONSTRAINT supplier_invoice_attachments_storage_name_key UNIQUE (storage_name);
+
+
+--
+-- Name: supplier_invoices supplier_invoices_number_supplier_unique; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_invoices
+    ADD CONSTRAINT supplier_invoices_number_supplier_unique UNIQUE (purchase_order_id, invoice_number);
+
+
+--
+-- Name: supplier_invoices supplier_invoices_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_invoices
+    ADD CONSTRAINT supplier_invoices_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: supplier_payments supplier_payments_payment_number_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_payments
+    ADD CONSTRAINT supplier_payments_payment_number_key UNIQUE (payment_number);
+
+
+--
+-- Name: supplier_payments supplier_payments_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_payments
+    ADD CONSTRAINT supplier_payments_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: suppliers suppliers_pkey; Type: CONSTRAINT; Schema: app; Owner: -
 --
 
@@ -1177,6 +1629,22 @@ ALTER TABLE ONLY app.suppliers
 
 ALTER TABLE ONLY app.suppliers
     ADD CONSTRAINT suppliers_supplier_code_key UNIQUE (supplier_code);
+
+
+--
+-- Name: tax_settings tax_settings_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.tax_settings
+    ADD CONSTRAINT tax_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transaction_approvals transaction_approvals_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.transaction_approvals
+    ADD CONSTRAINT transaction_approvals_pkey PRIMARY KEY (id);
 
 
 --
@@ -1204,10 +1672,52 @@ ALTER TABLE ONLY app.users
 
 
 --
+-- Name: idx_audit_logs_created_at; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_audit_logs_created_at ON app.audit_logs USING btree (created_at DESC);
+
+
+--
+-- Name: idx_audit_logs_module; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_audit_logs_module ON app.audit_logs USING btree (module, created_at DESC);
+
+
+--
+-- Name: idx_audit_logs_user; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_audit_logs_user ON app.audit_logs USING btree (user_id, created_at DESC);
+
+
+--
+-- Name: idx_auth_tokens_expiry; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_auth_tokens_expiry ON app.auth_tokens USING btree (expires_at) WHERE (used_at IS NULL);
+
+
+--
+-- Name: idx_auth_tokens_user_type_active; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_auth_tokens_user_type_active ON app.auth_tokens USING btree (user_id, token_type, expires_at) WHERE (used_at IS NULL);
+
+
+--
 -- Name: idx_delivery_so; Type: INDEX; Schema: app; Owner: -
 --
 
 CREATE INDEX idx_delivery_so ON app.deliveries USING btree (sales_order_id);
+
+
+--
+-- Name: idx_inventory_damage_resolutions_product; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_inventory_damage_resolutions_product ON app.inventory_damage_resolutions USING btree (product_id, resolution_date DESC);
 
 
 --
@@ -1225,6 +1735,13 @@ CREATE INDEX idx_inventory_reference ON app.inventory_movements USING btree (ref
 
 
 --
+-- Name: idx_inventory_stock_inspections_product; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_inventory_stock_inspections_product ON app.inventory_stock_inspections USING btree (product_id, inspection_date DESC);
+
+
+--
 -- Name: idx_invoice_customer; Type: INDEX; Schema: app; Owner: -
 --
 
@@ -1239,24 +1756,17 @@ CREATE INDEX idx_invoice_status_due ON app.invoices USING btree (status, due_dat
 
 
 --
+-- Name: idx_notification_reads_user_time; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_notification_reads_user_time ON app.notification_reads USING btree (user_id, read_at DESC);
+
+
+--
 -- Name: idx_payment_invoice; Type: INDEX; Schema: app; Owner: -
 --
 
 CREATE INDEX idx_payment_invoice ON app.payments USING btree (invoice_id);
-
-
---
--- Name: idx_supplier_payments_purchase_order; Type: INDEX; Schema: app; Owner: -
---
-
-CREATE INDEX idx_supplier_payments_purchase_order ON app.supplier_payments USING btree (purchase_order_id, payment_date DESC);
-CREATE INDEX idx_supplier_payments_invoice ON app.supplier_payments USING btree (supplier_invoice_id) WHERE (supplier_invoice_id IS NOT NULL);
-CREATE INDEX idx_supplier_invoices_po ON app.supplier_invoices USING btree (purchase_order_id, invoice_date DESC);
-CREATE INDEX idx_supplier_invoices_due_date ON app.supplier_invoices USING btree (due_date);
-CREATE INDEX idx_notification_reads_user_time ON app.notification_reads USING btree (user_id, read_at DESC);
-CREATE INDEX idx_audit_logs_created_at ON app.audit_logs USING btree (created_at DESC);
-CREATE INDEX idx_audit_logs_user ON app.audit_logs USING btree (user_id, created_at DESC);
-CREATE INDEX idx_audit_logs_module ON app.audit_logs USING btree (module, created_at DESC);
 
 
 --
@@ -1285,8 +1795,6 @@ CREATE INDEX idx_po_items_product ON app.purchase_order_items USING btree (produ
 --
 
 CREATE INDEX idx_po_status ON app.purchase_orders USING btree (status);
-
-CREATE INDEX idx_purchase_orders_approval_status ON app.purchase_orders USING btree (approval_status);
 
 
 --
@@ -1318,6 +1826,55 @@ CREATE INDEX idx_products_supplier ON app.products USING btree (supplier_id);
 
 
 --
+-- Name: idx_purchase_orders_approval_status; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_purchase_orders_approval_status ON app.purchase_orders USING btree (approval_status);
+
+
+--
+-- Name: idx_purchase_return_items_product; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_purchase_return_items_product ON app.purchase_return_items USING btree (product_id);
+
+
+--
+-- Name: idx_purchase_return_settlements_invoice; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_purchase_return_settlements_invoice ON app.purchase_return_settlements USING btree (supplier_invoice_id) WHERE (supplier_invoice_id IS NOT NULL);
+
+
+--
+-- Name: idx_purchase_return_settlements_return; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_purchase_return_settlements_return ON app.purchase_return_settlements USING btree (purchase_return_id, settlement_date DESC);
+
+
+--
+-- Name: idx_purchase_returns_date; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_purchase_returns_date ON app.purchase_returns USING btree (return_date DESC);
+
+
+--
+-- Name: idx_purchase_returns_receipt; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_purchase_returns_receipt ON app.purchase_returns USING btree (goods_receipt_id);
+
+
+--
+-- Name: idx_purchase_returns_status; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_purchase_returns_status ON app.purchase_returns USING btree (status);
+
+
+--
 -- Name: idx_receipt_items_product; Type: INDEX; Schema: app; Owner: -
 --
 
@@ -1332,24 +1889,59 @@ CREATE INDEX idx_receipts_po ON app.goods_receipts USING btree (purchase_order_i
 
 
 --
+-- Name: idx_sales_orders_approval_status; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_sales_orders_approval_status ON app.sales_orders USING btree (approval_status);
+
+
+--
+-- Name: idx_sales_return_items_product; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_sales_return_items_product ON app.sales_return_items USING btree (product_id);
+
+
+--
+-- Name: idx_sales_return_settlements_invoice; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_sales_return_settlements_invoice ON app.sales_return_settlements USING btree (invoice_id) WHERE (invoice_id IS NOT NULL);
+
+
+--
+-- Name: idx_sales_return_settlements_return; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_sales_return_settlements_return ON app.sales_return_settlements USING btree (sales_return_id, settlement_date DESC);
+
+
+--
+-- Name: idx_sales_returns_date; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_sales_returns_date ON app.sales_returns USING btree (return_date DESC);
+
+
+--
+-- Name: idx_sales_returns_delivery; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_sales_returns_delivery ON app.sales_returns USING btree (delivery_id);
+
+
+--
+-- Name: idx_sales_returns_status; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_sales_returns_status ON app.sales_returns USING btree (status);
+
+
+--
 -- Name: idx_so_customer; Type: INDEX; Schema: app; Owner: -
 --
 
 CREATE INDEX idx_so_customer ON app.sales_orders USING btree (customer_id);
-
-CREATE INDEX idx_sales_orders_approval_status ON app.sales_orders USING btree (approval_status);
-
-CREATE INDEX idx_stock_opnames_date ON app.stock_opnames USING btree (opname_date DESC);
-CREATE INDEX idx_stock_opnames_status ON app.stock_opnames USING btree (status);
-CREATE INDEX idx_stock_opname_items_product ON app.stock_opname_items USING btree (product_id);
-CREATE INDEX idx_purchase_returns_date ON app.purchase_returns USING btree (return_date DESC);
-CREATE INDEX idx_purchase_returns_status ON app.purchase_returns USING btree (status);
-CREATE INDEX idx_purchase_returns_receipt ON app.purchase_returns USING btree (goods_receipt_id);
-CREATE INDEX idx_purchase_return_items_product ON app.purchase_return_items USING btree (product_id);
-CREATE INDEX idx_purchase_return_settlements_return ON app.purchase_return_settlements USING btree (purchase_return_id, settlement_date DESC);
-CREATE INDEX idx_purchase_return_settlements_invoice ON app.purchase_return_settlements USING btree (supplier_invoice_id) WHERE (supplier_invoice_id IS NOT NULL);
-
-CREATE INDEX idx_transaction_approvals_transaction ON app.transaction_approvals USING btree (transaction_type, transaction_id, acted_at DESC);
 
 
 --
@@ -1367,10 +1959,59 @@ CREATE INDEX idx_so_status ON app.sales_orders USING btree (status);
 
 
 --
--- Name: invoices trg_invoices_updated_at; Type: TRIGGER; Schema: app; Owner: -
+-- Name: idx_stock_opname_items_product; Type: INDEX; Schema: app; Owner: -
 --
 
-CREATE TRIGGER trg_invoices_updated_at BEFORE UPDATE ON app.invoices FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+CREATE INDEX idx_stock_opname_items_product ON app.stock_opname_items USING btree (product_id);
+
+
+--
+-- Name: idx_stock_opnames_date; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_stock_opnames_date ON app.stock_opnames USING btree (opname_date DESC);
+
+
+--
+-- Name: idx_stock_opnames_status; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_stock_opnames_status ON app.stock_opnames USING btree (status);
+
+
+--
+-- Name: idx_supplier_invoices_due_date; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_supplier_invoices_due_date ON app.supplier_invoices USING btree (due_date);
+
+
+--
+-- Name: idx_supplier_invoices_po; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_supplier_invoices_po ON app.supplier_invoices USING btree (purchase_order_id, invoice_date DESC);
+
+
+--
+-- Name: idx_supplier_payments_invoice; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_supplier_payments_invoice ON app.supplier_payments USING btree (supplier_invoice_id) WHERE (supplier_invoice_id IS NOT NULL);
+
+
+--
+-- Name: idx_supplier_payments_purchase_order; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_supplier_payments_purchase_order ON app.supplier_payments USING btree (purchase_order_id, payment_date DESC);
+
+
+--
+-- Name: idx_transaction_approvals_transaction; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX idx_transaction_approvals_transaction ON app.transaction_approvals USING btree (transaction_type, transaction_id, acted_at DESC);
 
 
 --
@@ -1378,6 +2019,27 @@ CREATE TRIGGER trg_invoices_updated_at BEFORE UPDATE ON app.invoices FOR EACH RO
 --
 
 CREATE TRIGGER trg_code_number_settings_updated_at BEFORE UPDATE ON app.code_number_settings FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: invoices trg_invoices_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_invoices_updated_at BEFORE UPDATE ON app.invoices FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: payment_proofs trg_payment_proofs_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_payment_proofs_updated_at BEFORE UPDATE ON app.payment_proofs FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: payment_settings trg_payment_settings_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_payment_settings_updated_at BEFORE UPDATE ON app.payment_settings FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
 
 
 --
@@ -1395,31 +2057,10 @@ CREATE TRIGGER trg_purchase_orders_updated_at BEFORE UPDATE ON app.purchase_orde
 
 
 --
--- Name: payment_settings trg_payment_settings_updated_at; Type: TRIGGER; Schema: app; Owner: -
+-- Name: purchase_returns trg_purchase_returns_updated_at; Type: TRIGGER; Schema: app; Owner: -
 --
 
-CREATE TRIGGER trg_payment_settings_updated_at BEFORE UPDATE ON app.payment_settings FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
-
-CREATE TRIGGER trg_tax_settings_updated_at BEFORE UPDATE ON app.tax_settings FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
-
-
---
--- Name: supplier_payments trg_supplier_payments_updated_at; Type: TRIGGER; Schema: app; Owner: -
---
-
-CREATE TRIGGER trg_supplier_payments_updated_at BEFORE UPDATE ON app.supplier_payments FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
-CREATE TRIGGER trg_supplier_invoices_updated_at BEFORE UPDATE ON app.supplier_invoices FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
-CREATE TRIGGER trg_supplier_invoices_finance_rules BEFORE INSERT OR UPDATE OF purchase_order_id, total_amount ON app.supplier_invoices FOR EACH ROW EXECUTE FUNCTION app.enforce_single_supplier_invoice_per_po();
-CREATE TRIGGER trg_supplier_payments_invoice_link BEFORE INSERT OR UPDATE OF purchase_order_id, supplier_invoice_id, supplier_invoice_number ON app.supplier_payments FOR EACH ROW EXECUTE FUNCTION app.enforce_supplier_payment_invoice_link();
-CREATE TRIGGER trg_stock_opnames_updated_at BEFORE UPDATE ON app.stock_opnames FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
 CREATE TRIGGER trg_purchase_returns_updated_at BEFORE UPDATE ON app.purchase_returns FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
-
-
---
--- Name: payment_proofs trg_payment_proofs_updated_at; Type: TRIGGER; Schema: app; Owner: -
---
-
-CREATE TRIGGER trg_payment_proofs_updated_at BEFORE UPDATE ON app.payment_proofs FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
 
 
 --
@@ -1430,10 +2071,66 @@ CREATE TRIGGER trg_sales_orders_updated_at BEFORE UPDATE ON app.sales_orders FOR
 
 
 --
+-- Name: sales_returns trg_sales_returns_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_sales_returns_updated_at BEFORE UPDATE ON app.sales_returns FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: stock_opnames trg_stock_opnames_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_stock_opnames_updated_at BEFORE UPDATE ON app.stock_opnames FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: supplier_invoices trg_supplier_invoices_finance_rules; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_supplier_invoices_finance_rules BEFORE INSERT OR UPDATE OF purchase_order_id, total_amount ON app.supplier_invoices FOR EACH ROW EXECUTE FUNCTION app.enforce_single_supplier_invoice_per_po();
+
+
+--
+-- Name: supplier_invoices trg_supplier_invoices_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_supplier_invoices_updated_at BEFORE UPDATE ON app.supplier_invoices FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: supplier_payments trg_supplier_payments_invoice_link; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_supplier_payments_invoice_link BEFORE INSERT OR UPDATE OF purchase_order_id, supplier_invoice_id, supplier_invoice_number ON app.supplier_payments FOR EACH ROW EXECUTE FUNCTION app.enforce_supplier_payment_invoice_link();
+
+
+--
+-- Name: supplier_payments trg_supplier_payments_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_supplier_payments_updated_at BEFORE UPDATE ON app.supplier_payments FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
 -- Name: suppliers trg_suppliers_updated_at; Type: TRIGGER; Schema: app; Owner: -
 --
 
 CREATE TRIGGER trg_suppliers_updated_at BEFORE UPDATE ON app.suppliers FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: tax_settings trg_tax_settings_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_tax_settings_updated_at BEFORE UPDATE ON app.tax_settings FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+
+--
+-- Name: users trg_users_password_changed_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_users_password_changed_at BEFORE INSERT OR UPDATE ON app.users FOR EACH ROW EXECUTE FUNCTION app.set_password_changed_at();
 
 
 --
@@ -1444,11 +2141,27 @@ CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON app.users FOR EACH ROW EXEC
 
 
 --
--- Name: deliveries deliveries_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: audit_logs audit_logs_user_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
-ALTER TABLE ONLY app.deliveries
-    ADD CONSTRAINT deliveries_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+ALTER TABLE ONLY app.audit_logs
+    ADD CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: auth_tokens auth_tokens_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.auth_tokens
+    ADD CONSTRAINT auth_tokens_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: auth_tokens auth_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.auth_tokens
+    ADD CONSTRAINT auth_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES app.users(id) ON DELETE CASCADE;
 
 
 --
@@ -1457,6 +2170,14 @@ ALTER TABLE ONLY app.deliveries
 
 ALTER TABLE ONLY app.code_number_settings
     ADD CONSTRAINT code_number_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: deliveries deliveries_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.deliveries
+    ADD CONSTRAINT deliveries_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
 
 --
@@ -1532,6 +2253,22 @@ ALTER TABLE ONLY app.goods_receipts
 
 
 --
+-- Name: inventory_damage_resolutions inventory_damage_resolutions_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.inventory_damage_resolutions
+    ADD CONSTRAINT inventory_damage_resolutions_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: inventory_damage_resolutions inventory_damage_resolutions_product_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.inventory_damage_resolutions
+    ADD CONSTRAINT inventory_damage_resolutions_product_id_fkey FOREIGN KEY (product_id) REFERENCES app.products(id) ON DELETE RESTRICT;
+
+
+--
 -- Name: inventory_movements inventory_movements_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
@@ -1545,6 +2282,22 @@ ALTER TABLE ONLY app.inventory_movements
 
 ALTER TABLE ONLY app.inventory_movements
     ADD CONSTRAINT inventory_movements_product_id_fkey FOREIGN KEY (product_id) REFERENCES app.products(id);
+
+
+--
+-- Name: inventory_stock_inspections inventory_stock_inspections_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.inventory_stock_inspections
+    ADD CONSTRAINT inventory_stock_inspections_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: inventory_stock_inspections inventory_stock_inspections_product_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.inventory_stock_inspections
+    ADD CONSTRAINT inventory_stock_inspections_product_id_fkey FOREIGN KEY (product_id) REFERENCES app.products(id) ON DELETE RESTRICT;
 
 
 --
@@ -1564,64 +2317,11 @@ ALTER TABLE ONLY app.invoices
 
 
 --
--- Name: payments payments_invoice_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: notification_reads notification_reads_user_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
-ALTER TABLE ONLY app.payments
-    ADD CONSTRAINT payments_invoice_id_fkey FOREIGN KEY (invoice_id) REFERENCES app.invoices(id);
-
-
---
--- Name: payments payments_received_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
---
-
-ALTER TABLE ONLY app.payments
-    ADD CONSTRAINT payments_received_by_fkey FOREIGN KEY (received_by) REFERENCES app.users(id) ON DELETE SET NULL;
-
-
---
--- Name: payment_settings payment_settings_updated_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
---
-
-ALTER TABLE ONLY app.payment_settings
-    ADD CONSTRAINT payment_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES app.users(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY app.tax_settings
-    ADD CONSTRAINT tax_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES app.users(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY app.inventory_stock_inspections
-    ADD CONSTRAINT inventory_stock_inspections_product_fkey FOREIGN KEY (product_id) REFERENCES app.products(id) ON DELETE RESTRICT;
-
-ALTER TABLE ONLY app.inventory_stock_inspections
-    ADD CONSTRAINT inventory_stock_inspections_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY app.inventory_damage_resolutions
-    ADD CONSTRAINT inventory_damage_resolutions_product_fkey FOREIGN KEY (product_id) REFERENCES app.products(id) ON DELETE RESTRICT;
-
-ALTER TABLE ONLY app.inventory_damage_resolutions
-    ADD CONSTRAINT inventory_damage_resolutions_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
-
-
---
--- Name: supplier_payments supplier_payments_purchase_order_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
---
-
-ALTER TABLE ONLY app.supplier_payments
-    ADD CONSTRAINT supplier_payments_purchase_order_id_fkey FOREIGN KEY (purchase_order_id) REFERENCES app.purchase_orders(id) ON DELETE RESTRICT;
-
-
---
--- Name: supplier_payments supplier_payments_paid_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
---
-
-ALTER TABLE ONLY app.supplier_payments
-    ADD CONSTRAINT supplier_payments_paid_by_fkey FOREIGN KEY (paid_by) REFERENCES app.users(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY app.supplier_invoices
-    ADD CONSTRAINT supplier_invoices_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY app.supplier_invoice_attachments
-    ADD CONSTRAINT supplier_invoice_attachments_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES app.users(id) ON DELETE SET NULL;
+ALTER TABLE ONLY app.notification_reads
+    ADD CONSTRAINT notification_reads_user_id_fkey FOREIGN KEY (user_id) REFERENCES app.users(id) ON DELETE CASCADE;
 
 
 --
@@ -1646,6 +2346,30 @@ ALTER TABLE ONLY app.payment_proofs
 
 ALTER TABLE ONLY app.payment_proofs
     ADD CONSTRAINT payment_proofs_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: payment_settings payment_settings_updated_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.payment_settings
+    ADD CONSTRAINT payment_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: payments payments_invoice_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.payments
+    ADD CONSTRAINT payments_invoice_id_fkey FOREIGN KEY (invoice_id) REFERENCES app.invoices(id);
+
+
+--
+-- Name: payments payments_received_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.payments
+    ADD CONSTRAINT payments_received_by_fkey FOREIGN KEY (received_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
 
 --
@@ -1687,11 +2411,21 @@ ALTER TABLE ONLY app.purchase_order_items
 ALTER TABLE ONLY app.purchase_orders
     ADD CONSTRAINT purchase_orders_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
-ALTER TABLE ONLY app.purchase_orders
-    ADD CONSTRAINT purchase_orders_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+--
+-- Name: purchase_orders purchase_orders_decided_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
 
 ALTER TABLE ONLY app.purchase_orders
     ADD CONSTRAINT purchase_orders_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: purchase_orders purchase_orders_submitted_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_orders
+    ADD CONSTRAINT purchase_orders_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
 
 --
@@ -1700,6 +2434,78 @@ ALTER TABLE ONLY app.purchase_orders
 
 ALTER TABLE ONLY app.purchase_orders
     ADD CONSTRAINT purchase_orders_supplier_id_fkey FOREIGN KEY (supplier_id) REFERENCES app.suppliers(id);
+
+
+--
+-- Name: purchase_return_items purchase_return_items_product_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_return_items
+    ADD CONSTRAINT purchase_return_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES app.products(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: purchase_return_items purchase_return_items_purchase_return_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_return_items
+    ADD CONSTRAINT purchase_return_items_purchase_return_id_fkey FOREIGN KEY (purchase_return_id) REFERENCES app.purchase_returns(id) ON DELETE CASCADE;
+
+
+--
+-- Name: purchase_return_settlements purchase_return_settlements_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_return_settlements
+    ADD CONSTRAINT purchase_return_settlements_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: purchase_return_settlements purchase_return_settlements_purchase_return_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_return_settlements
+    ADD CONSTRAINT purchase_return_settlements_purchase_return_id_fkey FOREIGN KEY (purchase_return_id) REFERENCES app.purchase_returns(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: purchase_return_settlements purchase_return_settlements_supplier_invoice_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_return_settlements
+    ADD CONSTRAINT purchase_return_settlements_supplier_invoice_id_fkey FOREIGN KEY (supplier_invoice_id) REFERENCES app.supplier_invoices(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: purchase_returns purchase_returns_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_returns
+    ADD CONSTRAINT purchase_returns_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: purchase_returns purchase_returns_decided_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_returns
+    ADD CONSTRAINT purchase_returns_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: purchase_returns purchase_returns_goods_receipt_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_returns
+    ADD CONSTRAINT purchase_returns_goods_receipt_id_fkey FOREIGN KEY (goods_receipt_id) REFERENCES app.goods_receipts(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: purchase_returns purchase_returns_submitted_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.purchase_returns
+    ADD CONSTRAINT purchase_returns_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
 
 --
@@ -1725,12 +2531,6 @@ ALTER TABLE ONLY app.sales_order_items
 ALTER TABLE ONLY app.sales_orders
     ADD CONSTRAINT sales_orders_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
-ALTER TABLE ONLY app.sales_orders
-    ADD CONSTRAINT sales_orders_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES app.users(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY app.sales_orders
-    ADD CONSTRAINT sales_orders_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES app.users(id) ON DELETE SET NULL;
-
 
 --
 -- Name: sales_orders sales_orders_customer_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
@@ -1741,103 +2541,207 @@ ALTER TABLE ONLY app.sales_orders
 
 
 --
--- Sales return workflow
+-- Name: sales_orders sales_orders_decided_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
 
-ALTER TABLE app.invoices ADD COLUMN IF NOT EXISTS credit_amount numeric(18,2) DEFAULT 0 NOT NULL;
-ALTER TABLE app.invoices DROP CONSTRAINT IF EXISTS invoices_credit_amount_check;
-ALTER TABLE app.invoices ADD CONSTRAINT invoices_credit_amount_check CHECK (credit_amount >= 0 AND credit_amount <= grand_total);
-ALTER TABLE app.invoices DROP CONSTRAINT IF EXISTS invoices_settlement_amount_check;
-ALTER TABLE app.invoices ADD CONSTRAINT invoices_settlement_amount_check CHECK (paid_amount + credit_amount <= grand_total);
+ALTER TABLE ONLY app.sales_orders
+    ADD CONSTRAINT sales_orders_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
-CREATE OR REPLACE VIEW app.v_outstanding_invoices AS
- SELECT i.id,i.invoice_number,i.customer_id,c.customer_name,i.invoice_date,i.due_date,
-        i.grand_total,i.paid_amount,
-        (i.grand_total-i.paid_amount-i.credit_amount) AS outstanding_amount,
-        CASE
-          WHEN i.paid_amount+i.credit_amount>=i.grand_total THEN 'PAID'::text
-          WHEN CURRENT_DATE>i.due_date THEN 'OVERDUE'::text
-          WHEN i.paid_amount>0 THEN 'PARTIAL'::text
-          ELSE 'UNPAID'::text
-        END AS calculated_status
- FROM app.invoices i JOIN app.customers c ON c.id=i.customer_id
- WHERE i.status<>'CANCELLED'::app.invoice_status
-   AND i.paid_amount+i.credit_amount<i.grand_total;
 
-CREATE TABLE IF NOT EXISTS app.sales_returns (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    return_number character varying(40) NOT NULL UNIQUE,
-    delivery_id uuid NOT NULL REFERENCES app.deliveries(id) ON DELETE RESTRICT,
-    return_date date DEFAULT CURRENT_DATE NOT NULL,
-    status character varying(20) DEFAULT 'DRAFT' NOT NULL CHECK (status IN ('DRAFT','PENDING','APPROVED','REJECTED','CANCELLED')),
-    reason character varying(50) NOT NULL CHECK (reason IN ('DAMAGED','WRONG_ITEM','QUALITY_ISSUE','CUSTOMER_REQUEST','OTHER')),
-    notes text,
-    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    submitted_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    submitted_at timestamp with time zone,
-    decided_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    decided_at timestamp with time zone,
-    rejection_reason text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
-);
+--
+-- Name: sales_orders sales_orders_submitted_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
 
-CREATE TABLE IF NOT EXISTS app.sales_return_items (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    sales_return_id uuid NOT NULL REFERENCES app.sales_returns(id) ON DELETE CASCADE,
-    product_id uuid NOT NULL REFERENCES app.products(id) ON DELETE RESTRICT,
-    quantity numeric(18,3) NOT NULL CHECK (quantity > 0),
-    unit_price numeric(18,2) NOT NULL CHECK (unit_price >= 0),
-    item_condition character varying(20) DEFAULT 'SALEABLE' NOT NULL CHECK (item_condition IN ('SALEABLE','DAMAGED','QUARANTINE')),
-    notes character varying(300),
-    UNIQUE (sales_return_id,product_id)
-);
+ALTER TABLE ONLY app.sales_orders
+    ADD CONSTRAINT sales_orders_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES app.users(id) ON DELETE SET NULL;
 
-CREATE TABLE IF NOT EXISTS app.sales_return_settlements (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    sales_return_id uuid NOT NULL REFERENCES app.sales_returns(id) ON DELETE RESTRICT,
-    invoice_id uuid REFERENCES app.invoices(id) ON DELETE RESTRICT,
-    settlement_type character varying(30) NOT NULL CHECK (settlement_type IN ('INVOICE_DEDUCTION','REFUND','REPLACEMENT','CUSTOMER_CREDIT')),
-    settlement_date date DEFAULT CURRENT_DATE NOT NULL,
-    amount numeric(18,2) NOT NULL CHECK (amount > 0),
-    reference_number character varying(100),
-    notes text,
-    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CHECK ((settlement_type IN ('INVOICE_DEDUCTION','CUSTOMER_CREDIT') AND invoice_id IS NOT NULL) OR (settlement_type IN ('REFUND','REPLACEMENT') AND invoice_id IS NULL))
-);
 
-CREATE TABLE IF NOT EXISTS app.inventory_stock_inspections (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    inspection_number character varying(40) NOT NULL UNIQUE,
-    product_id uuid NOT NULL REFERENCES app.products(id) ON DELETE RESTRICT,
-    source_bucket character varying(20) DEFAULT 'QUARANTINE' NOT NULL CHECK (source_bucket = 'QUARANTINE'),
-    target_bucket character varying(20) NOT NULL CHECK (target_bucket IN ('AVAILABLE','DAMAGED')),
-    quantity numeric(18,3) NOT NULL CHECK (quantity > 0),
-    inspection_date date DEFAULT CURRENT_DATE NOT NULL,
-    notes text,
-    created_by uuid REFERENCES app.users(id) ON DELETE SET NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
+--
+-- Name: sales_return_items sales_return_items_product_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
 
-CREATE INDEX IF NOT EXISTS idx_inventory_stock_inspections_product
-    ON app.inventory_stock_inspections(product_id,inspection_date DESC);
+ALTER TABLE ONLY app.sales_return_items
+    ADD CONSTRAINT sales_return_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES app.products(id) ON DELETE RESTRICT;
 
-ALTER TABLE app.transaction_approvals DROP CONSTRAINT IF EXISTS transaction_approvals_type_check;
-ALTER TABLE app.transaction_approvals ADD CONSTRAINT transaction_approvals_type_check CHECK (transaction_type IN ('PURCHASE_ORDER','SALES_ORDER','STOCK_OPNAME','PURCHASE_RETURN','SALES_RETURN'));
 
-INSERT INTO app.code_number_settings (module_key,module_label,field_name,is_automatic,prefix,separator,digit_length,include_year,include_month,reset_rule,last_number,last_period)
-VALUES ('SALES_RETURN','Retur Penjualan','return_number',TRUE,'SRT','-',4,TRUE,FALSE,'YEARLY',0,TO_CHAR(CURRENT_DATE,'YYYY'))
-ON CONFLICT (module_key) DO NOTHING;
+--
+-- Name: sales_return_items sales_return_items_sales_return_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
 
-CREATE INDEX IF NOT EXISTS idx_sales_returns_date ON app.sales_returns(return_date DESC);
-CREATE INDEX IF NOT EXISTS idx_sales_returns_status ON app.sales_returns(status);
-CREATE INDEX IF NOT EXISTS idx_sales_returns_delivery ON app.sales_returns(delivery_id);
-CREATE INDEX IF NOT EXISTS idx_sales_return_items_product ON app.sales_return_items(product_id);
-CREATE INDEX IF NOT EXISTS idx_sales_return_settlements_return ON app.sales_return_settlements(sales_return_id,settlement_date DESC);
-DROP TRIGGER IF EXISTS trg_sales_returns_updated_at ON app.sales_returns;
-CREATE TRIGGER trg_sales_returns_updated_at BEFORE UPDATE ON app.sales_returns FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+ALTER TABLE ONLY app.sales_return_items
+    ADD CONSTRAINT sales_return_items_sales_return_id_fkey FOREIGN KEY (sales_return_id) REFERENCES app.sales_returns(id) ON DELETE CASCADE;
 
+
+--
+-- Name: sales_return_settlements sales_return_settlements_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_return_settlements
+    ADD CONSTRAINT sales_return_settlements_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: sales_return_settlements sales_return_settlements_invoice_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_return_settlements
+    ADD CONSTRAINT sales_return_settlements_invoice_id_fkey FOREIGN KEY (invoice_id) REFERENCES app.invoices(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: sales_return_settlements sales_return_settlements_sales_return_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_return_settlements
+    ADD CONSTRAINT sales_return_settlements_sales_return_id_fkey FOREIGN KEY (sales_return_id) REFERENCES app.sales_returns(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: sales_returns sales_returns_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_returns
+    ADD CONSTRAINT sales_returns_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: sales_returns sales_returns_decided_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_returns
+    ADD CONSTRAINT sales_returns_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: sales_returns sales_returns_delivery_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_returns
+    ADD CONSTRAINT sales_returns_delivery_id_fkey FOREIGN KEY (delivery_id) REFERENCES app.deliveries(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: sales_returns sales_returns_submitted_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.sales_returns
+    ADD CONSTRAINT sales_returns_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: stock_opname_items stock_opname_items_product_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.stock_opname_items
+    ADD CONSTRAINT stock_opname_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES app.products(id);
+
+
+--
+-- Name: stock_opname_items stock_opname_items_stock_opname_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.stock_opname_items
+    ADD CONSTRAINT stock_opname_items_stock_opname_id_fkey FOREIGN KEY (stock_opname_id) REFERENCES app.stock_opnames(id) ON DELETE CASCADE;
+
+
+--
+-- Name: stock_opnames stock_opnames_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.stock_opnames
+    ADD CONSTRAINT stock_opnames_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: stock_opnames stock_opnames_decided_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.stock_opnames
+    ADD CONSTRAINT stock_opnames_decided_by_fkey FOREIGN KEY (decided_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: stock_opnames stock_opnames_submitted_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.stock_opnames
+    ADD CONSTRAINT stock_opnames_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: supplier_invoice_attachments supplier_invoice_attachments_supplier_invoice_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_invoice_attachments
+    ADD CONSTRAINT supplier_invoice_attachments_supplier_invoice_id_fkey FOREIGN KEY (supplier_invoice_id) REFERENCES app.supplier_invoices(id) ON DELETE CASCADE;
+
+
+--
+-- Name: supplier_invoice_attachments supplier_invoice_attachments_uploaded_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_invoice_attachments
+    ADD CONSTRAINT supplier_invoice_attachments_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: supplier_invoices supplier_invoices_created_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_invoices
+    ADD CONSTRAINT supplier_invoices_created_by_fkey FOREIGN KEY (created_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: supplier_invoices supplier_invoices_purchase_order_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_invoices
+    ADD CONSTRAINT supplier_invoices_purchase_order_id_fkey FOREIGN KEY (purchase_order_id) REFERENCES app.purchase_orders(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: supplier_payments supplier_payments_paid_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_payments
+    ADD CONSTRAINT supplier_payments_paid_by_fkey FOREIGN KEY (paid_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: supplier_payments supplier_payments_purchase_order_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_payments
+    ADD CONSTRAINT supplier_payments_purchase_order_id_fkey FOREIGN KEY (purchase_order_id) REFERENCES app.purchase_orders(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: supplier_payments supplier_payments_supplier_invoice_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.supplier_payments
+    ADD CONSTRAINT supplier_payments_supplier_invoice_id_fkey FOREIGN KEY (supplier_invoice_id) REFERENCES app.supplier_invoices(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: tax_settings tax_settings_updated_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.tax_settings
+    ADD CONSTRAINT tax_settings_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: transaction_approvals transaction_approvals_acted_by_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.transaction_approvals
+    ADD CONSTRAINT transaction_approvals_acted_by_fkey FOREIGN KEY (acted_by) REFERENCES app.users(id) ON DELETE SET NULL;
+
+
+--
 -- PostgreSQL database dump complete
 --
 
-\unrestrict eadBpzqdf6zSNtlqVI9PXkFsY0fpK5Rkf8RMQUnoGJMsk1z8BCm8tDnlsSLGlBd
+\unrestrict H73HuAcOdPgtn6HI7mIrp3h3WpfPPDPgdDwl4kbyVxR5FiJjybS8rVHTfdFJc5y
