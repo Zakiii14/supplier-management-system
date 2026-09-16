@@ -20,6 +20,7 @@ import PasswordSetupPage from "./pages/PasswordSetupPage";
 import PaymentSettingsPage from "./pages/PaymentSettingsPage";
 import PaymentsPage from "./pages/PaymentsPage";
 import ProductsPage from "./pages/ProductsPage";
+import ProfilePage from "./pages/ProfilePage";
 import PurchaseOrdersPage from "./pages/PurchaseOrdersPage";
 import PurchaseReturnsPage from "./pages/PurchaseReturnsPage";
 import ReportsPage from "./pages/ReportsPage";
@@ -43,6 +44,7 @@ const App = () => {
     .filter(
       (item) =>
         item.path !== "/" &&
+        item.path !== "/profile" &&
         item.path !== "/suppliers" &&
         item.path !== "/categories" &&
         item.path !== "/products" &&
@@ -100,6 +102,7 @@ const App = () => {
       <Route element={<ProtectedRoute />}>
         <Route element={<DashboardLayout />}>
           <Route index element={<DashboardPage />} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="products" element={<ProductsPage />} />

@@ -53,13 +53,11 @@ router.post(
 router.get("/:id/avatar", getUserAvatar);
 router.put(
   "/:id/avatar",
-  authorizeRoles("ADMIN"),
   uploadUserAvatar,
   replaceUserAvatar,
 );
 router.delete(
   "/:id/avatar",
-  authorizeRoles("ADMIN"),
   deleteUserAvatar,
 );
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
+  CircleUserRound,
   LogOut,
   Menu,
   Monitor,
@@ -143,6 +144,11 @@ const DashboardLayout = () => {
   const currentPage = navigationGroups
     .flatMap((group) => group.items)
     .find((item) => item.path === location.pathname);
+
+  const currentPageLabel =
+    location.pathname === "/profile"
+      ? "Profil Saya"
+      : currentPage?.label || "Dashboard";
 
   const displayName =
     user.full_name || user.username || "User";
@@ -376,7 +382,7 @@ const DashboardLayout = () => {
 
             <div>
               <p>Supplier Management System</p>
-              <h1>{currentPage?.label || "Dashboard"}</h1>
+              <h1>{currentPageLabel}</h1>
             </div>
           </div>
 
@@ -420,6 +426,25 @@ const DashboardLayout = () => {
                         {ROLE_LABELS[user.role] || user.role}
                       </span>
                     </div>
+                  </div>
+
+                  <div className="dashboard-theme-options">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={
+                        location.pathname === "/profile"
+                          ? "is-selected"
+                          : ""
+                      }
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        navigate("/profile");
+                      }}
+                    >
+                      <CircleUserRound aria-hidden="true" />
+                      <span>Profil Saya</span>
+                    </button>
                   </div>
 
                   <div className="dashboard-theme-section">
