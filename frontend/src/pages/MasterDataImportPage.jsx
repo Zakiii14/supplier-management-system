@@ -153,7 +153,7 @@ const MasterDataImportPage = () => {
           <span>Tambahkan banyak kategori, supplier, produk, atau customer melalui template Excel.</span>
         </div>
         <button type="button" className="secondary-action" onClick={resetPreview} disabled={!file && !preview}>
-          <RotateCcw aria-hidden="true" /> Atur ulang
+          <RotateCcw aria-hidden="true" /><span>Atur ulang</span>
         </button>
       </section>
 
@@ -186,7 +186,7 @@ const MasterDataImportPage = () => {
           />
           <button type="button" className="secondary-action master-import-download" onClick={downloadTemplate} disabled={!moduleKey || isDownloading}>
             {isDownloading ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <Download aria-hidden="true" />}
-            Unduh template
+            <span>Unduh template</span>
           </button>
         </article>
 
@@ -211,7 +211,7 @@ const MasterDataImportPage = () => {
           </label>
           <button type="button" className="primary-action master-import-preview-action" onClick={createPreview} disabled={!file || isPreviewing || isImporting}>
             {isPreviewing ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <FileSpreadsheet aria-hidden="true" />}
-            Periksa data
+            <span>Periksa data</span>
           </button>
         </article>
       </section>
