@@ -125,6 +125,12 @@
 
   .page-heading {
     width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .page-heading > div:first-child {
+    width: 100%;
   }
 
   .page-heading-actions {
