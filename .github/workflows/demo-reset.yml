@@ -1,0 +1,45 @@
+name: Reset shared demo
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supplyflow-shared-demo-reset
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    if: ${{ vars.DEMO_RESET_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DEMO_MODE: "true"
+      DEMO_RESET_ENABLED: "true"
+      DEMO_DATABASE_NAME: ${{ vars.DEMO_DATABASE_NAME }}
+      DEMO_ACCOUNT_PASSWORD: ${{ secrets.DEMO_ACCOUNT_PASSWORD }}
+      DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+      DB_SSL_MODE: ""
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Reset demo database
+        run: npm run demo:reset
