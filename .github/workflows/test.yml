@@ -27,7 +27,7 @@ jobs:
           POSTGRES_PASSWORD: ci-test-only
         ports: ['5432:5432']
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres -d supplier_management_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -63,6 +63,7 @@ jobs:
           npm run migrate:baseline --prefix backend
           npm run migrate --prefix backend
           npm run migrate --prefix backend
+          node backend/scripts/seedTestDefaults.js
       - name: Backend unit and integration tests
         run: npm test --prefix backend
       - name: Frontend tests, lint and build

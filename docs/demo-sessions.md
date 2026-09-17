@@ -52,7 +52,8 @@ cannot undo Blob deletion; deletion is therefore never performed before commit.
 ## Validation
 
 `Test SupplyFlow` runs PostgreSQL 18 in GitHub Actions, restores the schema,
-baselines 001–020, applies 021 twice (the second run must do nothing), runs all
+baselines 001–020, seeds their original configuration defaults into the test
+database, applies 021 twice (the second run must do nothing), runs all
 backend tests, and runs frontend tests, lint and build. Session integration tests
 create a separate temporary database and drop it afterward. Test credentials are
 only for the disposable CI service. No production credentials are needed.
