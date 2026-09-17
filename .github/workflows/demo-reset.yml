@@ -1,46 +1,34 @@
-name: Reset shared demo
+name: Clean shared demo
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
 
 concurrency:
-  group: supplyflow-shared-demo-reset
-  cancel-in-progress: false
+  group: supplyflow-shared-demo-cleanup
+  cancel-in-progress: true
 
 jobs:
-  reset:
-    if: ${{ vars.DEMO_RESET_ENABLED == 'true' }}
+  cleanup:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: backend
-    env:
-      DEMO_MODE: "true"
-      DEMO_RESET_ENABLED: "true"
-      DEMO_DATABASE_NAME: ${{ vars.DEMO_DATABASE_NAME }}
-      DEMO_ACCOUNT_PASSWORD: ${{ secrets.DEMO_ACCOUNT_PASSWORD }}
-      DATABASE_URL_UNPOOLED: ${{ secrets.DEMO_DATABASE_URL_UNPOOLED }}
-      DB_SSL_MODE: ""
-      FILE_STORAGE_PROVIDER: vercel-blob
-      BLOB_PATH_PREFIX: ${{ vars.DEMO_BLOB_PATH_PREFIX }}
-      BLOB_READ_WRITE_TOKEN: ${{ secrets.DEMO_BLOB_READ_WRITE_TOKEN }}
+    timeout-minutes: 2
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Request idle demo cleanup
+        env:
+          DEMO_API_URL: ${{ vars.DEMO_API_URL }}
+        run: |
+          if [ -z "$DEMO_API_URL" ]; then
+            echo "Repository variable DEMO_API_URL is not configured."
+            exit 1
+          fi
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Install backend dependencies
-        run: npm ci
-
-      - name: Reset demo database and files
-        run: npm run demo:reset
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --request POST \
+            "${DEMO_API_URL%/}/api/demo-session/prepare"
