@@ -11,10 +11,18 @@ const heartbeatDemoSessionRequest = async (clientId) => {
   });
 };
 
-const endDemoSessionRequest = async (clientId) => {
-  const response = await apiClient.post("/demo-session/end", {
-    client_id: clientId,
-  });
+const endDemoSessionRequest = async (clientId, accessToken = "") => {
+  const response = await apiClient.post(
+    "/demo-session/end",
+    { client_id: clientId },
+    accessToken
+      ? {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      : undefined,
+  );
   return response.data.data;
 };
 
