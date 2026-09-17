@@ -10,7 +10,7 @@ permissions:
 
 concurrency:
   group: supplyflow-shared-demo-cleanup
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   cleanup:
@@ -30,5 +30,7 @@ jobs:
             --fail-with-body \
             --silent \
             --show-error \
+            --connect-timeout 10 \
+            --max-time 100 \
             --request POST \
             "${DEMO_API_URL%/}/api/demo-session/prepare"

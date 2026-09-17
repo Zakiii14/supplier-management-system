@@ -5,10 +5,10 @@ const prepareDemoSessionRequest = async () => {
   return response.data.data;
 };
 
-const heartbeatDemoSessionRequest = async (clientId) => {
+const heartbeatDemoSessionRequest = async (clientId, accessToken) => {
   await apiClient.post("/demo-session/heartbeat", {
     client_id: clientId,
-  });
+  }, { headers: { Authorization: `Bearer ${accessToken}` } });
 };
 
 const endDemoSessionRequest = async (clientId, accessToken = "") => {

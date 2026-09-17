@@ -1,0 +1,72 @@
+name: Test SupplyFlow
+
+on:
+  push:
+    branches: [main, feat/demo-session-reset]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supplyflow-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: supplier_management_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-test-only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: supplier_management_test
+      DB_USER: postgres
+      DB_PASSWORD: ci-test-only
+      DB_SSL_MODE: disable
+      JWT_SECRET: supplyflow-ci-only-key-not-for-any-deployment
+      DEMO_MODE: 'false'
+      DEMO_RESET_ENABLED: 'false'
+      EMAIL_PROVIDER: console
+      FILE_STORAGE_PROVIDER: filesystem
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Install dependencies
+        run: |
+          npm ci --prefix backend
+          npm ci --prefix frontend
+      - name: Initialize disposable test database
+        run: |
+          docker exec -i "${{ job.services.postgres.id }}" psql -U postgres -d supplier_management_test -v ON_ERROR_STOP=1 < database/schema.sql
+          npm run migrate:baseline --prefix backend
+          npm run migrate --prefix backend
+          npm run migrate --prefix backend
+      - name: Backend unit and integration tests
+        run: npm test --prefix backend
+      - name: Frontend tests, lint and build
+        run: |
+          npm test --prefix frontend
+          npm run lint --prefix frontend
+          npm run build --prefix frontend

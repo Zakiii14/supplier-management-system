@@ -8,7 +8,13 @@ const {
   touchDemoSession,
 } = require("../services/demoSessionService");
 
+const createRateLimiter = require("../middleware/rateLimitMiddleware");
 const router = express.Router();
+const prepareLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: "Terlalu banyak permintaan demo. Silakan coba lagi nanti.",
+});
 
 router.use((req, res, next) => {
   if (!isDemoMode()) {
@@ -21,7 +27,7 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post("/prepare", async (req, res, next) => {
+router.post("/prepare", prepareLimiter, async (req, res, next) => {
   try {
     const result = await maybeResetStaleDemo({
       reason: "prepare_login",
@@ -38,8 +44,12 @@ router.post("/prepare", async (req, res, next) => {
 
 router.post("/heartbeat", authenticate, async (req, res, next) => {
   try {
+    if (typeof req.body?.client_id !== "string" || req.body.client_id.trim().toLowerCase() !== req.demoSession.clientId) {
+      return res.status(400).json({ success: false, message: "Demo client id tidak cocok." });
+    }
     await touchDemoSession({
       clientId: req.body?.client_id,
+      sessionId: req.demoSession.sessionId,
       userId: req.user.id,
     });
 
@@ -58,8 +68,12 @@ router.post("/heartbeat", authenticate, async (req, res, next) => {
 
 router.post("/end", authenticate, async (req, res, next) => {
   try {
+    if (typeof req.body?.client_id !== "string" || req.body.client_id.trim().toLowerCase() !== req.demoSession.clientId) {
+      return res.status(400).json({ success: false, message: "Demo client id tidak cocok." });
+    }
     const result = await endDemoSession({
       clientId: req.body?.client_id,
+      sessionId: req.demoSession.sessionId,
       userId: req.user.id,
     });
 

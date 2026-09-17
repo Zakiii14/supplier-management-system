@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const pool = require("../config/database");
 
+const { isDemoMode, isActiveDemoSession } = require("../services/demoSessionService");
+
 const authenticate = async (req, res, next) => {
   try {
     const authorization = req.headers.authorization;
@@ -85,6 +87,14 @@ const authenticate = async (req, res, next) => {
           });
         }
       }
+    }
+
+    if (isDemoMode()) {
+      const session = { clientId: payload.demo_client_id, sessionId: payload.demo_session_id, userId: user.id };
+      if (!(await isActiveDemoSession(session))) {
+        return res.status(401).json({ success: false, message: "Sesi demo sudah berakhir. Silakan login kembali." });
+      }
+      req.demoSession = session;
     }
 
     delete user.password_changed_at;

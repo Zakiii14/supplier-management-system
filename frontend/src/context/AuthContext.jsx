@@ -1,269 +1,145 @@
 import {
-  createContext,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
+  createContext, useCallback, useEffect, useMemo, useRef, useState,
 } from "react";
+import { getCurrentUserRequest, loginRequest } from "../api/auth";
 import {
-  getCurrentUserRequest,
-  loginRequest,
-} from "../api/auth";
-import {
-  endDemoSessionRequest,
-  heartbeatDemoSessionRequest,
-  prepareDemoSessionRequest,
+  endDemoSessionRequest, heartbeatDemoSessionRequest, prepareDemoSessionRequest,
 } from "../api/demoSession";
+import {
+  IS_DEMO_MODE, DEMO_ACTIVITY_KEY, DEMO_IDLE_KEY,
+  claimDemoTab, getAccessToken, getAuthStorage, getDemoClientId,
+  getDemoIdleMs, getLastActivity, markDemoActivity,
+} from "../auth/sessionStorage";
+import { createDemoSessionMonitor } from "../auth/demoSessionMonitor";
 
 const AuthContext = createContext(null);
-
-const IS_DEMO_MODE = import.meta.env.VITE_DEMO_MODE === "true";
-const DEMO_IDLE_MS = 15 * 60 * 1000;
 const DEMO_HEARTBEAT_MS = 60 * 1000;
 const DEMO_IDLE_CHECK_MS = 15 * 1000;
-const DEMO_CLIENT_ID_KEY = "supplyflow_demo_client_id";
-
-const createDemoClientId = () => {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-
-  const bytes = new Uint8Array(16);
-  globalThis.crypto.getRandomValues(bytes);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-  const hex = Array.from(bytes, (value) =>
-    value.toString(16).padStart(2, "0"),
-  ).join("");
-
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-};
-
-const getDemoClientId = () => {
-  let clientId = sessionStorage.getItem(DEMO_CLIENT_ID_KEY);
-  if (!clientId) {
-    clientId = createDemoClientId();
-    sessionStorage.setItem(DEMO_CLIENT_ID_KEY, clientId);
-  }
-  return clientId;
-};
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const generation = useRef(0);
 
   const clearSession = useCallback(() => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("auth_user");
+    generation.current += 1;
+    getAuthStorage().removeItem("access_token");
+    getAuthStorage().removeItem("auth_user");
+    if (IS_DEMO_MODE) sessionStorage.removeItem(DEMO_ACTIVITY_KEY);
     setUser(null);
   }, []);
 
   const login = useCallback(async (identifier, password) => {
-    const demoClientId = IS_DEMO_MODE
-      ? getDemoClientId()
-      : "";
-
+    const attempt = ++generation.current;
     if (IS_DEMO_MODE) {
+      await claimDemoTab();
       await prepareDemoSessionRequest();
     }
-
-    const data = await loginRequest({
-      identifier,
-      password,
-    });
-
-    localStorage.setItem(
-      "access_token",
-      data.access_token,
-    );
-    localStorage.setItem(
-      "auth_user",
-      JSON.stringify(data.user),
-    );
-
-    setUser(data.user);
-
-    if (IS_DEMO_MODE) {
-      heartbeatDemoSessionRequest(demoClientId).catch(() => {});
+    const clientId = IS_DEMO_MODE ? getDemoClientId() : undefined;
+    const data = await loginRequest({ identifier, password, client_id: clientId });
+    if (attempt !== generation.current) {
+      if (IS_DEMO_MODE) endDemoSessionRequest(clientId, data.access_token).catch(() => {});
+      throw new Error("Login dibatalkan. Silakan coba lagi.");
     }
-
+    getAuthStorage().setItem("access_token", data.access_token);
+    getAuthStorage().setItem("auth_user", JSON.stringify(data.user));
+    if (IS_DEMO_MODE) {
+      sessionStorage.setItem(DEMO_IDLE_KEY, String(data.demo_idle_minutes * 60 * 1000));
+      markDemoActivity();
+    }
+    // Backend has already committed the session before returning this token.
+    setUser(data.user);
     return data.user;
   }, []);
 
   const logout = useCallback(() => {
-    if (IS_DEMO_MODE && user) {
-      const accessToken =
-        localStorage.getItem("access_token") || "";
-      endDemoSessionRequest(
-        getDemoClientId(),
-        accessToken,
-      ).catch(() => {});
+    const token = getAccessToken();
+    if (IS_DEMO_MODE && token) {
+      endDemoSessionRequest(getDemoClientId(), token).catch(() => {});
     }
-
     clearSession();
-  }, [clearSession, user]);
+  }, [clearSession]);
 
   const refreshUser = useCallback(async () => {
+    const token = getAccessToken();
     const currentUser = await getCurrentUserRequest();
-    setUser(currentUser);
-    localStorage.setItem("auth_user", JSON.stringify(currentUser));
+    if (getAccessToken() === token) {
+      setUser(currentUser);
+      getAuthStorage().setItem("auth_user", JSON.stringify(currentUser));
+    }
     return currentUser;
   }, []);
 
   useEffect(() => {
-    let isCancelled = false;
-
+    let cancelled = false;
+    const attempt = generation.current;
     const restoreSession = async () => {
-      const accessToken =
-        localStorage.getItem("access_token");
-
-      if (!accessToken) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
-        const currentUser =
-          await getCurrentUserRequest();
-
-        if (!isCancelled) {
+        if (IS_DEMO_MODE) await claimDemoTab();
+        if (cancelled || attempt !== generation.current) return;
+        const token = getAccessToken();
+        if (!token) return;
+        if (IS_DEMO_MODE && Date.now() - getLastActivity() >= getDemoIdleMs()) {
+          logout();
+          return;
+        }
+        const currentUser = await getCurrentUserRequest();
+        if (!cancelled && attempt === generation.current && getAccessToken() === token) {
           setUser(currentUser);
-          localStorage.setItem(
-            "auth_user",
-            JSON.stringify(currentUser),
-          );
+          getAuthStorage().setItem("auth_user", JSON.stringify(currentUser));
         }
       } catch {
-        if (!isCancelled) {
-          clearSession();
-        }
+        if (!cancelled && attempt === generation.current) clearSession();
       } finally {
-        if (!isCancelled) {
-          setIsLoading(false);
-        }
+        if (!cancelled) setIsLoading(false);
       }
     };
-
     restoreSession();
+    return () => { cancelled = true; };
+  }, [clearSession, logout]);
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [clearSession]);
-
+  // Profile refreshes must not restart the idle clock or heartbeat lifecycle.
+  const userId = user?.id;
+  const sessionToken = user ? getAccessToken() : "";
   useEffect(() => {
-    if (!IS_DEMO_MODE || !user) {
-      return undefined;
-    }
-
+    if (!IS_DEMO_MODE || !userId) return undefined;
     const clientId = getDemoClientId();
-    let lastActivityAt = Date.now();
-    let hasEnded = false;
-
-    const endIdleSession = () => {
-      if (hasEnded) return;
-      hasEnded = true;
-
-      const accessToken =
-        localStorage.getItem("access_token") || "";
-
-      endDemoSessionRequest(clientId, accessToken).catch(() => {});
-      clearSession();
-    };
-
-    const isStillActive = () => {
-      if (Date.now() - lastActivityAt >= DEMO_IDLE_MS) {
-        endIdleSession();
-        return false;
-      }
-      return true;
-    };
-
-    const markActivity = () => {
-      if (!hasEnded && document.visibilityState === "visible") {
-        lastActivityAt = Date.now();
-      }
-    };
-
-    const sendHeartbeat = () => {
-      if (
-        hasEnded ||
-        document.visibilityState !== "visible" ||
-        !isStillActive()
-      ) {
-        return;
-      }
-
-      heartbeatDemoSessionRequest(clientId).catch(() => {});
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== "visible") return;
-      if (!isStillActive()) return;
-      lastActivityAt = Date.now();
-      sendHeartbeat();
-    };
-
-    const activityEvents = [
-      "pointerdown",
-      "keydown",
-      "touchstart",
-      "wheel",
-      "scroll",
-    ];
-
-    activityEvents.forEach((eventName) => {
-      window.addEventListener(eventName, markActivity, {
-        passive: true,
-      });
+    const token = sessionToken;
+    const monitor = createDemoSessionMonitor({
+      readActivity: getLastActivity,
+      writeActivity: (at) => sessionStorage.setItem(DEMO_ACTIVITY_KEY, String(at)),
+      idleMs: getDemoIdleMs(),
+      isVisible: () => document.visibilityState === "visible",
+      heartbeat: () => heartbeatDemoSessionRequest(clientId, token),
+      onEnd: () => {
+        if (getAccessToken() !== token) return;
+        endDemoSessionRequest(clientId, token).catch(() => {});
+        clearSession();
+      },
     });
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange,
-    );
-
-    sendHeartbeat();
-
-    const heartbeatTimer = window.setInterval(
-      sendHeartbeat,
-      DEMO_HEARTBEAT_MS,
-    );
-    const idleTimer = window.setInterval(
-      isStillActive,
-      DEMO_IDLE_CHECK_MS,
-    );
-
+    const events = ["pointerdown", "pointermove", "keydown", "touchstart", "wheel", "scroll"];
+    events.forEach((name) => window.addEventListener(name, monitor.activity, {
+      passive: true, capture: true,
+    }));
+    const onVisibility = () => { monitor.beat(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    monitor.beat();
+    const heartbeatTimer = window.setInterval(monitor.beat, DEMO_HEARTBEAT_MS);
+    const idleTimer = window.setInterval(monitor.check, DEMO_IDLE_CHECK_MS);
     return () => {
+      monitor.stop();
       window.clearInterval(heartbeatTimer);
       window.clearInterval(idleTimer);
-      activityEvents.forEach((eventName) => {
-        window.removeEventListener(eventName, markActivity);
-      });
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange,
-      );
+      events.forEach((name) => window.removeEventListener(name, monitor.activity, true));
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [clearSession, user]);
+  }, [clearSession, userId, sessionToken]);
 
-  const value = useMemo(
-    () => ({
-      user,
-      isAuthenticated: Boolean(user),
-      isLoading,
-      login,
-      logout,
-      refreshUser,
-    }),
-    [user, isLoading, login, logout, refreshUser],
-  );
+  const value = useMemo(() => ({
+    user, isAuthenticated: Boolean(user), isLoading, login, logout, refreshUser,
+  }), [user, isLoading, login, logout, refreshUser]);
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export { AuthContext, AuthProvider };

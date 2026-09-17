@@ -1,5 +1,5 @@
 const path = require("node:path");
-const { randomBytes } = require("node:crypto");
+const { randomBytes, randomUUID } = require("node:crypto");
 
 require("dotenv").config({
   path: path.resolve(__dirname, "../.env.test"),
@@ -28,7 +28,7 @@ const previousDemoMode = process.env.DEMO_MODE;
 const login = (identifier) =>
   request(app)
     .post("/api/auth/login")
-    .send({ identifier, password });
+    .send({ identifier, password, client_id: randomUUID() });
 
 before(async () => {
   process.env.DEMO_MODE = "false";
