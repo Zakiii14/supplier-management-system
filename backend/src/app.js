@@ -38,6 +38,7 @@ const masterDataImportRoutes = require(
 const stockOpnameRoutes = require("./routes/stockOpnameRoutes");
 const purchaseReturnRoutes = require("./routes/purchaseReturnRoutes");
 const salesReturnRoutes = require("./routes/salesReturnRoutes");
+const demoSessionRoutes = require("./routes/demoSessionRoutes");
 const auditMiddleware = require("./middleware/auditMiddleware");
 const securityHeaders = require("./middleware/securityHeadersMiddleware");
 const corsMiddleware = require("./middleware/corsMiddleware");
@@ -95,6 +96,8 @@ app.get(
     }
   }
 );
+
+app.use("/api/demo-session", demoSessionRoutes);
 
 app.use("/api", auditMiddleware);
 

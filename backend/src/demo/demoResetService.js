@@ -5,7 +5,8 @@ const {
   seedDemoDatabase,
 } = require("./demoSeed");
 
-const DEMO_RESET_LOCK_KEY = 420260916;
+const { DEMO_RESET_LOCK_KEY, lockDemoTransaction } = require("./demoTransaction");
+const logger = require("../utils/logger");
 
 const quoteIdentifier = (value) =>
   `"${String(value).replace(/"/g, "\"\"")}"`;
@@ -62,7 +63,7 @@ const listResettableTables = async (client) => {
 };
 
 const truncateApplicationTables = async (client, tables) => {
-  if (!Array.isArray(tables) || tables.length === 0) {
+  if (!Array.isArray(tables) || tables.length === 0 || tables.includes("schema_migrations")) {
     throw new Error("Demo reset found no application tables to reset");
   }
 
@@ -71,7 +72,7 @@ const truncateApplicationTables = async (client, tables) => {
     .join(", ");
 
   await client.query(
-    `TRUNCATE TABLE ${qualifiedTables} RESTART IDENTITY CASCADE`,
+    `TRUNCATE TABLE ${qualifiedTables} RESTART IDENTITY`,
   );
 };
 
@@ -107,58 +108,55 @@ const resetDemoDatabase = async ({
   env = process.env,
   clearStorage = true,
   manageTransaction = true,
+  shouldReset,
 }) => {
-  const config = await assertDemoResetEnvironment(client, env);
-  const storageSnapshot = clearStorage
-    ? await snapshotDemoFileStorage()
-    : [];
-
-  const lock = await client.query(
-    "SELECT pg_try_advisory_lock($1) AS acquired",
-    [DEMO_RESET_LOCK_KEY],
-  );
-  if (!lock.rows[0]?.acquired) {
-    throw new Error("Another demo reset is already running");
+  if (!manageTransaction && clearStorage) {
+    throw new Error("Storage cleanup requires an owned transaction");
   }
 
+  let storageSnapshot = [];
+  let result;
+  if (manageTransaction) await client.query("BEGIN");
   try {
+    await lockDemoTransaction(client);
+    // The decision must be made AFTER the lock, with no heartbeat/login able
+    // to slip between this check and the reset transaction.
+    const decision = shouldReset ? await shouldReset(client) : { reset: true };
+    if (!decision.reset) {
+      if (manageTransaction) await client.query("COMMIT");
+      return decision;
+    }
+
+    const config = await assertDemoResetEnvironment(client, env);
+    storageSnapshot = clearStorage ? await snapshotDemoFileStorage() : [];
     const tables = await listResettableTables(client);
-
-    if (manageTransaction) {
-      await client.query("BEGIN");
-    }
-
-    try {
-      await truncateApplicationTables(client, tables);
-      const seeded = await seedDemoDatabase(client, {
-        password: config.password,
-      });
-
-      if (manageTransaction) {
-        await client.query("COMMIT");
-      }
-
-      const storageNamespaces = clearStorage
-        ? await clearDemoFileStorage(storageSnapshot)
-        : [];
-
-      return {
-        databaseName: config.databaseName,
-        tableCount: tables.length,
-        storageNamespaces,
-        seeded,
-      };
-    } catch (error) {
-      if (manageTransaction) {
-        await client.query("ROLLBACK").catch(() => {});
-      }
-      throw error;
-    }
-  } finally {
-    await client
-      .query("SELECT pg_advisory_unlock($1)", [DEMO_RESET_LOCK_KEY])
-      .catch(() => {});
+    await truncateApplicationTables(client, tables);
+    const seeded = await seedDemoDatabase(client, { password: config.password });
+    result = {
+      reset: true,
+      databaseName: config.databaseName,
+      tableCount: tables.length,
+      storageNamespaces: [],
+      seeded,
+    };
+    if (manageTransaction) await client.query("COMMIT");
+  } catch (error) {
+    if (manageTransaction) await client.query("ROLLBACK").catch(() => {});
+    throw error;
   }
+
+  // Delete only names captured before reset, never new visitors' uploads.
+  // A storage failure after COMMIT must not report a failed database reset
+  // or encourage callers to reset the newly seeded database again.
+  if (clearStorage) {
+    try {
+      result.storageNamespaces = await clearDemoFileStorage(storageSnapshot);
+    } catch (error) {
+      result.storageCleanupFailed = true;
+      logger.error("demo_storage_cleanup_failed", { error });
+    }
+  }
+  return result;
 };
 
 module.exports = {

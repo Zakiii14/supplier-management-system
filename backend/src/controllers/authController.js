@@ -17,115 +17,84 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const isValidPassword = (password) =>
   typeof password === "string" && password.length >= 8;
 
+const { withDemoTransaction } = require("../demo/demoTransaction");
+const {
+  DEMO_IDLE_MINUTES, isDemoMode, normalizeClientId, startDemoSession,
+} = require("../services/demoSessionService");
+
 const login = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
-
-    if (!identifier || !password) {
+    const { identifier, password } = req.body ?? {};
+    if (typeof identifier !== "string" || !identifier.trim() ||
+        typeof password !== "string" || !password) {
       return res.status(400).json({
-        success: false,
-        message: "Username/email dan password wajib diisi.",
+        success: false, message: "Username/email dan password wajib diisi.",
       });
     }
+    if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is not configured");
+    const demo = isDemoMode();
+    const clientId = demo ? normalizeClientId(req.body.client_id) : null;
 
-    if (!process.env.JWT_SECRET) {
-      throw new Error("JWT_SECRET is not configured");
-    }
+    const performLogin = async (client) => {
+      const result = await client.query(
+        `SELECT id, username, full_name, email, password_hash,
+           password_changed_at, role, status, email_verified_at,
+           (avatar_storage_name IS NOT NULL) AS has_avatar, avatar_updated_at
+         FROM app.users
+         WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)
+         LIMIT 1`,
+        [identifier],
+      );
+      const user = result.rows[0];
+      if (!user || user.status !== "ACTIVE" || !user.password_hash ||
+          !(await bcrypt.compare(password, user.password_hash))) {
+        return { status: 401, body: {
+          success: false, message: "Username/email atau password salah.",
+        } };
+      }
 
-    const result = await pool.query(
-      `
-      SELECT
-        id,
-        username,
-        full_name,
-        email,
-        password_hash,
-        password_changed_at,
-        role,
-        status,
-        email_verified_at,
-        (avatar_storage_name IS NOT NULL) AS has_avatar,
-        avatar_updated_at
-      FROM app.users
-      WHERE
-        LOWER(username) = LOWER($1)
-        OR LOWER(email) = LOWER($1)
-      LIMIT 1
-      `,
-      [identifier],
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: "Username/email atau password salah.",
-      });
-    }
-
-    const user = result.rows[0];
-
-    if (
-      user.status !== "ACTIVE" ||
-      !user.password_hash
-    ) {
-      return res.status(401).json({
-        success: false,
-        message: "Username/email atau password salah.",
-      });
-    }
-
-    const passwordMatches = await bcrypt.compare(
-      password,
-      user.password_hash,
-    );
-
-    if (!passwordMatches) {
-      return res.status(401).json({
-        success: false,
-        message: "Username/email atau password salah.",
-      });
-    }
-
-    const token = jwt.sign(
-      {
-        username: user.username,
-        role: user.role,
-        pwd: user.password_changed_at
-          ? new Date(user.password_changed_at).toISOString()
-          : null,
-      },
-      process.env.JWT_SECRET,
-      {
-        subject: user.id,
-        expiresIn: process.env.JWT_EXPIRES_IN || "8h",
-      },
-    );
-
-    return res.status(200).json({
-      success: true,
-      message: "Login berhasil.",
-      data: {
-        access_token: token,
-        token_type: "Bearer",
-        expires_in: process.env.JWT_EXPIRES_IN || "8h",
-        user: {
-          id: user.id,
+      const demoClaims = demo ? {
+        demo_client_id: clientId,
+        demo_session_id: await startDemoSession({ client, clientId, userId: user.id }),
+      } : {};
+      const token = jwt.sign(
+        {
           username: user.username,
-          full_name: user.full_name,
-          email: user.email,
           role: user.role,
-          has_avatar: user.has_avatar,
-          avatar_updated_at: user.avatar_updated_at,
+          pwd: user.password_changed_at
+            ? new Date(user.password_changed_at).toISOString() : null,
+          ...demoClaims,
         },
-      },
-    });
+        process.env.JWT_SECRET,
+        { subject: user.id, expiresIn: process.env.JWT_EXPIRES_IN || "8h" },
+      );
+      return { status: 200, body: {
+        success: true,
+        message: "Login berhasil.",
+        data: {
+          access_token: token,
+          token_type: "Bearer",
+          expires_in: process.env.JWT_EXPIRES_IN || "8h",
+          ...(demo ? { demo_idle_minutes: DEMO_IDLE_MINUTES } : {}),
+          user: {
+            id: user.id, username: user.username, full_name: user.full_name,
+            email: user.email, role: user.role, has_avatar: user.has_avatar,
+            avatar_updated_at: user.avatar_updated_at,
+          },
+        },
+      } };
+    };
+    // The response is not sent until both login and session registration commit.
+    const response = demo
+      ? await withDemoTransaction(performLogin)
+      : await performLogin(pool);
+    return res.status(response.status).json(response.body);
   } catch (error) {
+    if (error.code === "INVALID_DEMO_CLIENT_ID") {
+      return res.status(400).json({ success: false, message: error.message });
+    }
     console.error("Login error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Login gagal diproses.",
-    });
+    return res.status(500).json({ success: false, message: "Login gagal diproses." });
   }
 };
 
