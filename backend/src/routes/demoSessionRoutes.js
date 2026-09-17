@@ -1,8 +1,10 @@
 const express = require("express");
 
+const authenticate = require("../middleware/authMiddleware");
 const {
   endDemoSession,
   isDemoMode,
+  maybeResetStaleDemo,
   touchDemoSession,
 } = require("../services/demoSessionService");
 
@@ -19,7 +21,22 @@ router.use((req, res, next) => {
   next();
 });
 
-router.post("/heartbeat", async (req, res, next) => {
+router.post("/prepare", async (req, res, next) => {
+  try {
+    const result = await maybeResetStaleDemo({
+      reason: "prepare_login",
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/heartbeat", authenticate, async (req, res, next) => {
   try {
     await touchDemoSession({
       clientId: req.body?.client_id,
@@ -39,7 +56,7 @@ router.post("/heartbeat", async (req, res, next) => {
   }
 });
 
-router.post("/end", async (req, res, next) => {
+router.post("/end", authenticate, async (req, res, next) => {
   try {
     const result = await endDemoSession({
       clientId: req.body?.client_id,
