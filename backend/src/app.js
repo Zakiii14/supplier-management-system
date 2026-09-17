@@ -97,11 +97,7 @@ app.get(
   }
 );
 
-app.use(
-  "/api/demo-session",
-  authenticate,
-  demoSessionRoutes,
-);
+app.use("/api/demo-session", demoSessionRoutes);
 
 app.use("/api", auditMiddleware);
 
