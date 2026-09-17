@@ -249,15 +249,7 @@
 }
 
 @media (max-width: 700px) {
-  .table-filter-shell:has(
-      .status-filter-menu,
-      .form-date-picker-menu
-    ) {
-    position: relative;
-    top: auto;
-  }
-
-  .data-panel {
+.data-panel {
     --data-filters-sticky-top: 70px;
   }
 
