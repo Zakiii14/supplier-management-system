@@ -3,10 +3,14 @@ const {
   resetDemoDatabase,
 } = require("../demo/demoResetService");
 
-const DEMO_IDLE_MINUTES = Math.max(
-  1,
-  Number(process.env.DEMO_IDLE_MINUTES || 15),
+const configuredIdleMinutes = Number.parseInt(
+  process.env.DEMO_IDLE_MINUTES || "15",
+  10,
 );
+const DEMO_IDLE_MINUTES =
+  Number.isInteger(configuredIdleMinutes) && configuredIdleMinutes > 0
+    ? configuredIdleMinutes
+    : 15;
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
