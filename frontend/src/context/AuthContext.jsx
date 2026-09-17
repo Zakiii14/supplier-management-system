@@ -209,6 +209,7 @@ const AuthProvider = ({ children }) => {
       "pointerdown",
       "keydown",
       "touchstart",
+      "wheel",
       "scroll",
     ];
 
