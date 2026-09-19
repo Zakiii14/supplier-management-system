@@ -108,7 +108,7 @@ test("migration 021 applies once and complete migration history survives committ
 test("explicit logout starts a fresh grace period even when the last heartbeat is stale", async () => {
   const visitor = await login();
   await pool.query(
-    "UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes' WHERE client_id = $1",
+    "UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes', ended_at = clock_timestamp() - INTERVAL '16 minutes' WHERE client_id = $1",
     [clientIdOf(visitor)],
   );
 
@@ -184,7 +184,7 @@ test("one visitor logout preserves another visitor's data; last logout resets on
     (await pool.query("SELECT count(*)::int AS n FROM app.products WHERE product_name = 'visitor work'")).rows[0].n,
     5,
   );
-  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes'");
+  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes', ended_at = clock_timestamp() - INTERVAL '16 minutes'");
   const cleanup = await prepare();
   assert.equal(cleanup.body.data.reset, true);
   assert.equal(await sessionCount(), 0);
@@ -204,7 +204,7 @@ test("late heartbeat cannot revive logout or stale sessions, including after re-
   assert.equal(lateEnd.ended, false);
   assert.equal((await heartbeat(next)).status, 204);
   assert.equal((await heartbeat(guard)).status, 204);
-  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes', ended_at = clock_timestamp() - INTERVAL '16 minutes' WHERE client_id = $1", [clientIdOf(next)]);
+  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes' WHERE client_id = $1", [clientIdOf(next)]);
   assert.equal((await heartbeat(next)).status, 401);
   await assert.rejects(() => services.touchDemoSession(sessionOf(next)), { statusCode: 401 });
 });
