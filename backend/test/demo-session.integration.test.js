@@ -99,10 +99,30 @@ test("migration 021 applies once and complete migration history survives committ
   const response = await end(visitor);
   assert.equal(response.body.data.reset, false);
   assert.equal(response.body.data.reason, "grace_period");
-  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes'");
+  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes', ended_at = clock_timestamp() - INTERVAL '16 minutes'");
   const cleanup = await prepare();
   assert.equal(cleanup.body.data.reset, true);
   assert.deepEqual(await history(), migrationHistory);
+});
+
+test("explicit logout starts a fresh grace period even when the last heartbeat is stale", async () => {
+  const visitor = await login();
+  await pool.query(
+    "UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes' WHERE client_id = $1",
+    [clientIdOf(visitor)],
+  );
+
+  const session = sessionOf(visitor);
+  const response = await services.endDemoSession(session);
+  assert.equal(response.reset, false);
+  assert.equal(response.reason, "grace_period");
+
+  const manager = await login(randomUUID());
+  assert.equal(manager.status, 200);
+  assert.equal(await sessionCount(), 2);
+  const decision = await services.maybeResetStaleDemo({ reason: "prepare_login" });
+  assert.equal(decision.reset, false);
+  assert.equal(decision.reason, "active_session");
 });
 
 test("full-access mode keeps old login behavior and hides all demo endpoints", async () => {
@@ -165,7 +185,7 @@ test("one visitor logout preserves another visitor's data; last logout resets on
     (await pool.query("SELECT count(*)::int AS n FROM app.products WHERE product_name = 'visitor work'")).rows[0].n,
     5,
   );
-  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes'");
+  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes', ended_at = clock_timestamp() - INTERVAL '16 minutes'");
   const cleanup = await prepare();
   assert.equal(cleanup.body.data.reset, true);
   assert.equal(await sessionCount(), 0);

@@ -92,7 +92,7 @@ const maybeResetStaleDemo = async ({ reason = "idle" } = {}) => {
               WHERE ended_at IS NULL AND last_seen_at >
                 clock_timestamp() - ($1::int * INTERVAL '1 minute')) AS has_active,
             EXISTS (SELECT 1 FROM app.demo_sessions
-              WHERE last_seen_at >
+              WHERE COALESCE(ended_at, last_seen_at) >
                 clock_timestamp() - ($1::int * INTERVAL '1 minute')) AS has_recent_activity`,
           [DEMO_IDLE_MINUTES],
         );
