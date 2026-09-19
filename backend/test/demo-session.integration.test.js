@@ -105,6 +105,23 @@ test("migration 021 applies once and complete migration history survives committ
   assert.deepEqual(await history(), migrationHistory);
 });
 
+test("explicit logout starts a fresh grace period even when the last heartbeat is stale", async () => {
+  const visitor = await login();
+  await pool.query(
+    "UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes' WHERE client_id = $1",
+    [clientIdOf(visitor)],
+  );
+
+  const response = await end(visitor);
+  assert.equal(response.body.data.reset, false);
+  assert.equal(response.body.data.reason, "grace_period");
+
+  const manager = await login(randomUUID());
+  assert.equal(manager.status, 200);
+  assert.equal(await sessionCount(), 2);
+  assert.equal((await prepare()).body.data.reason, "active_session");
+});
+
 test("full-access mode keeps old login behavior and hides all demo endpoints", async () => {
   process.env.DEMO_MODE = "false";
   const response = await request(app).post("/api/auth/login").send({ identifier: "demo_admin", password });
