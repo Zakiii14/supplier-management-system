@@ -306,6 +306,7 @@ test("reset deletes old file names but preserves the migration tracker", async (
   const file = path.join(directory, "old-test-avatar.png");
   await fs.writeFile(file, "test image");
   const visitor = await login();
+  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes'");
   assert.equal((await end(visitor)).body.data.reset, true);
   await assert.rejects(fs.stat(file), { code: "ENOENT" });
   assert.deepEqual(await history(), migrationHistory);
