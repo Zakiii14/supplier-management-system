@@ -97,7 +97,11 @@ test("migration 021 applies once and complete migration history survives committ
   const visitor = await login();
   assert.equal(visitor.status, 200);
   const response = await end(visitor);
-  assert.equal(response.body.data.reset, true);
+  assert.equal(response.body.data.reset, false);
+  assert.equal(response.body.data.reason, "grace_period");
+  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes'");
+  const cleanup = await prepare();
+  assert.equal(cleanup.body.data.reset, true);
   assert.deepEqual(await history(), migrationHistory);
 });
 
@@ -153,7 +157,17 @@ test("one visitor logout preserves another visitor's data; last logout resets on
   assert.equal(response.body.data.reason, "active_session");
   assert.equal((await pool.query("SELECT count(*)::int AS n FROM app.products WHERE product_name = 'visitor work'")).rows[0].n, 5);
   assert.equal((await heartbeat(second)).status, 204);
-  assert.equal((await end(second)).body.data.reset, true);
+  const lastLogout = await end(second);
+  assert.equal(lastLogout.body.data.reset, false);
+  assert.equal(lastLogout.body.data.reason, "grace_period");
+  assert.equal(await sessionCount(), 2);
+  assert.equal(
+    (await pool.query("SELECT count(*)::int AS n FROM app.products WHERE product_name = 'visitor work'")).rows[0].n,
+    5,
+  );
+  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes'");
+  const cleanup = await prepare();
+  assert.equal(cleanup.body.data.reset, true);
   assert.equal(await sessionCount(), 0);
   assert.equal((await prepare()).body.data.reason, "no_tracked_session");
   assert.deepEqual(await history(), migrationHistory);
