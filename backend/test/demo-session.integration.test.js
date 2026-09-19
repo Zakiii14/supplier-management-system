@@ -99,7 +99,7 @@ test("migration 021 applies once and complete migration history survives committ
   const response = await end(visitor);
   assert.equal(response.body.data.reset, false);
   assert.equal(response.body.data.reason, "grace_period");
-  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes'");
+  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes', ended_at = clock_timestamp() - INTERVAL '16 minutes'");
   const cleanup = await prepare();
   assert.equal(cleanup.body.data.reset, true);
   assert.deepEqual(await history(), migrationHistory);
@@ -119,7 +119,9 @@ test("explicit logout starts a fresh grace period even when the last heartbeat i
   const manager = await login(randomUUID());
   assert.equal(manager.status, 200);
   assert.equal(await sessionCount(), 2);
-  assert.equal((await prepare()).body.data.reason, "active_session");
+  const decision = await services.maybeResetStaleDemo({ reason: "prepare_login" });
+  assert.equal(decision.reset, false);
+  assert.equal(decision.reason, "active_session");
 });
 
 test("full-access mode keeps old login behavior and hides all demo endpoints", async () => {
@@ -202,7 +204,7 @@ test("late heartbeat cannot revive logout or stale sessions, including after re-
   assert.equal(lateEnd.ended, false);
   assert.equal((await heartbeat(next)).status, 204);
   assert.equal((await heartbeat(guard)).status, 204);
-  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes' WHERE client_id = $1", [clientIdOf(next)]);
+  await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes', ended_at = clock_timestamp() - INTERVAL '16 minutes' WHERE client_id = $1", [clientIdOf(next)]);
   assert.equal((await heartbeat(next)).status, 401);
   await assert.rejects(() => services.touchDemoSession(sessionOf(next)), { statusCode: 401 });
 });
