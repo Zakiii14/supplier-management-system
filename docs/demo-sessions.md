@@ -16,10 +16,13 @@ not Neon or the shared Blob store.
   transaction advisory lock. This supports Neon's transaction pooler and
   releases the lock on rollback/disconnection. Cleanup rechecks state after
   obtaining the lock; two concurrent cleanup requests cannot reset twice.
-- The last explicit logout can reset immediately. A closed tab stops sending
-  heartbeat and becomes stale after `DEMO_IDLE_MINUTES` (default 15).
-  The scheduled check runs every five minutes, subject to GitHub scheduling
-  delays; this is not an exact wall-clock cleanup guarantee.
+- Explicit logout only ends the session; it does not reset immediately. The
+  database is protected for `DEMO_IDLE_MINUTES` (default 15) after the most
+  recent session activity, so another role can continue a workflow after the
+  previous role logs out. A closed tab stops sending heartbeat and becomes
+  reset-eligible after the same inactivity window. The scheduled check runs
+  every five minutes, subject to GitHub scheduling delays; this is not an exact
+  wall-clock cleanup guarantee.
 - A browser's demo authentication and last interaction time live in
   `sessionStorage`, separate from persistent full-access authentication.
   Refresh and profile updates preserve the idle deadline. Web Locks prevent
