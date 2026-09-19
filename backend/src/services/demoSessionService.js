@@ -90,11 +90,17 @@ const maybeResetStaleDemo = async ({ reason = "idle" } = {}) => {
             EXISTS (SELECT 1 FROM app.demo_sessions) AS has_sessions,
             EXISTS (SELECT 1 FROM app.demo_sessions
               WHERE ended_at IS NULL AND last_seen_at >
-                clock_timestamp() - ($1::int * INTERVAL '1 minute')) AS has_active`,
+                clock_timestamp() - ($1::int * INTERVAL '1 minute')) AS has_active,
+            EXISTS (SELECT 1 FROM app.demo_sessions
+              WHERE last_seen_at >
+                clock_timestamp() - ($1::int * INTERVAL '1 minute')) AS has_recent_activity`,
           [DEMO_IDLE_MINUTES],
         );
         if (!state.has_sessions) return { reset: false, reason: "no_tracked_session" };
         if (state.has_active) return { reset: false, reason: "active_session" };
+        if (state.has_recent_activity) {
+          return { reset: false, reason: "grace_period" };
+        }
         return { reset: true };
       },
     });
