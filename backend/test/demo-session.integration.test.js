@@ -108,7 +108,7 @@ test("migration 021 applies once and complete migration history survives committ
 test("explicit logout starts a fresh grace period even when the last heartbeat is stale", async () => {
   const visitor = await login();
   await pool.query(
-    "UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes', ended_at = clock_timestamp() - INTERVAL '16 minutes' WHERE client_id = $1",
+    "UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes' WHERE client_id = $1",
     [clientIdOf(visitor)],
   );
 
