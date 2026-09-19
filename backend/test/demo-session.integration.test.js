@@ -112,9 +112,10 @@ test("explicit logout starts a fresh grace period even when the last heartbeat i
     [clientIdOf(visitor)],
   );
 
-  const response = await end(visitor);
-  assert.equal(response.body.data.reset, false);
-  assert.equal(response.body.data.reason, "grace_period");
+  const session = sessionOf(visitor);
+  const response = await services.endDemoSession(session);
+  assert.equal(response.reset, false);
+  assert.equal(response.reason, "grace_period");
 
   const manager = await login(randomUUID());
   assert.equal(manager.status, 200);
