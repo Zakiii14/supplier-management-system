@@ -17,6 +17,8 @@ const bcrypt = require("bcryptjs");
 
 const pool = require("../src/config/database");
 const app = require("../src/app");
+const { discoverMigrations } = require("../src/database/migrationFiles");
+const { applyPendingMigrations } = require("../src/database/migrationRunner");
 
 const usernames = [
   "demo_safety_admin",
@@ -32,6 +34,17 @@ const login = (identifier) =>
 
 before(async () => {
   process.env.DEMO_MODE = "false";
+
+  const migrations = discoverMigrations(
+    path.resolve(__dirname, "../../database/migrations"),
+  );
+  const client = await pool.connect();
+
+  try {
+    await applyPendingMigrations({ client, migrations });
+  } finally {
+    client.release();
+  }
 
   await pool.query(
     `DELETE FROM app.users WHERE username = ANY($1::VARCHAR[])`,
