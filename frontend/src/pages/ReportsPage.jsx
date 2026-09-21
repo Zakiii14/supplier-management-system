@@ -28,6 +28,7 @@ import {
   getReportOptionsRequest,
   getReportRequest,
 } from "../api/reports";
+import { getInvoiceByIdRequest } from "../api/invoices";
 import { getSalesOrderByIdRequest } from "../api/salesOrders";
 import DateRangeFilter from "../components/filters/DateRangeFilter";
 import FormSelect from "../components/forms/FormSelect";
@@ -35,6 +36,7 @@ import PurchaseOrderDetailDialog from "../components/purchase-orders/PurchaseOrd
 import ReportSummaryCards from "../components/reports/ReportSummaryCards";
 import ReportTable from "../components/reports/ReportTable";
 import ReportTrendChart from "../components/reports/ReportTrendChart";
+import InvoiceDetailDialog from "../components/invoices/InvoiceDetailDialog";
 import SalesOrderDetailDialog from "../components/sales-orders/SalesOrderDetailDialog";
 import PaginationBar from "../components/tables/PaginationBar";
 import useAuth from "../hooks/useAuth";
@@ -210,6 +212,7 @@ const ReportsPage = () => {
   const canViewTransactionDetails = [
     "purchasing",
     "sales",
+    "finance",
     "supplierFinance",
   ].includes(activeReportType);
   const canExportReport = [
@@ -406,9 +409,13 @@ const ReportsPage = () => {
           ? await getPurchaseOrderByIdRequest(
             row.id,
           )
-          : await getSalesOrderByIdRequest(
-            row.id,
-          );
+          : detailType === "finance"
+            ? await getInvoiceByIdRequest(
+              row.id,
+            )
+            : await getSalesOrderByIdRequest(
+              row.id,
+            );
 
       if (
         detailRequestIdRef.current !== requestId
@@ -432,7 +439,9 @@ const ReportsPage = () => {
         `Rincian laporan ${
           ["purchasing", "supplierFinance"].includes(detailType)
             ? "pembelian"
-            : "penjualan"
+            : detailType === "finance"
+              ? "keuangan"
+              : "penjualan"
         } gagal dimuat.`,
       );
     } finally {
@@ -1010,6 +1019,14 @@ const ReportsPage = () => {
               proofId,
             )
           }
+          onClose={handleCloseReportDetail}
+        />
+      )}
+
+      {reportDetail?.type === "finance" && (
+        <InvoiceDetailDialog
+          isOpen
+          invoice={reportDetail.data}
           onClose={handleCloseReportDetail}
         />
       )}
