@@ -126,9 +126,14 @@ const endDemoSession = async ({ clientId, sessionId, userId }) => {
     );
     return result.rowCount === 1;
   });
-  // A login/heartbeat in this gap is safe: reset rechecks under the same lock.
-  const result = await maybeResetStaleDemo({ reason: "session_ended" });
-  return { ended, ...result };
+  // Logout must never reset the shared demo immediately. Cleanup is triggered
+  // separately by prepare_login and the scheduled cleanup job after the full
+  // idle window has elapsed.
+  return {
+    ended,
+    reset: false,
+    reason: "session_ended",
+  };
 };
 
 module.exports = {
