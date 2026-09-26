@@ -98,7 +98,7 @@ test("migration 021 applies once and complete migration history survives committ
   assert.equal(visitor.status, 200);
   const response = await end(visitor);
   assert.equal(response.body.data.reset, false);
-  assert.equal(response.body.data.reason, "grace_period");
+  assert.equal(response.body.data.reason, "session_ended");
   await pool.query("UPDATE app.demo_sessions SET last_seen_at = clock_timestamp() - INTERVAL '16 minutes', ended_at = clock_timestamp() - INTERVAL '16 minutes'");
   const cleanup = await prepare();
   assert.equal(cleanup.body.data.reset, true);
@@ -115,7 +115,7 @@ test("explicit logout starts a fresh grace period even when the last heartbeat i
   const session = sessionOf(visitor);
   const response = await services.endDemoSession(session);
   assert.equal(response.reset, false);
-  assert.equal(response.reason, "grace_period");
+  assert.equal(response.reason, "session_ended");
 
   const manager = await login(randomUUID());
   assert.equal(manager.status, 200);
@@ -141,7 +141,7 @@ test("disabled reset and an unused demo never reset data", async () => {
   const visitor = await login();
   process.env.DEMO_RESET_ENABLED = "false";
   const response = await end(visitor);
-  assert.equal(response.body.data.reason, "disabled");
+  assert.equal(response.body.data.reason, "session_ended");
   assert.equal(await sessionCount(), 1);
 });
 
@@ -174,12 +174,12 @@ test("one visitor logout preserves another visitor's data; last logout resets on
   await pool.query("UPDATE app.products SET product_name = 'visitor work'");
   const response = await end(first);
   assert.equal(response.body.data.reset, false);
-  assert.equal(response.body.data.reason, "active_session");
+  assert.equal(response.body.data.reason, "session_ended");
   assert.equal((await pool.query("SELECT count(*)::int AS n FROM app.products WHERE product_name = 'visitor work'")).rows[0].n, 5);
   assert.equal((await heartbeat(second)).status, 204);
   const lastLogout = await end(second);
   assert.equal(lastLogout.body.data.reset, false);
-  assert.equal(lastLogout.body.data.reason, "grace_period");
+  assert.equal(lastLogout.body.data.reason, "session_ended");
   assert.equal(await sessionCount(), 2);
   assert.equal(
     (await pool.query("SELECT count(*)::int AS n FROM app.products WHERE product_name = 'visitor work'")).rows[0].n,
